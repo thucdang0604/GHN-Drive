@@ -1817,6 +1817,99 @@
       line-height: 1.2;
     }
 
+    /* Huy hiệu cảnh báo tọa độ nghi ngờ lệch xa */
+    .ghn-pin-outlier-badge {
+      position: absolute;
+      top: -8px;
+      left: -8px;
+      background: #ef4444;
+      color: #ffffff;
+      border: 1.5px solid #ffffff;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 0 4px;
+      border-radius: var(--radius-full);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+      z-index: 6;
+      line-height: 1.3;
+      animation: outlierPulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes outlierPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.18); background: #dc2626; }
+    }
+
+    .ghn-map-pin.is-outlier .ghn-map-pin-inner {
+      border: 2px solid #ef4444 !important;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+    }
+
+    /* Chip thống kê đơn nghi ngờ lệch GPS trên thanh công cụ */
+    .map-stat-chip.outlier {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.15s ease;
+    }
+    .map-stat-chip.outlier:active {
+      background: #fee2e2;
+      transform: scale(0.96);
+    }
+
+    /* Banner cảnh báo tọa độ lệch trong thẻ chi tiết */
+    .map-card-outlier-banner {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+      color: #9f1239;
+    }
+    .btn-quick-fix-loc {
+      background: #e11d48;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 10.5px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+    }
+    .btn-quick-fix-loc:active {
+      background: #be123c;
+    }
+
+    /* Nút Sửa chéo tọa độ trong thanh điều khiển bản đồ */
+    .btn-map-heal-sync {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-map-heal-sync:active {
+      background: #dbeafe;
+      transform: scale(0.96);
+    }
+
     /* Nút Sửa vị trí trong card chi tiết */
     .btn-card-edit-loc {
       background: #fff7ed;
@@ -1976,6 +2069,230 @@
       cursor: pointer;
     }
 
+    /* Banner Xem trước vị trí gợi ý trên bản đồ */
+    .map-suggest-preview-banner {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      z-index: 660;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(8px);
+      color: #ffffff;
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 1.5px rgba(242, 101, 34, 0.35);
+      animation: slideDownBanner 0.22s ease-out;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .map-suggest-preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .map-suggest-preview-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .suggest-preview-pulse {
+      width: 11px;
+      height: 11px;
+      background: #f26522;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(242, 101, 34, 0.7);
+      animation: suggestPulseRing 1.4s infinite cubic-bezier(0.45, 0, 0.2, 1);
+      flex-shrink: 0;
+    }
+
+    @keyframes suggestPulseRing {
+      0% {
+        box-shadow: 0 0 0 0 rgba(242, 101, 34, 0.85);
+        transform: scale(0.95);
+      }
+      70% {
+        box-shadow: 0 0 0 9px rgba(242, 101, 34, 0);
+        transform: scale(1.15);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(242, 101, 34, 0);
+        transform: scale(0.95);
+      }
+    }
+
+    .map-suggest-preview-score {
+      font-size: 11px;
+      font-weight: 800;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 2px 7px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+
+    .map-suggest-preview-desc {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .map-suggest-source {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .map-suggest-dist {
+      color: #94a3b8;
+      font-size: 10.5px;
+    }
+
+    .map-suggest-hint {
+      font-size: 11px;
+      color: #fed7aa;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      background: rgba(242, 101, 34, 0.15);
+      border: 1px dashed rgba(242, 101, 34, 0.45);
+      border-radius: 6px;
+      line-height: 1.3;
+    }
+
+    .map-suggest-preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-suggest-apply {
+      flex: 2;
+      min-width: 140px;
+      background: #10b981;
+      color: #ffffff;
+      border: none;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+    }
+    .btn-suggest-apply:hover, .btn-suggest-apply:active {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    .btn-suggest-reopen {
+      flex: 1;
+      min-width: 100px;
+      background: rgba(59, 130, 246, 0.25);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 7px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .btn-suggest-reopen:hover, .btn-suggest-reopen:active {
+      background: rgba(59, 130, 246, 0.4);
+      color: #ffffff;
+    }
+
+    .btn-suggest-cancel {
+      background: rgba(255, 255, 255, 0.15);
+      color: #cbd5e1;
+      border: none;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 7px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-suggest-cancel:hover {
+      background: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+    }
+
+    /* Quả ghim xem trước vị trí gợi ý trên bản đồ */
+    .ghn-suggest-preview-marker {
+      background: transparent !important;
+      border: none !important;
+    }
+    .ghn-suggest-preview-pin {
+      position: relative;
+      background: #f26522;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 10px;
+      border-radius: 16px;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(242, 101, 34, 0.6), 0 0 0 3px #ffffff;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      animation: suggestPinBounce 1.6s infinite ease-in-out;
+      transform-origin: center bottom;
+      cursor: grab;
+      user-select: none;
+    }
+    .ghn-suggest-preview-pin:active {
+      cursor: grabbing;
+    }
+    .ghn-suggest-preview-pin.adjusted {
+      background: #10b981;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.6), 0 0 0 3px #ffffff;
+      animation: none;
+    }
+    .ghn-suggest-preview-pin::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 6px 0;
+      border-style: solid;
+      border-color: #f26522 transparent;
+      display: block;
+      width: 0;
+    }
+    .ghn-suggest-preview-pin.adjusted::after {
+      border-color: #10b981 transparent;
+    }
+    @keyframes suggestPinBounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-7px) scale(1.06); }
+    }
+
     /* Nút Sắp xếp Tuyến & Số nhà trong Toolbar */
     .btn-group-pill.sort-street {
       background: #fff7ed;
@@ -2012,6 +2329,92 @@
       background: #fff7ed;
       color: #c2410c;
       border-color: #fdba74;
+    }
+    .btn-toggle-bldg-mode {
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-toggle-bldg-mode.active {
+      background: #047857;
+      color: #ffffff;
+      border-color: #047857;
+    }
+
+    /* Nhãn số nhà đơn lẻ trên từng tòa nhà (Zoom >= 18) */
+    .ghn-bldg-num-marker {
+      background: transparent !important;
+      border: none !important;
+    }
+    .ghn-bldg-num-single {
+      background: rgba(255, 255, 255, 0.95);
+      color: #1e293b;
+      border: 1px solid #94a3b8;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
+      white-space: nowrap;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+      pointer-events: none;
+      transition: all 0.2s ease;
+      display: inline-block;
+    }
+    .ghn-bldg-num-single.is-target-order {
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1.5px solid #f26522;
+      font-size: 11px;
+      font-weight: 800;
+      box-shadow: 0 2px 8px rgba(242, 101, 34, 0.4);
+      animation: targetHousePulse 1.8s infinite ease-in-out;
+      z-index: 1000;
+    }
+    @keyframes targetHousePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* Dải số nhà tổng hợp (Zoom 16 - 17) */
+    .ghn-bldg-num-range {
+      background: rgba(248, 250, 252, 0.96);
+      color: #0f172a;
+      border: 1px solid #64748b;
+      border-radius: 12px;
+      padding: 2px 7px;
+      font-size: 10.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.16);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .ghn-bldg-num-range.even {
+      border-left: 3.5px solid #2563eb;
+    }
+    .ghn-bldg-num-range.odd {
+      border-left: 3.5px solid #d97706;
+    }
+    .ghn-bldg-num-range.has-target {
+      background: #fff7ed;
+      border-color: #f26522;
+      color: #c2410c;
+      font-weight: 800;
+      box-shadow: 0 2px 8px rgba(242, 101, 34, 0.35);
     }
 
     /* Dải tổng quan tuyến đường trên bản đồ (Street Ribbon) */
@@ -2184,12 +2587,14 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+      cursor: pointer;
       transition: all 0.15s ease;
     }
 
     .upd-suggest-card:hover {
       border-color: var(--ghn-orange);
       background: #fffdfc;
+      box-shadow: 0 2px 8px rgba(242, 101, 34, 0.12);
     }
 
     .upd-suggest-info {
@@ -2224,6 +2629,34 @@
       text-overflow: ellipsis;
     }
 
+    .upd-suggest-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .btn-preview-suggest {
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 8px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+    .btn-preview-suggest:hover {
+      background: #16a34a;
+      color: #ffffff;
+      border-color: #16a34a;
+    }
+
     .btn-apply-suggest {
       background: #eff6ff;
       color: #1d4ed8;
@@ -2235,6 +2668,7 @@
       cursor: pointer;
       flex-shrink: 0;
       transition: all 0.15s ease;
+      white-space: nowrap;
     }
 
     .btn-apply-suggest:hover, .btn-apply-suggest:active {
@@ -2281,6 +2715,25 @@
       border-color: #fed7aa;
       color: #c2410c;
       background: #fff7ed;
+    }
+
+    .btn-upd-tool.street-median {
+      border-color: #f5d0fe;
+      color: #86198f;
+      background: #fdf4ff;
+    }
+
+    .btn-upd-tool.osm {
+      border-color: #bbf7d0;
+      color: #15803d;
+      background: #f0fdf4;
+    }
+
+    .btn-upd-tool.sync-all {
+      border-color: #fdba74;
+      color: #c2410c;
+      background: #fff7ed;
+      font-weight: 800;
     }
 
     .upd-manual-box {
@@ -2464,10 +2917,13 @@
         <span class="map-stat-chip"><strong id="mapStatPoints">0</strong> điểm GPS</span>
         <span class="map-stat-chip pending"><strong id="mapStatPending">0</strong> chờ</span>
         <span class="map-stat-chip gtc"><strong id="mapStatGtc">0</strong> xong</span>
+        <span class="map-stat-chip outlier" id="mapStatOutlierChip" style="display: none;" title="Bấm để xem các đơn nghi ngờ sai lệch GPS"><strong id="mapStatOutlier">0</strong> ⚠️ lệch GPS</span>
       </div>
       <div class="map-filter-pills">
-        <button id="btnToggleMarkerLabel" class="btn-toggle-pin-mode active" title="Bấm để đổi giữa hiển thị Số nhà hoặc Số thứ tự trên bản đồ">🏠 Số nhà</button>
+        <button id="btnToggleMarkerLabel" class="btn-toggle-pin-mode active" title="Bấm để đổi giữa hiển thị Số nhà hoặc Số thứ tự trên các điểm giao">📍 Số nhà ghim</button>
+        <button id="btnToggleBuildingNumbers" class="btn-toggle-bldg-mode active" title="Bật/Tắt hiển thị số nhà trên các tòa nhà phố (Dãy số ở zoom vừa -> Từng số nhà khi zoom gần)">🏢 Số nhà phố</button>
         <button id="btnMapSortStreet" class="btn-map-sort-street" title="Tự động sắp xếp lộ trình theo tuyến đường & số nhà liên tục">⚡ Xếp theo đường</button>
+        <button id="btnMapHealSync" class="btn-map-heal-sync" title="Tự động phát hiện và đồng bộ tọa độ các đơn trùng địa chỉ">⚡ Sửa chéo tọa độ</button>
         <button class="map-filter-btn active" data-map-filter="all">Tất cả</button>
         <button class="map-filter-btn" data-map-filter="pending">Chờ giao</button>
         <button class="map-filter-btn" data-map-filter="gtc">GTC</button>
@@ -2493,6 +2949,29 @@
         <div class="map-pick-banner-actions">
           <button id="btnMapPickConfirm" class="btn-pick-confirm">✓ Lưu vị trí</button>
           <button id="btnMapPickCancel" class="btn-pick-cancel">✕ Hủy</button>
+        </div>
+      </div>
+
+      <!-- Banner xem trước vị trí gợi ý trên bản đồ -->
+      <div id="mapSuggestPreviewBanner" class="map-suggest-preview-banner" style="display: none;">
+        <div class="map-suggest-preview-header">
+          <div class="map-suggest-preview-title">
+            <span class="suggest-preview-pulse"></span>
+            <span>Đang xem gợi ý cho đơn <strong id="mapSuggestTargetStt">#1</strong></span>
+          </div>
+          <span class="map-suggest-preview-score" id="mapSuggestScoreBadge">95% khớp</span>
+        </div>
+        <div class="map-suggest-preview-desc">
+          <div class="map-suggest-source" id="mapSuggestSourceText">Gợi ý từ đơn...</div>
+          <div class="map-suggest-dist" id="mapSuggestDistText">📍 Tọa độ gợi ý...</div>
+        </div>
+        <div class="map-suggest-hint">
+          <span>👆 Kéo thả ghim hoặc chạm bản đồ để chỉnh vị trí chính xác</span>
+        </div>
+        <div class="map-suggest-preview-actions">
+          <button type="button" id="btnConfirmApplySuggest" class="btn-suggest-apply">✓ Áp dụng vị trí này</button>
+          <button type="button" id="btnReopenSuggestModal" class="btn-suggest-reopen">📋 Gợi ý khác</button>
+          <button type="button" id="btnCancelSuggestPreview" class="btn-suggest-cancel">✕ Đóng</button>
         </div>
       </div>
 
@@ -2536,6 +3015,12 @@
           <button id="btnMapNextOrder" class="btn-card-nav" title="Đơn sau">▶</button>
           <button id="btnCloseMapCard" class="btn-card-close" title="Đóng">&times;</button>
         </div>
+      </div>
+
+      <!-- Banner cảnh báo đơn bị lệch tọa độ so với cụm đường -->
+      <div id="mapCardOutlierBanner" class="map-card-outlier-banner" style="display: none;">
+        <div>⚠️ <strong>Nghi ngờ lệch GPS:</strong> Cách cụm <span id="mapCardOutlierDist">0 km</span></div>
+        <button type="button" id="btnMapQuickFixOutlier" class="btn-quick-fix-loc">Mượn tọa độ đường</button>
       </div>
 
       <!-- Thanh chọn đơn gom cụm tại cùng địa chỉ/tòa nhà -->
@@ -2617,6 +3102,17 @@
           </div>
         </div>
 
+        <!-- Section: Đồng bộ hàng loạt nếu có đơn cùng địa chỉ -->
+        <div class="upd-section" id="updSameAddrSection" style="display: none;">
+          <div class="upd-section-header">
+            <span>⚡ Đơn cùng địa chỉ / tòa nhà</span>
+            <span class="upd-suggest-badge" id="updSameAddrCount">0 đơn</span>
+          </div>
+          <button type="button" class="btn-upd-tool sync-all" id="btnUpdSyncSameAddr" style="width: 100%; justify-content: center;">
+            ⚡ Đồng bộ tọa độ cho tất cả các đơn cùng địa chỉ này
+          </button>
+        </div>
+
         <!-- Section 1: Gợi ý theo địa chỉ gần giống -->
         <div class="upd-section">
           <div class="upd-section-header">
@@ -2628,10 +3124,10 @@
           </div>
         </div>
 
-        <!-- Section 2: Công cụ ghim thực tế -->
+        <!-- Section 2: Công cụ ghim thực tế & Sửa nhanh -->
         <div class="upd-section">
           <div class="upd-section-header">
-            <span>🎯 Thao tác ghim vị trí thực tế</span>
+            <span>🎯 Thao tác ghim vị trí & Sửa nhanh</span>
           </div>
           <div class="upd-tools-grid">
             <button type="button" class="btn-upd-tool gps" id="btnUpdMyGps">
@@ -2640,6 +3136,19 @@
             <button type="button" class="btn-upd-tool map" id="btnUpdPickMap">
               🗺️ Chấm điểm trên bản đồ
             </button>
+            <button type="button" class="btn-upd-tool street-median" id="btnUpdStreetMedian">
+              🛣️ Mượn tọa độ tuyến đường
+            </button>
+            <button type="button" class="btn-upd-tool osm" id="btnUpdOsmSearch">
+              🌐 Tra cứu OpenStreetMap
+            </button>
+          </div>
+          <div id="updOsmResultBox" style="display: none; margin-top: 8px; padding: 8px 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; font-size: 11.5px;">
+            <div id="updOsmStatusText" style="color: #166534; font-weight: 600; margin-bottom: 6px;"></div>
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              <button type="button" id="btnPreviewOsmResult" class="btn-preview-suggest" style="display: none;">🔍 Xem trên Map</button>
+              <button type="button" id="btnApplyOsmResult" class="btn-quick-fix-loc" style="background: #16a34a; display: none;">✓ Áp dụng tọa độ này</button>
+            </div>
           </div>
         </div>
 
@@ -2864,11 +3373,31 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       var isMapPickMode = false;
       var mapPickMarker = null;
       var tempPickedCoords = null;
+      var previewSuggestMarker = null;
+      var previewSuggestCircle = null;
+      var currentPreviewSuggestData = null;
+      var onMapClickSuggestPreviewFn = null;
       var mapMarkerDisplayMode = 'housenumber'; // 'housenumber' | 'stt'
       var selectedStreetFilter = 'all'; // 'all' | specific street name
+      var VERIFIED_GEOCACHE_KEY = 'ghn_verified_geocache_v1';
+      var verifiedGeocache = {};
+      var outlierOrders = [];
+      var isBuildingNumbersVisible = true;
+      var buildingNumbersLayerGroup = null;
+      var buildingDataCache = []; // { id, num, numVal, isEven, street, lat, lng }
+      var buildingFetchedGrid = {}; // grid cell keys to prevent duplicate fetches
+      var isFetchingBuildingData = false;
+      var buildingFetchTimer = null;
 
       // 1. Quản lý LocalStorage
       function loadData() {
+        try {
+          var rawCache = localStorage.getItem(VERIFIED_GEOCACHE_KEY);
+          if (rawCache) verifiedGeocache = JSON.parse(rawCache);
+        } catch(e) {
+          verifiedGeocache = {};
+        }
+
         try {
           var rawGroups = localStorage.getItem(GROUPS_STORAGE_KEY);
           if (rawGroups) {
@@ -2978,6 +3507,25 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         } catch(e) {
           console.error('Lỗi lưu dữ liệu:', e);
         }
+      }
+
+      function saveVerifiedGeocache() {
+        try {
+          localStorage.setItem(VERIFIED_GEOCACHE_KEY, JSON.stringify(verifiedGeocache));
+        } catch(e) {
+          console.error('Lỗi lưu geocache:', e);
+        }
+      }
+
+      function saveToVerifiedGeocache(fingerprint, lat, lng, address) {
+        if (!fingerprint || !isValidCoordinate(lat, lng)) return;
+        verifiedGeocache[fingerprint] = {
+          lat: Number(lat),
+          lng: Number(lng),
+          address: address || '',
+          updatedAt: new Date().toISOString()
+        };
+        saveVerifiedGeocache();
       }
 
       function ensureGroupIntegrity() {
@@ -3458,11 +4006,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         addr = addr.replace(/\b(?:3\s*tháng\s*2|3\/2)\b/gi, '3 Tháng 2');
         addr = addr.replace(/\b(?:30\s*tháng\s*4|30\/4)\b/gi, '30 Tháng 4');
 
-        // Lỗi viết dính chữ Võ Văn Tần / gõ sai
-        addr = addr.replace(/\b(?:Võ\s*v|Vo\s*v)\s*Tần\b/gi, 'Võ Văn Tần');
-        addr = addr.replace(/\bVõ\s*van\s*Tân\b/gi, 'Võ Văn Tần');
-        addr = addr.replace(/\bVõ\s*Văn\s*Tầng\b/gi, 'Võ Văn Tần');
-        addr = addr.replace(/\bVo\s*Van\s*Tan\b/gi, 'Võ Văn Tần');
+        // Lỗi viết dính chữ Võ Văn Tần / gõ sai / viết tắt
+        addr = addr.replace(/\b(?:Võ|Vo)\s*(?:v|văn|van)?\s*(?:tần|tan|tang|tầng)\b/gi, 'Võ Văn Tần');
+        addr = addr.replace(/\bVO\s*V\s*TANG\b/gi, 'Võ Văn Tần');
 
         // Khử các từ lặp lại trong địa chỉ lỗi (ví dụ: "Bà Huyện Thanh Quan 87 Ba, Huyện")
         addr = addr.replace(/Bà Huyện Thanh Quan\s+[\d\w/.-]*\s*Ba,?\s*Huyện/gi, 'Bà Huyện Thanh Quan');
@@ -3975,9 +4521,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         return !isNaN(nLat) && !isNaN(nLng) && nLat > 8.0 && nLat < 24.0 && nLng > 102.0 && nLng < 110.0;
       }
 
-      function createCustomMarkerIcon(stt, status, isSelected, clusterCount, houseNumber, shortStreet) {
+      function createCustomMarkerIcon(stt, status, isSelected, clusterCount, houseNumber, shortStreet, hasOutlier) {
         var isCluster = clusterCount && clusterCount > 1;
         var badgeHtml = isCluster ? '<span class="ghn-cluster-badge">' + clusterCount + '</span>' : '';
+        var outlierHtml = hasOutlier ? '<span class="ghn-pin-outlier-badge" title="Tọa độ nghi ngờ bị lệch xa">⚠️</span>' : '';
         
         var displayText = '#' + stt;
         var isLong = false;
@@ -3997,11 +4544,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         return L.divIcon({
           className: 'ghn-div-icon',
-          html: '<div class="ghn-map-pin' + (isCluster ? ' ghn-cluster-pin' : '') + ' status-' + status + (isSelected ? ' active' : '') + '">' +
+          html: '<div class="ghn-map-pin' + (isCluster ? ' ghn-cluster-pin' : '') + (hasOutlier ? ' is-outlier' : '') + ' status-' + status + (isSelected ? ' active' : '') + '">' +
                   '<div class="ghn-map-pin-inner">' +
                     '<span class="' + spanClass + '">' + displayText + '</span>' +
                   '</div>' +
                   badgeHtml +
+                  outlierHtml +
                   pillHtml +
                 '</div>',
           iconSize: [32, 38],
@@ -4027,9 +4575,19 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         L.control.zoom({ position: 'bottomright' }).addTo(mobileMap);
 
         activeTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
+          maxNativeZoom: 19,
+          maxZoom: 21,
           subdomains: ['a', 'b', 'c']
         }).addTo(mobileMap);
+
+        // Lớp hiển thị số nhà trên các tòa nhà
+        buildingNumbersLayerGroup = L.layerGroup().addTo(mobileMap);
+
+        mobileMap.on('moveend zoomend', function() {
+          if (isBuildingNumbersVisible) {
+            triggerBuildingNumbersFetchAndRender();
+          }
+        });
 
         setupMapControls();
       }
@@ -4152,21 +4710,38 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           btnCloseCard.addEventListener('click', closeMapBottomCard);
         }
 
-        // Nút đổi chế độ hiển thị Số nhà / STT trên bản đồ
+        // Nút đổi chế độ hiển thị Số nhà / STT trên các quả ghim điểm giao
         var btnToggleLabel = document.getElementById('btnToggleMarkerLabel');
         if (btnToggleLabel) {
           btnToggleLabel.addEventListener('click', function() {
             mapMarkerDisplayMode = mapMarkerDisplayMode === 'housenumber' ? 'stt' : 'housenumber';
             if (mapMarkerDisplayMode === 'housenumber') {
               btnToggleLabel.classList.add('active');
-              btnToggleLabel.textContent = '🏠 Số nhà';
-              showToast('Bản đồ: Đang hiển thị Số Nhà');
+              btnToggleLabel.textContent = '📍 Số nhà ghim';
+              showToast('Bản đồ: Ghim đang hiện Số Nhà');
             } else {
               btnToggleLabel.classList.remove('active');
-              btnToggleLabel.textContent = '# STT';
-              showToast('Bản đồ: Đang hiển thị STT (#1, #2...)');
+              btnToggleLabel.textContent = '# STT ghim';
+              showToast('Bản đồ: Ghim đang hiện STT (#1, #2...)');
             }
             renderMap(orders);
+          });
+        }
+
+        // Nút Bật/Tắt hiển thị số nhà trên các tòa nhà phố (Dãy số ở zoom vừa -> Từng số nhà ở zoom gần)
+        var btnToggleBldg = document.getElementById('btnToggleBuildingNumbers');
+        if (btnToggleBldg) {
+          btnToggleBldg.addEventListener('click', function() {
+            isBuildingNumbersVisible = !isBuildingNumbersVisible;
+            if (isBuildingNumbersVisible) {
+              btnToggleBldg.classList.add('active');
+              showToast('🏢 Đã BẬT hiển thị số nhà trên các tòa nhà phố');
+              triggerBuildingNumbersFetchAndRender();
+            } else {
+              btnToggleBldg.classList.remove('active');
+              if (buildingNumbersLayerGroup) buildingNumbersLayerGroup.clearLayers();
+              showToast('🏢 Đã TẮT hiển thị số nhà phố');
+            }
           });
         }
 
@@ -4177,6 +4752,36 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             sortOrdersByStreetAndHouseNumber();
           });
         }
+
+        // Nút Sửa chéo & đồng bộ tọa độ trùng địa chỉ
+        var btnHeal = document.getElementById('btnMapHealSync');
+        if (btnHeal) {
+          btnHeal.addEventListener('click', function() {
+            var count = autoHealDuplicateAddresses(false);
+            if (count > 0) {
+              render();
+              showToast('⚡ Đã sửa chéo & đồng bộ vị trí cho ' + count + ' đơn cùng địa chỉ!');
+            } else {
+              showToast('Các đơn cùng địa chỉ đã có tọa độ đồng nhất!');
+            }
+          });
+        }
+
+        // Chip lọc / nhảy tới đơn nghi ngờ lệch GPS
+        var outlierChip = document.getElementById('mapStatOutlierChip');
+        if (outlierChip) {
+          outlierChip.addEventListener('click', function() {
+            if (outlierOrders.length === 0) {
+              showToast('Không có đơn nào nghi ngờ lệch GPS!');
+              return;
+            }
+            jumpToOrderOnMap(outlierOrders[0].id);
+            showToast('Đang xem đơn #' + (orders.indexOf(outlierOrders[0]) + 1) + ' nghi ngờ lệch GPS');
+          });
+        }
+
+        // Khởi tạo bộ lắng nghe cho chế độ Xem trước vị trí gợi ý trên bản đồ
+        setupSuggestPreviewListeners();
       }
 
       function updateShipperLocationMarker(lat, lng, accuracy) {
@@ -4207,13 +4812,643 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       // ==========================================================
-      // THUẬT TOÁN GOM CỤM CÁC ĐIỂM GIAO TRÙNG / GẦN NHAU
+      // THUẬT TOÁN TÍNH KHOẢNG CÁCH, NHẬN DIỆN ĐỊA CHỈ & ĐỒNG BỘ TỌA ĐỘ
+      // ==========================================================
+      function getCoordDistanceMeters(lat1, lng1, lat2, lng2) {
+        if (!isValidCoordinate(lat1, lng1) || !isValidCoordinate(lat2, lng2)) return 999999;
+        var R = 6371000; // bán kính Trái Đất (mét)
+        var dLat = (Number(lat2) - Number(lat1)) * Math.PI / 180;
+        var dLng = (Number(lng2) - Number(lng1)) * Math.PI / 180;
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Number(lat1) * Math.PI / 180) * Math.cos(Number(lat2) * Math.PI / 180) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+
+      // ==========================================================
+      // CHUẨN HÓA ĐỊA CHỈ NÂNG CAO & NỘI SUY BẮT DÍNH TÒA NHÀ
+      // ==========================================================
+      function normalizeDetailedAddress(addr) {
+        if (!addr) return null;
+        var info = extractStreetAndHouseNumber(addr);
+        var street = info.street;
+        var houseNumber = info.houseNumber;
+        var numVal = info.houseNumVal;
+        var isEven = (numVal !== 999999) ? (numVal % 2 === 0) : null;
+        
+        var subNum = null;
+        if (houseNumber && houseNumber.indexOf('/') !== -1) {
+          var parts = houseNumber.split('/');
+          subNum = parts[1] ? parts[1].trim() : null;
+        }
+
+        return {
+          raw: addr,
+          street: street,
+          clusterGroup: info.clusterGroup,
+          houseNumber: houseNumber,
+          numVal: numVal,
+          subNum: subNum,
+          isEven: isEven,
+          shortStreet: info.shortStreet
+        };
+      }
+
+      function syncOrdersIntoBuildingCache() {
+        // Nạp các điểm đã xác thực từ verifiedGeocache
+        for (var fp in verifiedGeocache) {
+          var v = verifiedGeocache[fp];
+          if (v && isValidCoordinate(v.lat, v.lng)) {
+            var inf = extractStreetAndHouseNumber(v.address || '');
+            if (inf.houseNumber) {
+              addBuildingToCache('vg_' + fp, inf.houseNumber, inf.houseNumVal, inf.street, Number(v.lat), Number(v.lng));
+            }
+          }
+        }
+
+        // Nạp các đơn trong danh sách có tọa độ GPS hợp lệ
+        orders.forEach(function(o) {
+          if (isValidCoordinate(o.lat, o.lng)) {
+            var inf = extractStreetAndHouseNumber(o.address || '');
+            if (inf.houseNumber) {
+              addBuildingToCache('ord_' + o.id, inf.houseNumber, inf.houseNumVal, inf.street, Number(o.lat), Number(o.lng));
+            }
+          }
+        });
+      }
+
+      function addBuildingToCache(id, num, numVal, street, lat, lng) {
+        if (!num || !isValidCoordinate(lat, lng)) return;
+        var firstNum = numVal;
+        if (isNaN(firstNum) || firstNum === 999999 || firstNum === 0) {
+          var m = String(num).match(/\d+/);
+          firstNum = m ? parseInt(m[0], 10) : 0;
+        }
+        var isEven = (firstNum % 2 === 0);
+
+        var exists = buildingDataCache.some(function(b) {
+          return b.id === id || (b.street === street && b.num === num) || (Math.abs(b.lat - lat) < 0.00008 && Math.abs(b.lng - lng) < 0.00008);
+        });
+
+        if (!exists) {
+          buildingDataCache.push({
+            id: id,
+            num: String(num),
+            numVal: firstNum,
+            isEven: isEven,
+            street: street,
+            lat: Number(lat),
+            lng: Number(lng)
+          });
+        }
+      }
+
+      // Tự động bắt dính hoặc nội suy tọa độ của đơn hàng dựa trên tập số nhà thực tế
+      function snapOrderToBuildingNumber(order) {
+        if (!order || !order.address) return false;
+        var norm = normalizeDetailedAddress(order.address);
+        if (!norm || !norm.street || norm.numVal === 999999) return false;
+
+        // 1. Tìm kiếm chính xác số nhà trên cùng tuyến đường
+        var exact = buildingDataCache.find(function(b) {
+          return b.street === norm.street && (b.num === norm.houseNumber || b.numVal === norm.numVal);
+        });
+        if (exact) {
+          order.lat = exact.lat;
+          order.lng = exact.lng;
+          order.isGpsOutlier = false;
+          return true;
+        }
+
+        // 2. Nội suy tuyến tính theo hai số nhà lân cận cùng dãy (chẵn hoặc lẻ)
+        var sameSide = buildingDataCache.filter(function(b) {
+          return b.street === norm.street && b.isEven === norm.isEven && b.numVal > 0;
+        });
+
+        if (sameSide.length >= 2) {
+          sameSide.sort(function(a, b) { return a.numVal - b.numVal; });
+          var prev = null;
+          var next = null;
+
+          for (var i = 0; i < sameSide.length; i++) {
+            if (sameSide[i].numVal < norm.numVal) prev = sameSide[i];
+            if (sameSide[i].numVal > norm.numVal && !next) next = sameSide[i];
+          }
+
+          if (prev && next && next.numVal > prev.numVal) {
+            var frac = (norm.numVal - prev.numVal) / (next.numVal - prev.numVal);
+            frac = Math.max(0.05, Math.min(0.95, frac));
+            order.lat = prev.lat + frac * (next.lat - prev.lat);
+            order.lng = prev.lng + frac * (next.lng - prev.lng);
+            order.isGpsOutlier = false;
+            return true;
+          }
+        }
+
+        return false;
+      }
+
+      // ==========================================================
+      // LỚP HIỂN THỊ SỐ NHÀ TÒA NHÀ THÍCH ỨNG THEO ZOOM (OVERPASS + CACHE)
+      // ==========================================================
+      function triggerBuildingNumbersFetchAndRender() {
+        if (!mobileMap || !isBuildingNumbersVisible) return;
+        if (buildingFetchTimer) clearTimeout(buildingFetchTimer);
+        buildingFetchTimer = setTimeout(function() {
+          fetchBuildingNumbersForCurrentView();
+        }, 350);
+      }
+
+      function fetchBuildingNumbersForCurrentView() {
+        if (!mobileMap || !isBuildingNumbersVisible) return;
+        var zoom = mobileMap.getZoom();
+        
+        // Mức zoom < 16: ẩn số nhà để tránh rối mắt
+        if (zoom < 16) {
+          if (buildingNumbersLayerGroup) buildingNumbersLayerGroup.clearLayers();
+          return;
+        }
+
+        renderBuildingHouseNumbers();
+
+        var bounds = mobileMap.getBounds();
+        var s = bounds.getSouth();
+        var w = bounds.getWest();
+        var n = bounds.getNorth();
+        var e = bounds.getEast();
+
+        // Kiểm tra xem các ô lưới (grid cell) trong bounds đã được tải chưa
+        var minCellLat = Math.floor(s * 100);
+        var maxCellLat = Math.floor(n * 100);
+        var minCellLng = Math.floor(w * 100);
+        var maxCellLng = Math.floor(e * 100);
+
+        var allFetched = true;
+        for (var cLat = minCellLat; cLat <= maxCellLat; cLat++) {
+          for (var cLng = minCellLng; cLng <= maxCellLng; cLng++) {
+            if (!buildingFetchedGrid[cLat + '_' + cLng]) {
+              allFetched = false;
+              break;
+            }
+          }
+          if (!allFetched) break;
+        }
+
+        if (allFetched) return;
+        if (isFetchingBuildingData) return;
+        isFetchingBuildingData = true;
+
+        // Bounding box cho Overpass
+        var qS = s - 0.002;
+        var qN = n + 0.002;
+        var qW = w - 0.002;
+        var qE = e + 0.002;
+
+        var q = '[out:json][timeout:12];(' +
+          'node["addr:housenumber"](' + qS + ',' + qW + ',' + qN + ',' + qE + ');' +
+          'way["addr:housenumber"](' + qS + ',' + qW + ',' + qN + ',' + qE + ');' +
+          ');out center 120;';
+
+        fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: 'data=' + encodeURIComponent(q),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'GHN-Delivery-App/1.0 (contact: admin@ghn.vn)'
+          }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          isFetchingBuildingData = false;
+          if (data && data.elements) {
+            data.elements.forEach(function(el) {
+              var tags = el.tags || {};
+              var num = tags['addr:housenumber'];
+              var street = tags['addr:street'] || '';
+              var lat = el.lat || (el.center ? el.center.lat : null);
+              var lng = el.lon || (el.center ? el.center.lon : null);
+
+              if (num && lat && lng) {
+                var cleanStreet = street ? street.replace(/^Đường\s+/i, '').trim() : '';
+                addBuildingToCache('osm_' + el.id, num, 0, cleanStreet, lat, lng);
+              }
+            });
+
+            // Đánh dấu các ô lưới đã tải
+            for (var clat = minCellLat; clat <= maxCellLat; clat++) {
+              for (var clng = minCellLng; clng <= maxCellLng; clng++) {
+                buildingFetchedGrid[clat + '_' + clng] = true;
+              }
+            }
+
+            renderBuildingHouseNumbers();
+          }
+        })
+        .catch(function(err) {
+          isFetchingBuildingData = false;
+          // Render các điểm từ cache/đơn hàng
+          renderBuildingHouseNumbers();
+        });
+      }
+
+      function renderBuildingHouseNumbers() {
+        if (!mobileMap || !isBuildingNumbersVisible || !buildingNumbersLayerGroup) return;
+        buildingNumbersLayerGroup.clearLayers();
+
+        var zoom = mobileMap.getZoom();
+        if (zoom < 16) return;
+
+        var bounds = mobileMap.getBounds();
+        var visibleBuildings = buildingDataCache.filter(function(b) {
+          return bounds.contains([b.lat, b.lng]);
+        });
+
+        if (visibleBuildings.length === 0) return;
+
+        // Thu thập các số nhà mục tiêu của các đơn hàng trong chuyến giao
+        var targetOrdersByHouse = {};
+        orders.forEach(function(o, idx) {
+          var inf = extractStreetAndHouseNumber(o.address || '');
+          if (inf.houseNumber) {
+            var key1 = inf.street + '_' + inf.houseNumber;
+            var key2 = inf.street + '_' + inf.houseNumVal;
+            var stt = idx + 1;
+            targetOrdersByHouse[key1] = { order: o, stt: stt, num: inf.houseNumber };
+            if (inf.houseNumVal !== 999999) {
+              targetOrdersByHouse[key2] = { order: o, stt: stt, num: inf.houseNumber };
+            }
+          }
+        });
+
+        // -------------------------------------------------------------
+        // NHÁNH A: ZOOM 16 - 17: GOM CỤM THÀNH CÁC DÃY SỐ NHÀ LIÊN TỤC
+        // -------------------------------------------------------------
+        if (zoom < 18) {
+          var streetGroups = {};
+          visibleBuildings.forEach(function(b) {
+            var sideKey = b.street + '_' + (b.isEven ? 'even' : 'odd');
+            if (!streetGroups[sideKey]) streetGroups[sideKey] = [];
+            streetGroups[sideKey].push(b);
+          });
+
+          for (var sideKey in streetGroups) {
+            var list = streetGroups[sideKey];
+            list.sort(function(a, b) { return a.numVal - b.numVal; });
+
+            // Gom các số nhà cách nhau < 75m
+            var currentCluster = [];
+            list.forEach(function(b) {
+              if (currentCluster.length === 0) {
+                currentCluster.push(b);
+              } else {
+                var last = currentCluster[currentCluster.length - 1];
+                var distM = getCoordDistanceMeters(last.lat, last.lng, b.lat, b.lng);
+                if (distM < 75 && Math.abs(b.numVal - last.numVal) <= 30) {
+                  currentCluster.push(b);
+                } else {
+                  renderHouseNumberRangeCluster(currentCluster, targetOrdersByHouse);
+                  currentCluster = [b];
+                }
+              }
+            });
+            if (currentCluster.length > 0) {
+              renderHouseNumberRangeCluster(currentCluster, targetOrdersByHouse);
+            }
+          }
+        }
+        // -------------------------------------------------------------
+        // NHÁNH B: ZOOM >= 18: TÁCH RIÊNG TỪNG SỐ NHÀ TRÊN TỪNG TÒA NHÀ
+        // -------------------------------------------------------------
+        else {
+          visibleBuildings.forEach(function(b) {
+            var targetMatch = targetOrdersByHouse[b.street + '_' + b.num] || targetOrdersByHouse[b.street + '_' + b.numVal];
+            var isTarget = !!targetMatch;
+
+            var htmlText = b.num;
+            var extraClass = isTarget ? ' is-target-order' : '';
+            if (isTarget) {
+              htmlText = '📍 ' + b.num + ' (#' + targetMatch.stt + ')';
+            }
+
+            var icon = L.divIcon({
+              className: 'ghn-bldg-num-marker',
+              html: '<div class="ghn-bldg-num-single' + extraClass + '">' + escapeHtml(htmlText) + '</div>',
+              iconSize: [0, 0],
+              iconAnchor: [15, 8]
+            });
+
+            var marker = L.marker([b.lat, b.lng], { icon: icon, zIndexOffset: isTarget ? 500 : 100 });
+            if (isTarget) {
+              marker.on('click', function() {
+                jumpToOrderOnMap(targetMatch.order.id);
+              });
+            }
+            marker.addTo(buildingNumbersLayerGroup);
+          });
+        }
+      }
+
+      function renderHouseNumberRangeCluster(cluster, targetOrdersByHouse) {
+        if (!cluster || cluster.length === 0) return;
+
+        var first = cluster[0];
+        var last = cluster[cluster.length - 1];
+        var isEven = first.isEven;
+        var street = first.street;
+
+        var sumLat = 0, sumLng = 0;
+        var hasTarget = false;
+        var targetSttList = [];
+
+        cluster.forEach(function(b) {
+          sumLat += b.lat;
+          sumLng += b.lng;
+          var tm = targetOrdersByHouse[b.street + '_' + b.num] || targetOrdersByHouse[b.street + '_' + b.numVal];
+          if (tm) {
+            hasTarget = true;
+            if (targetSttList.indexOf(tm.stt) === -1) targetSttList.push(tm.stt);
+          }
+        });
+
+        var centerLat = sumLat / cluster.length;
+        var centerLng = sumLng / cluster.length;
+
+        var words = street.split(/\s+/).filter(Boolean);
+        var shortStreet = words.length > 2 ? words.map(function(w) { return w.charAt(0).toUpperCase(); }).join('') : street;
+
+        var label = '';
+        if (cluster.length === 1 || first.numVal === last.numVal) {
+          label = first.num;
+        } else {
+          label = first.numVal + ' - ' + last.numVal;
+        }
+        if (shortStreet && shortStreet !== 'Chưa rõ đường') {
+          label += ' ' + shortStreet;
+        }
+
+        if (hasTarget) {
+          label = '📍 ' + label + ' (#' + targetSttList.join(', #') + ')';
+        }
+
+        var icon = L.divIcon({
+          className: 'ghn-bldg-num-marker',
+          html: '<div class="ghn-bldg-num-range ' + (isEven ? 'even' : 'odd') + (hasTarget ? ' has-target' : '') + '">' +
+                  escapeHtml(label) +
+                '</div>',
+          iconSize: [0, 0],
+          iconAnchor: [30, 10]
+        });
+
+        var marker = L.marker([centerLat, centerLng], { icon: icon, zIndexOffset: hasTarget ? 400 : 80 });
+        marker.addTo(buildingNumbersLayerGroup);
+      }
+
+      function getAddressFingerprint(address) {
+        if (!address) return '';
+        var raw = String(address).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+        
+        // 1. Nhận diện các tòa nhà / chung cư / TTTM lớn
+        var landmarks = [
+          { key: 'centec_tower', pattern: /\bcentec\b/i },
+          { key: 'vincom_dong_khoi', pattern: /\bvincom\s*(?:center)?\s*(?:dong\s*khoi)?\b/i },
+          { key: 'diamond_plaza', pattern: /\bdiamond\s*plaza\b/i },
+          { key: 'bitexco', pattern: /\bbitexco\b/i },
+          { key: 'landmark_81', pattern: /\blandmark\s*81\b/i },
+          { key: 'saigon_centre', pattern: /\bsaigon\s*centre\b/i },
+          { key: 'mplaza', pattern: /\bm\s*plaza\b/i },
+          { key: 'sunwah', pattern: /\bsunwah\b/i },
+          { key: 'times_square', pattern: /\btimes\s*square\b/i },
+          { key: 'vinhomes_golden_river', pattern: /\b(?:vinhomes\s*golden\s*river|bason|ba\s*son)\b/i },
+          { key: 'vinhomes_central_park', pattern: /\bvinhomes\s*central\s*park\b/i },
+          { key: 'masteri_thao_dien', pattern: /\bmasteri\s*thao\s*dien\b/i },
+          { key: 'cantavil', pattern: /\bcantavil\b/i }
+        ];
+
+        for (var i = 0; i < landmarks.length; i++) {
+          if (landmarks[i].pattern.test(raw)) {
+            return 'bld_' + landmarks[i].key;
+          }
+        }
+
+        // 2. Trích xuất tên đường và số nhà
+        var info = extractStreetAndHouseNumber(address);
+        var cleanStreet = removeVietnameseTones(info.street).replace(/[^a-z0-9]/g, '');
+        var cleanHouse = String(info.houseNumber || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        // Trích xuất quận/huyện nếu có để tránh trùng tên đường khác quận
+        var distMatch = raw.match(/\b(?:quan|q\.?|huyen)\s*(\d+|[a-z]+)\b/i);
+        var distKey = distMatch ? ('_q' + distMatch[1].toLowerCase()) : '';
+
+        if (cleanStreet && cleanHouse) {
+          return 'addr_' + cleanHouse + '_' + cleanStreet + distKey;
+        }
+
+        if (cleanStreet) {
+          return 'street_' + cleanStreet + distKey;
+        }
+
+        return '';
+      }
+
+      function detectCoordinateOutliers(ordersList) {
+        outlierOrders = [];
+        if (!ordersList || ordersList.length === 0) return;
+
+        // Gom các đơn theo tuyến đường để tìm tọa độ trung vị
+        var streetCoords = {};
+        for (var i = 0; i < ordersList.length; i++) {
+          var o = ordersList[i];
+          o.isGpsOutlier = false;
+          o.gpsOutlierDist = 0;
+          o.streetMedianLat = null;
+          o.streetMedianLng = null;
+
+          if (isValidCoordinate(o.lat, o.lng)) {
+            var info = extractStreetAndHouseNumber(o.address);
+            var st = info.street;
+            if (!streetCoords[st]) streetCoords[st] = [];
+            streetCoords[st].push({ lat: Number(o.lat), lng: Number(o.lng), order: o });
+          }
+        }
+
+        // Tính trung vị cho từng đường và kiểm tra lệch > 1.5km
+        for (var stName in streetCoords) {
+          var list = streetCoords[stName];
+          if (list.length >= 2) {
+            list.sort(function(a, b) { return a.lat - b.lat; });
+            var mid = Math.floor(list.length / 2);
+            var medLat = list[mid].lat;
+            var medLng = list[mid].lng;
+
+            for (var k = 0; k < list.length; k++) {
+              var item = list[k];
+              var dist = getCoordDistanceMeters(item.lat, item.lng, medLat, medLng);
+              item.order.streetMedianLat = medLat;
+              item.order.streetMedianLng = medLng;
+
+              var outlierThreshold = list.length >= 4 ? 850 : 1400;
+              if (dist > outlierThreshold) { // Lệch xa so với cụm đường
+                item.order.isGpsOutlier = true;
+                item.order.gpsOutlierDist = Math.round(dist);
+                if (outlierOrders.indexOf(item.order) === -1) {
+                  outlierOrders.push(item.order);
+                }
+              }
+            }
+          }
+        }
+
+        // Cập nhật thống kê outlier trên giao diện
+        var chip = document.getElementById('mapStatOutlierChip');
+        var countEl = document.getElementById('mapStatOutlier');
+        if (chip && countEl) {
+          if (outlierOrders.length > 0) {
+            countEl.textContent = outlierOrders.length;
+            chip.style.display = 'inline-flex';
+          } else {
+            chip.style.display = 'none';
+          }
+        }
+      }
+
+      function autoHealDuplicateAddresses(showToastMsg) {
+        var healedCount = 0;
+        if (!orders || orders.length === 0) return 0;
+
+        detectCoordinateOutliers(orders);
+
+        // Gom các đơn theo Address Fingerprint
+        var groups = {};
+        for (var i = 0; i < orders.length; i++) {
+          var o = orders[i];
+          var fp = getAddressFingerprint(o.address);
+          if (fp && !fp.startsWith('street_')) {
+            if (!groups[fp]) groups[fp] = [];
+            groups[fp].push(o);
+          }
+        }
+
+        for (var fpKey in groups) {
+          var groupOrders = groups[fpKey];
+          
+          // 1. Kiểm tra xem có trong Verified Geocache không
+          var bestLat = null, bestLng = null;
+          if (verifiedGeocache[fpKey] && isValidCoordinate(verifiedGeocache[fpKey].lat, verifiedGeocache[fpKey].lng)) {
+            bestLat = verifiedGeocache[fpKey].lat;
+            bestLng = verifiedGeocache[fpKey].lng;
+          } else {
+            // 2. Tìm đơn có GPS hợp lệ và không bị outlier
+            var validAndNonOutlier = groupOrders.filter(function(x) {
+              return isValidCoordinate(x.lat, x.lng) && !x.isGpsOutlier;
+            });
+
+            if (validAndNonOutlier.length > 0) {
+              bestLat = Number(validAndNonOutlier[0].lat);
+              bestLng = Number(validAndNonOutlier[0].lng);
+            } else {
+              var validAny = groupOrders.filter(function(x) { return isValidCoordinate(x.lat, x.lng); });
+              if (validAny.length > 0) {
+                bestLat = Number(validAny[0].lat);
+                bestLng = Number(validAny[0].lng);
+              }
+            }
+          }
+
+          if (bestLat != null && bestLng != null) {
+            for (var j = 0; j < groupOrders.length; j++) {
+              var target = groupOrders[j];
+              var needsHeal = false;
+
+              if (!isValidCoordinate(target.lat, target.lng)) {
+                needsHeal = true;
+              } else {
+                var d = getCoordDistanceMeters(target.lat, target.lng, bestLat, bestLng);
+                if (d > 100) { // Lệch hơn 100m so với đơn chuẩn cùng địa chỉ
+                  needsHeal = true;
+                }
+              }
+
+              if (needsHeal) {
+                target.lat = bestLat;
+                target.lng = bestLng;
+                target.isGpsOutlier = false;
+                healedCount++;
+              }
+            }
+          }
+        }
+
+        // 3. Với các đơn còn lại chưa có GPS hoặc bị lệch GPS, thử bắt dính vào tòa nhà / nội suy số nhà
+        for (var k = 0; k < orders.length; k++) {
+          var singleOrder = orders[k];
+          if (!isValidCoordinate(singleOrder.lat, singleOrder.lng) || singleOrder.isGpsOutlier) {
+            if (snapOrderToBuildingNumber(singleOrder)) {
+              healedCount++;
+            }
+          }
+        }
+
+        if (healedCount > 0) {
+          saveData();
+          if (showToastMsg) {
+            showToast('⚡ Đã tự động đồng bộ tọa độ cho ' + healedCount + ' đơn cùng địa chỉ!');
+          }
+        }
+
+        return healedCount;
+      }
+
+      // ==========================================================
+      // THUẬT TOÁN GOM CỤM LAI (HYBRID CLUSTERING: ĐỊA CHỈ + GPS)
       // ==========================================================
       function clusterOrdersByLocation(mappedList) {
         var clusters = [];
-        var threshold = 0.00018; // Khoảng 18-20m (tòa nhà, số nhà liền kề)
+        var threshold = 0.00020; // Khoảng 20m
+        var assigned = new Array(mappedList.length).fill(false);
 
+        // GIAI ĐOẠN 1: Gom các đơn có cùng Address Fingerprint (Tòa nhà / Số nhà + Tuyến đường)
+        var fingerprintGroups = {};
         for (var i = 0; i < mappedList.length; i++) {
+          var fp = getAddressFingerprint(mappedList[i].item.address);
+          if (fp && !fp.startsWith('street_')) {
+            if (!fingerprintGroups[fp]) fingerprintGroups[fp] = [];
+            fingerprintGroups[fp].push(i);
+          }
+        }
+
+        for (var fpKey in fingerprintGroups) {
+          var indices = fingerprintGroups[fpKey];
+          if (indices.length > 1) {
+            var groupMapped = indices.map(function(idx) { return mappedList[idx]; });
+            
+            // Tìm tọa độ tốt nhất của nhóm
+            var bestLat = null, bestLng = null;
+            if (verifiedGeocache[fpKey] && isValidCoordinate(verifiedGeocache[fpKey].lat, verifiedGeocache[fpKey].lng)) {
+              bestLat = verifiedGeocache[fpKey].lat;
+              bestLng = verifiedGeocache[fpKey].lng;
+            } else {
+              var nonOutliers = groupMapped.filter(function(m) { return !m.item.isGpsOutlier; });
+              var pool = nonOutliers.length > 0 ? nonOutliers : groupMapped;
+              bestLat = pool[0].lat;
+              bestLng = pool[0].lng;
+            }
+
+            clusters.push({
+              id: 'cluster_fp_' + fpKey.replace(/[^a-z0-9]/g, '_'),
+              lat: bestLat,
+              lng: bestLng,
+              orders: groupMapped,
+              fingerprint: fpKey
+            });
+
+            indices.forEach(function(idx) { assigned[idx] = true; });
+          }
+        }
+
+        // GIAI ĐOẠN 2: Gom các đơn còn lại theo khoảng cách GPS vật lý (< 20m)
+        for (var i = 0; i < mappedList.length; i++) {
+          if (assigned[i]) continue;
           var m = mappedList[i];
           var matchedCluster = null;
 
@@ -4236,6 +5471,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               orders: [m]
             });
           }
+          assigned[i] = true;
         }
 
         // Tính toán thông số hiển thị cho từng cụm
@@ -4251,6 +5487,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             c.primaryStatus = 'pending';
           }
           c.primaryStt = c.orders[0].stt;
+          c.hasOutlier = c.orders.some(function(o) { return o.item.isGpsOutlier; });
 
           var firstInfo = extractStreetAndHouseNumber(c.orders[0].item.address);
           c.primaryStreet = firstInfo.street;
@@ -4372,6 +5609,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (!mobileMap) return;
         }
 
+        // Tự động rà soát phát hiện các điểm tọa độ lệch xa cụm đường
+        detectCoordinateOutliers(orders);
+
+        // Đồng bộ số nhà từ các đơn hàng vào bộ nhớ số nhà tòa nhà
+        syncOrdersIntoBuildingCache();
+
         var mapList = list.filter(function(o) {
           if (currentMapFilter !== 'all' && o.status !== currentMapFilter) return false;
           return true;
@@ -4401,6 +5644,20 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           } else {
             noticeEl.style.display = 'none';
           }
+        }
+
+        // Cập nhật số điểm GPS và trạng thái trên thanh tóm tắt bản đồ
+        var elPts = document.getElementById('mapStatPoints');
+        var elPending = document.getElementById('mapStatPending');
+        var elGtc = document.getElementById('mapStatGtc');
+        if (elPts) elPts.textContent = mapped.length;
+        if (elPending) {
+          var pCount = mapped.filter(function(m) { return m.item.status === 'pending'; }).length;
+          elPending.textContent = pCount;
+        }
+        if (elGtc) {
+          var gCount = mapped.filter(function(m) { return m.item.status === 'gtc'; }).length;
+          elGtc.textContent = gCount;
         }
 
         // Thu thập thống kê theo từng tuyến đường & số nhà
@@ -4473,7 +5730,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             isSelected, 
             cluster.count,
             cluster.primaryHouseNumber,
-            cluster.primaryShortStreet
+            cluster.primaryShortStreet,
+            cluster.hasOutlier
           );
 
           if (mapMarkers[cluster.id]) {
@@ -4522,6 +5780,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           } else {
             closeMapBottomCard();
           }
+        }
+
+        // Kích hoạt hiển thị số nhà trên các tòa nhà
+        if (isBuildingNumbersVisible) {
+          triggerBuildingNumbersFetchAndRender();
         }
       }
 
@@ -4591,7 +5854,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               isSel, 
               c.count, 
               c.primaryHouseNumber, 
-              c.primaryShortStreet
+              c.primaryShortStreet,
+              c.hasOutlier
             ));
             mapMarkers[c.id].setZIndexOffset(isSel ? 1000 : 0);
           }
@@ -4633,6 +5897,34 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             e.stopPropagation();
             openUpdateLocationModal(item, stt);
           };
+        }
+
+        // Banner cảnh báo lệch GPS
+        var outlierBanner = document.getElementById('mapCardOutlierBanner');
+        var outlierDistEl = document.getElementById('mapCardOutlierDist');
+        var btnQuickFix = document.getElementById('btnMapQuickFixOutlier');
+
+        if (outlierBanner && item.isGpsOutlier && item.streetMedianLat && item.streetMedianLng) {
+          var distKm = (item.gpsOutlierDist / 1000).toFixed(1);
+          if (outlierDistEl) outlierDistEl.textContent = distKm + ' km';
+          outlierBanner.style.display = 'flex';
+          
+          if (btnQuickFix) {
+            btnQuickFix.onclick = function(e) {
+              e.stopPropagation();
+              item.lat = item.streetMedianLat;
+              item.lng = item.streetMedianLng;
+              item.isGpsOutlier = false;
+              var fp = getAddressFingerprint(item.address);
+              if (fp) saveToVerifiedGeocache(fp, item.lat, item.lng, item.address);
+              saveData();
+              render();
+              showToast('Đã sửa vị trí theo tọa độ cụm đường!');
+              jumpToOrderOnMap(item.id);
+            };
+          }
+        } else if (outlierBanner) {
+          outlierBanner.style.display = 'none';
         }
 
         sttEl.textContent = '#' + stt;
@@ -4775,7 +6067,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         selectedCluster = null;
         currentClusters.forEach(function(c) {
           if (mapMarkers[c.id]) {
-            mapMarkers[c.id].setIcon(createCustomMarkerIcon(c.primaryStt, c.primaryStatus, false, c.count));
+            mapMarkers[c.id].setIcon(createCustomMarkerIcon(
+              c.primaryStt, 
+              c.primaryStatus, 
+              false, 
+              c.count, 
+              c.primaryHouseNumber, 
+              c.primaryShortStreet, 
+              c.hasOutlier
+            ));
             mapMarkers[c.id].setZIndexOffset(0);
           }
         });
@@ -4803,6 +6103,50 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           ? (item.lat + ', ' + item.lng)
           : '';
 
+        // Reset hộp kết quả OSM
+        var osmBox = document.getElementById('updOsmResultBox');
+        if (osmBox) osmBox.style.display = 'none';
+
+        // Kiểm tra xem có đơn nào khác cùng địa chỉ / tòa nhà không để hiển thị nút đồng bộ hàng loạt
+        var fp = getAddressFingerprint(item.address);
+        var sameAddrOrders = [];
+        if (fp && !fp.startsWith('street_')) {
+          sameAddrOrders = orders.filter(function(o) {
+            return o.id !== item.id && getAddressFingerprint(o.address) === fp;
+          });
+        }
+
+        var sameSection = document.getElementById('updSameAddrSection');
+        var sameCountEl = document.getElementById('updSameAddrCount');
+        var btnSyncSame = document.getElementById('btnUpdSyncSameAddr');
+        if (sameSection && sameCountEl) {
+          if (sameAddrOrders.length > 0) {
+            sameCountEl.textContent = (sameAddrOrders.length + 1) + ' đơn';
+            sameSection.style.display = 'block';
+            if (btnSyncSame) {
+              btnSyncSame.onclick = function() {
+                if (!isValidCoordinate(item.lat, item.lng)) {
+                  showToast('Đơn này chưa có tọa độ hợp lệ để đồng bộ!');
+                  return;
+                }
+                sameAddrOrders.forEach(function(o) {
+                  o.lat = item.lat;
+                  o.lng = item.lng;
+                  o.isGpsOutlier = false;
+                });
+                if (fp) saveToVerifiedGeocache(fp, item.lat, item.lng, item.address);
+                saveData();
+                render();
+                closeUpdateLocationModal();
+                showToast('Đã đồng bộ tọa độ cho tất cả ' + (sameAddrOrders.length + 1) + ' đơn cùng địa chỉ!');
+                jumpToOrderOnMap(item.id);
+              };
+            }
+          } else {
+            sameSection.style.display = 'none';
+          }
+        }
+
         // Render danh sách gợi ý địa chỉ tương tự
         var suggestions = findSimilarAddressOrders(item, orders);
         var sugList = document.getElementById('updSuggestionsList');
@@ -4817,6 +6161,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           suggestions.forEach(function(sug) {
             var card = document.createElement('div');
             card.className = 'upd-suggest-card';
+            card.setAttribute('title', 'Bấm để zoom xem vị trí này trên bản đồ');
             card.innerHTML = 
               '<div class="upd-suggest-info">' +
                 '<div class="upd-suggest-title">' +
@@ -4825,11 +6170,36 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 '</div>' +
                 '<div class="upd-suggest-addr" title="' + escapeHtml(sug.order.address) + '">📍 ' + escapeHtml(sug.order.address) + '</div>' +
               '</div>' +
-              '<button type="button" class="btn-apply-suggest">👉 Áp dụng</button>';
+              '<div class="upd-suggest-actions">' +
+                '<button type="button" class="btn-preview-suggest" title="Bấm để zoom cận cảnh vị trí này trên bản đồ">🔍 Xem Map</button>' +
+                '<button type="button" class="btn-apply-suggest" title="Áp dụng ngay tọa độ này">✓ Áp dụng</button>' +
+              '</div>';
 
-            card.querySelector('.btn-apply-suggest').addEventListener('click', function() {
+            var previewData = {
+              targetOrder: item,
+              targetStt: stt,
+              suggestOrder: sug.order,
+              suggestStt: sug.stt,
+              suggestName: sug.order.customerName || 'Khách lẻ',
+              suggestAddr: sug.order.address,
+              score: sug.score,
+              lat: Number(sug.order.lat),
+              lng: Number(sug.order.lng)
+            };
+
+            // Bấm vào card hoặc nút Xem Map để zoom đến vị trí gợi ý trên bản đồ
+            card.addEventListener('click', function(e) {
+              if (e.target.closest('.btn-apply-suggest')) return;
+              previewSuggestedLocation(previewData);
+            });
+
+            card.querySelector('.btn-apply-suggest').addEventListener('click', function(e) {
+              e.stopPropagation();
               item.lat = Number(sug.order.lat);
               item.lng = Number(sug.order.lng);
+              item.isGpsOutlier = false;
+              var candFp = getAddressFingerprint(item.address);
+              if (candFp) saveToVerifiedGeocache(candFp, item.lat, item.lng, item.address);
               saveData();
               render();
               closeUpdateLocationModal();
@@ -4876,6 +6246,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               btnMyGps.style.opacity = '1';
               targetUpdateOrder.lat = pos.coords.latitude;
               targetUpdateOrder.lng = pos.coords.longitude;
+              targetUpdateOrder.isGpsOutlier = false;
+              var fp = getAddressFingerprint(targetUpdateOrder.address);
+              if (fp) saveToVerifiedGeocache(fp, pos.coords.latitude, pos.coords.longitude, targetUpdateOrder.address);
               saveData();
               render();
               closeUpdateLocationModal();
@@ -4901,6 +6274,134 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           });
         }
 
+        // Mượn tọa độ trung vị của tuyến đường
+        var btnStreetMedian = document.getElementById('btnUpdStreetMedian');
+        if (btnStreetMedian) {
+          btnStreetMedian.addEventListener('click', function() {
+            if (!targetUpdateOrder) return;
+            var info = extractStreetAndHouseNumber(targetUpdateOrder.address);
+            var streetOrders = orders.filter(function(o) {
+              return o.id !== targetUpdateOrder.id && isValidCoordinate(o.lat, o.lng) && extractStreetAndHouseNumber(o.address).street === info.street;
+            });
+
+            if (streetOrders.length === 0) {
+              showToast('Không có đơn nào khác cùng đường "' + info.street + '" có tọa độ');
+              return;
+            }
+
+            streetOrders.sort(function(a, b) { return Number(a.lat) - Number(b.lat); });
+            var mid = Math.floor(streetOrders.length / 2);
+            var medLat = Number(streetOrders[mid].lat);
+            var medLng = Number(streetOrders[mid].lng);
+
+            var origIdx = orders.indexOf(targetUpdateOrder);
+            var stt = origIdx !== -1 ? (origIdx + 1) : 1;
+            previewSuggestedLocation({
+              targetOrder: targetUpdateOrder,
+              targetStt: stt,
+              suggestName: 'Trung vị đường ' + info.street,
+              suggestAddr: 'Tọa độ tâm cụm đường ' + info.street + ' (tính từ ' + streetOrders.length + ' đơn trong chuyến)',
+              score: 80,
+              lat: medLat,
+              lng: medLng
+            });
+          });
+        }
+
+        // Tra cứu OpenStreetMap phía client
+        var btnOsm = document.getElementById('btnUpdOsmSearch');
+        var osmBox = document.getElementById('updOsmResultBox');
+        var osmStatus = document.getElementById('updOsmStatusText');
+        var btnPreviewOsm = document.getElementById('btnPreviewOsmResult');
+        var btnApplyOsm = document.getElementById('btnApplyOsmResult');
+        var tempOsmCoords = null;
+
+        if (btnOsm) {
+          btnOsm.addEventListener('click', function() {
+            if (!targetUpdateOrder || !targetUpdateOrder.address) return;
+            if (osmBox) osmBox.style.display = 'block';
+            if (osmStatus) osmStatus.textContent = '⏳ Đang tra cứu OpenStreetMap...';
+            if (btnPreviewOsm) btnPreviewOsm.style.display = 'none';
+            if (btnApplyOsm) btnApplyOsm.style.display = 'none';
+
+            var cleanAddr = targetUpdateOrder.address.replace(/[<>]/g, '').trim();
+            var queryUrl = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(cleanAddr) + '&countrycodes=vn&limit=1';
+
+            fetch(queryUrl, { headers: { 'Accept': 'application/json' } })
+              .then(function(res) { return res.json(); })
+              .then(function(data) {
+                if (data && data.length > 0 && data[0].lat && data[0].lon) {
+                  var lat = parseFloat(data[0].lat);
+                  var lng = parseFloat(data[0].lon);
+                  tempOsmCoords = { lat: lat, lng: lng, displayName: data[0].display_name };
+                  if (osmStatus) osmStatus.innerHTML = '✓ Tìm thấy: <strong>' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</strong> (' + escapeHtml(data[0].display_name.slice(0, 45)) + '...)';
+                  if (btnPreviewOsm) btnPreviewOsm.style.display = 'inline-flex';
+                  if (btnApplyOsm) btnApplyOsm.style.display = 'inline-block';
+                } else {
+                  // Dự phòng tìm theo tên đường + TP.HCM
+                  var info = extractStreetAndHouseNumber(cleanAddr);
+                  var fbQuery = 'Đường ' + info.street + ', TP. Hồ Chí Minh';
+                  return fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(fbQuery) + '&countrycodes=vn&limit=1')
+                    .then(function(r) { return r.json(); })
+                    .then(function(d2) {
+                      if (d2 && d2.length > 0 && d2[0].lat && d2[0].lon) {
+                        var lat2 = parseFloat(d2[0].lat);
+                        var lng2 = parseFloat(d2[0].lon);
+                        tempOsmCoords = { lat: lat2, lng: lng2, displayName: d2[0].display_name };
+                        if (osmStatus) osmStatus.innerHTML = '✓ Tìm thấy theo tuyến đường: <strong>' + lat2.toFixed(6) + ', ' + lng2.toFixed(6) + '</strong>';
+                        if (btnPreviewOsm) btnPreviewOsm.style.display = 'inline-flex';
+                        if (btnApplyOsm) btnApplyOsm.style.display = 'inline-block';
+                      } else {
+                        if (osmStatus) osmStatus.textContent = '❌ Không tìm thấy tọa độ phù hợp trên OpenStreetMap';
+                        if (btnPreviewOsm) btnPreviewOsm.style.display = 'none';
+                        if (btnApplyOsm) btnApplyOsm.style.display = 'none';
+                      }
+                    });
+                }
+              })
+              .catch(function(err) {
+                if (osmStatus) osmStatus.textContent = '❌ Lỗi kết nối OSM: ' + (err.message || 'Không thể tra cứu');
+                if (btnPreviewOsm) btnPreviewOsm.style.display = 'none';
+                if (btnApplyOsm) btnApplyOsm.style.display = 'none';
+              });
+          });
+        }
+
+        if (btnPreviewOsm) {
+          btnPreviewOsm.addEventListener('click', function() {
+            if (tempOsmCoords && targetUpdateOrder) {
+              var origIdx = orders.indexOf(targetUpdateOrder);
+              var stt = origIdx !== -1 ? (origIdx + 1) : 1;
+              previewSuggestedLocation({
+                targetOrder: targetUpdateOrder,
+                targetStt: stt,
+                suggestName: 'OpenStreetMap',
+                suggestAddr: tempOsmCoords.displayName || targetUpdateOrder.address,
+                score: 85,
+                lat: tempOsmCoords.lat,
+                lng: tempOsmCoords.lng
+              });
+            }
+          });
+        }
+
+        if (btnApplyOsm) {
+          btnApplyOsm.addEventListener('click', function() {
+            if (tempOsmCoords && targetUpdateOrder) {
+              targetUpdateOrder.lat = tempOsmCoords.lat;
+              targetUpdateOrder.lng = tempOsmCoords.lng;
+              targetUpdateOrder.isGpsOutlier = false;
+              var fp = getAddressFingerprint(targetUpdateOrder.address);
+              if (fp) saveToVerifiedGeocache(fp, tempOsmCoords.lat, tempOsmCoords.lng, targetUpdateOrder.address);
+              saveData();
+              render();
+              closeUpdateLocationModal();
+              showToast('Đã cập nhật tọa độ từ OpenStreetMap!');
+              jumpToOrderOnMap(targetUpdateOrder.id);
+            }
+          });
+        }
+
         // Lưu thủ công / dán link map
         var btnSaveManual = document.getElementById('btnUpdSaveManual');
         if (btnSaveManual) {
@@ -4915,6 +6416,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             if (latLng) {
               targetUpdateOrder.lat = latLng.lat;
               targetUpdateOrder.lng = latLng.lng;
+              targetUpdateOrder.isGpsOutlier = false;
+              var fp = getAddressFingerprint(targetUpdateOrder.address);
+              if (fp) saveToVerifiedGeocache(fp, latLng.lat, latLng.lng, targetUpdateOrder.address);
               saveData();
               render();
               closeUpdateLocationModal();
@@ -5008,6 +6512,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (tempPickedCoords && isValidCoordinate(tempPickedCoords.lat, tempPickedCoords.lng)) {
             targetOrder.lat = tempPickedCoords.lat;
             targetOrder.lng = tempPickedCoords.lng;
+            targetOrder.isGpsOutlier = false;
+            var fp = getAddressFingerprint(targetOrder.address);
+            if (fp) saveToVerifiedGeocache(fp, targetOrder.lat, targetOrder.lng, targetOrder.address);
             saveData();
             endPickMode();
             render();
@@ -5022,6 +6529,248 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           endPickMode();
           renderMap(orders);
         });
+      }
+
+      // ==========================================================
+      // XEM TRƯỚC VỊ TRÍ GỢI Ý TRÊN BẢN ĐỒ & ZOOM CẬN CẢNH
+      // ==========================================================
+      function previewSuggestedLocation(data) {
+        if (!data || !isValidCoordinate(data.lat, data.lng)) {
+          showToast('Vị trí gợi ý này không có tọa độ GPS hợp lệ');
+          return;
+        }
+
+        currentPreviewSuggestData = data;
+
+        // 1. Tạm ẩn modal cập nhật vị trí
+        closeUpdateLocationModal();
+
+        // 2. Chuyển sang màn hình Bản đồ
+        switchView('map');
+        closeMapBottomCard();
+
+        // 3. Xóa preview cũ nếu có
+        clearSuggestPreview(false);
+
+        var lat = Number(data.lat);
+        var lng = Number(data.lng);
+        var targetStt = data.targetStt || 1;
+        var sugStt = data.suggestStt || '';
+        var sugName = data.suggestName || 'Khách hàng';
+        var sugAddr = data.suggestAddr || '';
+        var score = data.score != null ? (typeof data.score === 'number' ? data.score + '% khớp' : data.score) : 'Gợi ý';
+
+        // 4. Tạo quả ghim xem trước đặc biệt (Preview Pin)
+        var previewIcon = L.divIcon({
+          className: 'ghn-suggest-preview-marker',
+          html: '<div class="ghn-suggest-preview-pin" title="Kéo thả quả ghim hoặc chạm vào bản đồ để tinh chỉnh vị trí">' +
+                  '<span>🎯 Gợi ý ' + (sugStt ? '#' + sugStt : '') + '</span>' +
+                '</div>',
+          iconSize: [120, 36],
+          iconAnchor: [60, 36]
+        });
+
+        if (mobileMap) {
+          previewSuggestMarker = L.marker([lat, lng], {
+            icon: previewIcon,
+            draggable: true,
+            zIndexOffset: 3000
+          }).addTo(mobileMap);
+
+          // Vòng tròn bán kính nhận diện phát sáng
+          previewSuggestCircle = L.circle([lat, lng], {
+            radius: 28,
+            color: '#f26522',
+            fillColor: '#ffedd5',
+            fillOpacity: 0.35,
+            weight: 2,
+            dashArray: '5, 5'
+          }).addTo(mobileMap);
+
+          // Sự kiện kéo thả quả ghim trực tiếp trên bản đồ
+          previewSuggestMarker.on('drag', function(e) {
+            var pos = e.target.getLatLng();
+            if (isValidCoordinate(pos.lat, pos.lng) && previewSuggestCircle) {
+              previewSuggestCircle.setLatLng(pos);
+            }
+          });
+
+          previewSuggestMarker.on('dragend', function(e) {
+            var pos = e.target.getLatLng();
+            if (isValidCoordinate(pos.lat, pos.lng)) {
+              onSuggestLocationAdjusted(pos.lat, pos.lng);
+            }
+          });
+
+          // Cho phép chạm bất kỳ đâu trên bản đồ để di chuyển ghim ngay về vị trí đó
+          if (onMapClickSuggestPreviewFn && mobileMap) {
+            mobileMap.off('click', onMapClickSuggestPreviewFn);
+          }
+          onMapClickSuggestPreviewFn = function(e) {
+            if (!currentPreviewSuggestData || !e.latlng) return;
+            var pos = e.latlng;
+            if (!isValidCoordinate(pos.lat, pos.lng)) return;
+            if (previewSuggestMarker) previewSuggestMarker.setLatLng(pos);
+            if (previewSuggestCircle) previewSuggestCircle.setLatLng(pos);
+            onSuggestLocationAdjusted(pos.lat, pos.lng);
+          };
+          mobileMap.on('click', onMapClickSuggestPreviewFn);
+
+          // 5. Bay mượt và Zoom sát vào số nhà (Zoom 18)
+          mobileMap.flyTo([lat, lng], 18, { duration: 0.7 });
+        }
+
+        // 6. Cập nhật thông tin lên Banner Xem Trước
+        var banner = document.getElementById('mapSuggestPreviewBanner');
+        var targetSttEl = document.getElementById('mapSuggestTargetStt');
+        var scoreBadgeEl = document.getElementById('mapSuggestScoreBadge');
+        var sourceTextEl = document.getElementById('mapSuggestSourceText');
+        var distTextEl = document.getElementById('mapSuggestDistText');
+
+        if (targetSttEl) targetSttEl.textContent = '#' + targetStt;
+        if (scoreBadgeEl) {
+          scoreBadgeEl.textContent = score;
+          scoreBadgeEl.style.color = '#10b981';
+          scoreBadgeEl.style.background = 'rgba(16, 185, 129, 0.2)';
+          scoreBadgeEl.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        }
+        if (sourceTextEl) {
+          sourceTextEl.textContent = (sugStt ? 'Từ đơn #' + sugStt + ' (' + sugName + '): ' : (sugName ? sugName + ': ' : '')) + sugAddr;
+        }
+        if (distTextEl) {
+          var distInfo = '📍 Tọa độ gợi ý: ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
+          if (data.targetOrder && isValidCoordinate(data.targetOrder.lat, data.targetOrder.lng)) {
+            var d = Math.round(getCoordDistanceMeters(data.targetOrder.lat, data.targetOrder.lng, lat, lng));
+            distInfo += ' (Cách vị trí cũ: ~' + (d > 1000 ? (d/1000).toFixed(1) + ' km' : d + ' m') + ')';
+          }
+          distTextEl.textContent = distInfo;
+        }
+
+        if (banner) banner.style.display = 'flex';
+      }
+
+      // Khi người dùng kéo thả hoặc chạm bản đồ để tinh chỉnh vị trí gợi ý
+      function onSuggestLocationAdjusted(newLat, newLng) {
+        if (!currentPreviewSuggestData) return;
+        if (!isValidCoordinate(newLat, newLng)) return;
+        currentPreviewSuggestData.lat = Number(newLat);
+        currentPreviewSuggestData.lng = Number(newLng);
+        currentPreviewSuggestData.isManuallyAdjusted = true;
+
+        // Cập nhật nhãn quả ghim sang trạng thái đã kéo chỉnh
+        if (previewSuggestMarker) {
+          var targetStt = currentPreviewSuggestData.targetStt || 1;
+          var iconHtml = '<div class="ghn-suggest-preview-pin adjusted" title="Tiếp tục kéo thả hoặc chạm bản đồ để tinh chỉnh">' +
+                           '<span>🎯 Đơn #' + targetStt + ' (Đã kéo chỉnh)</span>' +
+                         '</div>';
+          previewSuggestMarker.setIcon(L.divIcon({
+            className: 'ghn-suggest-preview-marker',
+            html: iconHtml,
+            iconSize: [140, 36],
+            iconAnchor: [70, 36]
+          }));
+        }
+
+        // Cập nhật huy hiệu trên banner
+        var scoreBadgeEl = document.getElementById('mapSuggestScoreBadge');
+        if (scoreBadgeEl) {
+          scoreBadgeEl.textContent = '✏️ Đã kéo chỉnh';
+          scoreBadgeEl.style.color = '#f59e0b';
+          scoreBadgeEl.style.background = 'rgba(245, 158, 11, 0.25)';
+          scoreBadgeEl.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+        }
+
+        // Cập nhật dòng tọa độ & khoảng cách mới
+        var distTextEl = document.getElementById('mapSuggestDistText');
+        if (distTextEl) {
+          var infoStr = '📍 Tọa độ sau kéo chỉnh: ' + Number(newLat).toFixed(6) + ', ' + Number(newLng).toFixed(6);
+          if (currentPreviewSuggestData.targetOrder && isValidCoordinate(currentPreviewSuggestData.targetOrder.lat, currentPreviewSuggestData.targetOrder.lng)) {
+            var d = Math.round(getCoordDistanceMeters(currentPreviewSuggestData.targetOrder.lat, currentPreviewSuggestData.targetOrder.lng, newLat, newLng));
+            infoStr += ' (Cách vị trí cũ: ~' + (d > 1000 ? (d/1000).toFixed(1) + ' km' : d + ' m') + ')';
+          }
+          distTextEl.textContent = infoStr;
+        }
+
+        showToast('Đã di chuyển ghim! Bấm [✓ Áp dụng] để chốt vị trí.');
+      }
+
+      function clearSuggestPreview(hideBanner) {
+        if (onMapClickSuggestPreviewFn && mobileMap) {
+          mobileMap.off('click', onMapClickSuggestPreviewFn);
+          onMapClickSuggestPreviewFn = null;
+        }
+        if (previewSuggestMarker && mobileMap) {
+          mobileMap.removeLayer(previewSuggestMarker);
+          previewSuggestMarker = null;
+        }
+        if (previewSuggestCircle && mobileMap) {
+          mobileMap.removeLayer(previewSuggestCircle);
+          previewSuggestCircle = null;
+        }
+        if (hideBanner !== false) {
+          var banner = document.getElementById('mapSuggestPreviewBanner');
+          if (banner) banner.style.display = 'none';
+          currentPreviewSuggestData = null;
+        }
+      }
+
+      function setupSuggestPreviewListeners() {
+        var btnConfirm = document.getElementById('btnConfirmApplySuggest');
+        var btnReopen = document.getElementById('btnReopenSuggestModal');
+        var btnCancel = document.getElementById('btnCancelSuggestPreview');
+
+        if (btnConfirm) {
+          btnConfirm.addEventListener('click', function() {
+            if (!currentPreviewSuggestData) return;
+            var data = currentPreviewSuggestData;
+            var target = data.targetOrder;
+            if (!target) return;
+
+            var newLat = Number(data.lat);
+            var newLng = Number(data.lng);
+            if (!isValidCoordinate(newLat, newLng)) {
+              showToast('Tọa độ không hợp lệ, vui lòng chọn lại trên bản đồ!');
+              return;
+            }
+
+            target.lat = newLat;
+            target.lng = newLng;
+            target.isGpsOutlier = false;
+
+            var fp = getAddressFingerprint(target.address);
+            if (fp) saveToVerifiedGeocache(fp, newLat, newLng, target.address);
+
+            var isAdjusted = data.isManuallyAdjusted;
+            var stt = data.targetStt;
+
+            clearSuggestPreview(true);
+            saveData();
+            render();
+
+            var toastMsg = isAdjusted ?
+              ('✓ Đã lưu vị trí đã kéo chỉnh cho đơn #' + stt + '!') :
+              ('✓ Đã áp dụng vị trí gợi ý cho đơn #' + stt + '!');
+            showToast(toastMsg);
+            jumpToOrderOnMap(target.id);
+          });
+        }
+
+        if (btnReopen) {
+          btnReopen.addEventListener('click', function() {
+            if (!currentPreviewSuggestData) return;
+            var data = currentPreviewSuggestData;
+            var target = data.targetOrder;
+            var stt = data.targetStt;
+            clearSuggestPreview(true);
+            openUpdateLocationModal(target, stt);
+          });
+        }
+
+        if (btnCancel) {
+          btnCancel.addEventListener('click', function() {
+            clearSuggestPreview(true);
+          });
+        }
       }
 
       function showUnmappedModal() {
@@ -5268,6 +7017,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 '<span class="addr-text">' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</span>' +
                 '<div style="margin-top: 4px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">' +
                   (hasGps ? '<button type="button" class="btn-jump-map" data-order-id="' + item.id + '" title="Xem vị trí trên bản đồ lộ trình">🗺 Bản đồ</button>' : '') +
+                  (item.isGpsOutlier ? '<span class="note-pill" style="background: #fef2f2; color: #b91c1c; border-color: #fecaca;" title="Tọa độ nghi ngờ bị lệch xa cụm đường ' + (item.gpsOutlierDist / 1000).toFixed(1) + ' km">⚠️ Lệch GPS</span>' : '') +
                   (item.address || hasGps ? '<a href="' + mapsUrl + '" target="_blank" class="map-link" title="Dẫn đường Google Maps">🧭 Chỉ đường</a>' : '') +
                   '<button type="button" class="btn-row-edit-loc" data-order-id="' + item.id + '" title="Sửa vị trí định vị">📍 Sửa vị trí</button>' +
                 '</div>' +
@@ -5420,6 +7170,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   '<div class="addr-text" style="margin-top: 4px;">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</div>' +
                   '<div style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">' +
                     (hasGps ? '<button type="button" class="btn-jump-map" data-order-id="' + item.id + '">🗺️ Xem trên bản đồ</button>' : '') +
+                    (item.isGpsOutlier ? '<span class="note-pill" style="background: #fef2f2; color: #b91c1c; border-color: #fecaca;" title="Tọa độ nghi ngờ bị lệch xa cụm đường ' + (item.gpsOutlierDist / 1000).toFixed(1) + ' km">⚠️ Lệch GPS</span>' : '') +
                     (item.address || hasGps ? '<a href="' + mapsUrl + '" target="_blank" class="map-link">🧭 Dẫn đường</a>' : '') +
                     '<button type="button" class="btn-row-edit-loc" data-order-id="' + item.id + '">📍 Sửa vị trí</button>' +
                   '</div>' +
@@ -5717,6 +7468,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       // 9. Lắng nghe các sự kiện chính
       document.addEventListener('DOMContentLoaded', function() {
         loadData();
+        autoHealDuplicateAddresses(false);
         render();
         setupUpdateLocationModalListeners();
 
@@ -5852,11 +7604,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             return;
           }
           orders = orders.concat(newItems);
+          var healedCount = autoHealDuplicateAddresses(false);
           saveData();
           pasteTextarea.value = '';
           pasteSheet.classList.remove('show');
           render();
-          showToast('Đã thêm ' + newItems.length + ' đơn hàng mới!');
+          var pasteMsg = 'Đã thêm ' + newItems.length + ' đơn hàng mới!';
+          if (healedCount > 0) pasteMsg += ' (Đã tự sửa chéo ' + healedCount + ' đơn cùng địa chỉ)';
+          showToast(pasteMsg);
         });
 
         // Mở popup lấy đơn Google Sheet theo Mã Chuyến
@@ -5915,6 +7670,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 orders = orders.concat(result.orders);
               }
 
+              var healedTrip = autoHealDuplicateAddresses(false);
+
               var autoGroupChecked = document.getElementById('mTripAutoGroup').checked;
               if (autoGroupChecked) {
                 autoGroupAllOrders();
@@ -5924,7 +7681,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               }
 
               tripSheet.classList.remove('show');
-              showToast('Đã nạp thành công ' + result.orders.length + ' đơn chuyến ' + result.tripCode + '!');
+              var tripMsg = 'Đã nạp thành công ' + result.orders.length + ' đơn chuyến ' + result.tripCode + '!';
+              if (healedTrip > 0) tripMsg += ' (Đã tự sửa chéo ' + healedTrip + ' đơn cùng địa chỉ)';
+              showToast(tripMsg);
             })
             .catch(function(err) {
               btnSubmitTrip.disabled = false;
