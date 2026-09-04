@@ -251,14 +251,16 @@ export function parseAndNormalizeAddress(rawAddress) {
   }
 
   // BƯỚC 5: Xử lý thứ tự đảo: Tên đường trước, số nhà sau
-  const mNumberedStreet = addr.match(/^(?:đường|phố)?\s*(số\s*\d+[a-zA-Z]?)\s*,?\s*(?:nhà\s*số|số\s*nhà|nhà|số)?\s*[:\s]*([\d/]+[a-zA-Z-]*)(.*)$/i);
+  // Chỉ đảo khi có từ "Đường/Phố/Đg/Đ." rõ ràng trước tên đường, hoặc có từ khóa "nhà số / số nhà"
+  // Tuyệt đối không khớp nếu bắt đầu bằng "Số <digits>" vì đó là tiền tố số nhà bình thường ("Số 62 Cao Thắng")
+  const mNumberedStreet = addr.match(/^(?:đường|phố|đ\.|đg\.)\s*(số\s*\d+[a-zA-Z]?)\s*[,.\s]+(?:nhà\s*số|số\s*nhà|nhà|số)?\s*[:\s]*([\d/]+[a-zA-Z-]*)(.*)$/i);
   if (mNumberedStreet) {
     const streetPart = 'Đường ' + mNumberedStreet[1].trim();
     const housePart = mNumberedStreet[2].trim();
     const restPart = mNumberedStreet[3].trim();
     addr = `${housePart} ${streetPart}${restPart ? ', ' + restPart.replace(/^[,.\s]+/, '') : ''}`;
   } else {
-    const mInverted = addr.match(/^(?:đường|phố)?\s*([a-zA-ZÀ-Ỹà-ỹ0-9\s/]+?)\s+(?:nhà\s*số|số\s*nhà|số|nhà)\s*[:\s]*([\d/]+[a-zA-Z-]*)(.*)$/i);
+    const mInverted = addr.match(/^(?:đường|phố|đ\.|đg\.)\s*([a-zA-ZÀ-Ỹà-ỹ0-9\s/]+?)\s+(?:nhà\s*số|số\s*nhà|nhà)\s*[:\s]*([\d/]+[a-zA-Z-]*)(.*)$/i);
     if (mInverted && !/^\s*số\s*\d+/i.test(mInverted[1])) {
       const streetPart = mInverted[1].trim();
       const housePart = mInverted[2].trim();

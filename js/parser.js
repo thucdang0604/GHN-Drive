@@ -391,80 +391,106 @@ export function countVietnameseAccents(str) {
   return matches ? matches.length : 0;
 }
 
-export function extractClusterName(address) {
-  if (!address) return 'Chưa phân nhóm';
+export const COMPREHENSIVE_STREETS = [
+  // Tuyến đường huyết mạch Quận 3 & khu vực giao hàng GHN
+  'Võ Văn Tần', 'Nguyễn Đình Chiểu', 'Cách Mạng Tháng 8', 'Trần Quốc Thảo', 
+  'Cao Thắng', 'Nguyễn Gia Thiều', 'Nguyễn Thị Diệu', 'Nguyễn Sơn Hà', 
+  'Nguyễn Thượng Hiền', 'Điện Biên Phủ', 'Lê Quý Đôn', 'Lý Chính Thắng',
+  'Bà Huyện Thanh Quan', 'Nam Kỳ Khởi Nghĩa', 'Hai Bà Trưng', 'Hồ Xuân Hương',
+  'Phạm Đình Toái', 'Lê Ngô Cát', 'Trương Định', 'Nguyễn Thông', 'Sư Thiện Chiếu',
+  'Võ Thị Sáu', 'Nguyễn Thiện Thuật', 'Bàn Cờ', 'Vườn Chuối', 'Lê Văn Sỹ',
+  'Kỳ Đồng', 'Rạch Bùng Binh', 'Trần Văn Đang', 'Trương Quyền', 'Phạm Ngọc Thạch',
+  'Pasteur', 'Trần Quang Diệu', 'Huỳnh Tịnh Của', 'Lý Thái Tổ',
+  
+  // Quận 1 & lân cận
+  'Nguyễn Thị Minh Khai', 'Lê Duẩn', 'Đồng Khởi', 'Nguyễn Huệ', 'Lê Lợi',
+  'Lý Tự Trọng', 'Hàm Nghi', 'Bến Vân Đồn', 'Tôn Đức Thắng', 'Đinh Tiên Hoàng',
+  'Nguyễn Du', 'Phan Chu Trinh', 'Phan Bội Châu', 'Mạc Đĩnh Chi', 'Phùng Khắc Khoan',
+  'Thạch Thị Thanh', 'Mai Thị Lựu', 'Nguyễn Văn Thủ', 'Nguyễn Bỉnh Khiêm',
+  'Hoàng Sa', 'Trường Sa', 'Cống Quỳnh', 'Bùi Viện', 'Phạm Ngũ Lão', 'Đề Thám',
+  'Trần Hưng Đạo', 'Nguyễn Thái Học', 'Calmette', 'Ký Con', 'Yersin',
 
-  let addr = address.normalize('NFC').trim();
+  // Quận 10 & Tân Bình & Bình Thạnh
+  '3 Tháng 2', 'Tô Hiến Thành', 'Thành Thái', 'Sư Vạn Hạnh', 'Ngô Gia Tự',
+  'Lê Hồng Phong', 'Vĩnh Viễn', 'Nguyễn Tri Phương', 'Hùng Vương', 'Hồng Bàng',
+  'Nguyễn Chí Thanh', 'Bạch Đằng', 'Phan Đăng Lưu', 'Hoàng Văn Thụ', 'Cộng Hòa',
+  'Trường Chinh', 'Lạc Long Quân', 'Âu Cơ', 'Lê Đại Hành', 'Kha Vạn Cân'
+];
 
-  // 1. Dọn dẹp các ghi chú shipper/khách hàng ở đầu địa chỉ
-  addr = addr.replace(/^[^\w\d]*(?:đchi|đ\/c|địa\s*chỉ|ship|giao|đến|tại|em\s*check\s*lại\s*thử|đc\s*nhận\s*hàng|neu\s*giao)[^:]*:\s*/i, '');
+export function cleanAddressForClustering(raw) {
+  if (!raw) return '';
+  let addr = String(raw).normalize('NFC').trim();
+
+  // 1. Dọn dẹp SĐT nhúng
+  addr = addr.replace(/(?:\+?84|0|\(\+?84\)|\(0\d{1,4}\))[\s.-]*\d(?:[\s.-]*\d){4,10}\b/g, ' ');
+
+  // 2. Dọn dẹp ghi chú trong ngoặc đơn hoặc tiền tố shipper/shop
+  addr = addr.replace(/\([^)]*\)/g, ' ');
+  addr = addr.replace(/^[^\w\d]*(?:đchi|đ\/c|địa\s*chỉ|ship|giao|đến|tại|em\s*check\s*lại\s*thử|đc\s*nhận\s*hàng|neu\s*giao|đc|dc)[^:]*:\s*/i, '');
   addr = addr.replace(/^ship\s+[^,]*?\s+(?:về|đến|tại)\s+/i, '');
   addr = addr.replace(/^[^\w\d]*(?:shop|cty|công\s*ty|báo)\s+[^,]*?\s+(?=\d)/i, '');
 
-  // 2. Chuẩn hóa lỗi chính tả và cách viết tắt tên đường phổ biến
-  addr = addr.replace(/\bNTMK\b/gi, 'Nguyễn Thị Minh Khai');
-  addr = addr.replace(/\b(?:Ba|Bà),?\s*Huyện\s*Thanh\s*Quan\s*(\d+)?(?:\s*Street)?\b/gi, (m, p1) => p1 ? 'Bà Huyện Thanh Quan, Q. ' + p1 : 'Bà Huyện Thanh Quan');
-  addr = addr.replace(/\bBà\s+H\.\s*Thanh\s*Quan\b/gi, 'Bà Huyện Thanh Quan');
-  addr = addr.replace(/\bBà\s+Huyện\s+Thanh\s+Quang\b/gi, 'Bà Huyện Thanh Quan');
+  // 3. Chuẩn hóa viết tắt tên đường phổ biến
   addr = addr.replace(/\bCMT8\b/gi, 'Cách Mạng Tháng 8');
   addr = addr.replace(/\bCách\s*Mạng\s*Tháng\s*(?:Tám|8)\b/gi, 'Cách Mạng Tháng 8');
+  addr = addr.replace(/\bNTMK\b/gi, 'Nguyễn Thị Minh Khai');
+  addr = addr.replace(/\b(?:Võ|Vo)\s*(?:v|văn|van)?\s*(?:tần|tan|tang|tầng)\b/gi, 'Võ Văn Tần');
+  addr = addr.replace(/\bVO\s*V\s*TANG\b/gi, 'Võ Văn Tần');
   addr = addr.replace(/\b(?:3\s*tháng\s*2|3\/2)\b/gi, '3 Tháng 2');
-  addr = addr.replace(/\b(?:30\s*tháng\s*4|30\/4)\b/gi, '30 Tháng 4');
 
-  // Lỗi viết dính chữ Võ Văn Tần / gõ sai
-  addr = addr.replace(/\b(?:Võ\s*v|Vo\s*v)\s*Tần\b/gi, 'Võ Văn Tần');
-  addr = addr.replace(/\bVõ\s*van\s*Tân\b/gi, 'Võ Văn Tần');
-  addr = addr.replace(/\bVõ\s*Văn\s*Tầng\b/gi, 'Võ Văn Tần');
-  addr = addr.replace(/\bVo\s*Van\s*Tan\b/gi, 'Võ Văn Tần');
-
-  // Khử các từ lặp lại trong địa chỉ lỗi (ví dụ: "Bà Huyện Thanh Quan 87 Ba, Huyện")
-  addr = addr.replace(/Bà Huyện Thanh Quan\s+[\d\w/.-]*\s*Ba,?\s*Huyện/gi, 'Bà Huyện Thanh Quan');
-
-  // Xử lý số nhà dính chữ: ":44 Võ Văn Tần" -> "44 Võ Văn Tần", "19võ" -> "19 Võ"
-  addr = addr.replace(/^[:\s-]+/g, '');
-  addr = addr.replace(/(\d+)([a-zA-ZÀ-Ỹà-ỹ]{2,})/g, '$1 $2');
-
-  // Bỏ chữ "Việt Nam" thừa nằm giữa các dấu phẩy
-  addr = addr.replace(/,\s*Việt\s*Nam\s*,/gi, ',');
-  addr = addr.replace(/,\s*Việt\s*Nam\s*$/gi, '');
-
-  // Chuẩn hóa Đ. / Đg. / Đg -> Đường
-  addr = addr.replace(/\b(?:Đ\.|Đg\.|Đg)\s+/gi, 'Đường ');
-
-  // 3. Cắt bỏ phần hành chính ở cuối (Tỉnh/TP, Quận/Huyện/Thị xã, Phường/Xã)
-  addr = addr.replace(/,?\s*(?:Thành\s*phố\s*Hồ\s*Chí\s*Minh|TP\.?\s*Hồ\s*Chí\s*Minh|Hồ\s*Chí\s*Minh|TP\.?\s*HCM|TPHCM|HCM|Hồ\s*Chí\s*Minh\s*\d*|Thành\s*phố\s*Hà\s*Nội|Hà\s*Nội|Đà\s*Nẵng|Bình\s*Dương|Đồng\s*Nai|Long\s*An|Tỉnh\s+[A-ZÀ-Ỹa-zà-ỹ\s]+)\s*$/gi, '');
-  addr = addr.replace(/,?\s*(?:Thị\s*xã|Thành\s*phố|TP\.?)\s+[A-ZÀ-Ỹa-zà-ỹ0-9\s]+$/gi, '');
-
-  // Loại bỏ Quận/Huyện ở cuối (trừ khi là Bà Huyện Thanh Quan)
-  if (!/Bà Huyện Thanh Quan\s*$/i.test(addr)) {
-    addr = addr.replace(/,?\s*(?:Quận|Q\.?)\s*(?:\d+|[A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)\s*$/gi, '');
-    addr = addr.replace(/,?\s*(?:Huyện|Thị\s*xã)\s*(?:\d+|[A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)\s*$/gi, '');
+  // 4. Lỗi gõ sai / không dấu phổ biến
+  const rawNoTone = removeVietnameseTones(addr);
+  if (rawNoTone.includes('xuan ha') && (rawNoTone.includes('p5') || rawNoTone.includes('phuong 5') || rawNoTone.includes('q3') || rawNoTone.includes('quan 3'))) {
+    addr = addr.replace(/xuan\s*ha/gi, 'Sơn Hà').replace(/xuân\s*hà/gi, 'Sơn Hà');
+  }
+  if (rawNoTone.includes('nguyen gia thieu')) {
+    addr = addr.replace(/nguy[eên\s]*gia\s*thi[eêú]+/gi, 'Nguyễn Gia Thiều');
+  }
+  if (rawNoTone.includes('nguyen thuong hien')) {
+    addr = addr.replace(/nguy[eên\s]*th[uưoơng\s]*hi[eên]+/gi, 'Nguyễn Thượng Hiền');
   }
 
-  // Loại bỏ Phường/Xã ở cuối
-  addr = addr.replace(/,?\s*(?:Phường|Xã|Thị\s*trấn|P\.?)\s*(?:\d+|[A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)\s*$/gi, '');
+  // 5. Chuẩn hóa số nhà có từ "Số" ở đầu: "Số 62 Cao Thắng" -> "62 Cao Thắng"
+  addr = addr.replace(/^(?:đc|đ\/c|địa\s*chỉ)?\s*(?:số|nhà|số\s*nhà|sô)\s*[:\s]*([\d/]+[a-zA-Z]*(?:\s*bis)?)\s*[,.\s]+/i, '$1 ');
 
-  // Cắt các đuôi viết tắt dính liền như "p5 q3 tphcm", "p.5 q.3", "p5 quan 3", "q3 hcm"
-  addr = addr.replace(/\s+(?:p\.?\s*\d+|phường\s*\d+|phuong\s*\d+)(?:\s*,?\s*(?:q\.?\s*\d+|quan\s*\d+))?(?:\s*,?\s*(?:tphcm|hcm))?\s*$/gi, '');
+  // 6. Chuẩn hóa trường hợp tên đường lặp trước số nhà: "Võ Văn Tần 221/27", "Nguyễn Gia Thiều 11bis Nguyễn Gia Thiều"
+  for (const stItem of COMPREHENSIVE_STREETS) {
+    const escSt = stItem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regRepeat = new RegExp('^\\s*(?:đường|phố)?\\s*' + escSt + '\\s+([\\d/]+[a-zA-Z]*(?:\\s*bis)?)\\s+(?:đường|phố)?\\s*' + escSt, 'i');
+    if (regRepeat.test(addr)) {
+      addr = addr.replace(regRepeat, '$1 ' + stItem);
+    }
+    const regPrefix = new RegExp('^\\s*(?:đường|phố)?\\s*' + escSt + '\\s+([\\d/]+[a-zA-Z]*(?:\\s*bis)?)(.*)$', 'i');
+    const mP = addr.match(regPrefix);
+    if (mP) {
+      addr = mP[1] + ' ' + stItem + (mP[2] ? ' ' + mP[2] : '');
+    }
+  }
+
+  // 7. Xử lý số nhà bằng chữ: "Số năm Nguyễn gia thiều" -> "5 Nguyễn Gia Thiều"
+  addr = addr.replace(/\bsố\s*năm\b/gi, '5');
+  addr = addr.replace(/\bsố\s*một\b/gi, '1');
+
+  // 8. Xử lý số nhà dính chữ: "220võ" -> "220 Võ"
+  addr = addr.replace(/(\d+)([a-zA-ZÀ-Ỹà-ỹ]{2,})/g, '$1 $2');
+
+  // 9. Cắt sạch các đuôi hành chính lộn xộn ở cuối
+  addr = addr.replace(/,\s*(?:Phường|P\.?|F\.?)\s*(?:\d+|[A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)(?:,\s*(?:Quận|Q\.?)\s*(?:\d+|[A-ZÀ-Ỹa-zà-ỹ0-9\s]+?))?(?:,\s*(?:TP\.?|Thành phố|Hồ Chí Minh|HCM|TPHCM)[^,]*)?$/gi, '');
+  addr = addr.replace(/\s+(?:p\.?\s*\d+|phường\s*\d+|f\d+)(?:\s*,?\s*(?:q\.?\s*\d+|quan\s*\d+))?(?:\s*,?\s*(?:tphcm|hcm))?\s*$/gi, '');
   addr = addr.replace(/\s+(?:q\.?\s*\d+|quan\s*\d+)(?:\s*,?\s*(?:tphcm|hcm))?\s*$/gi, '');
 
-  // Cắt các ghi chú phụ kèm SĐT hoặc tên người nhận ở đuôi
-  addr = addr.replace(/,?\s*(?:sdt|đt|tel)?\s*\d{9,11}\b.*$/i, '');
+  return addr.replace(/\s{2,}/g, ' ').trim();
+}
 
-  addr = addr.trim();
+export function extractClusterName(address) {
+  if (!address) return 'Chưa phân nhóm';
 
-  // 4. Nhận diện các tuyến đường đặc thù nếu có trong địa chỉ
-  const knownStreets = [
-    'Nguyễn Thị Minh Khai', 'Võ Văn Tần', 'Bà Huyện Thanh Quan', 'Điện Biên Phủ',
-    'Nam Kỳ Khởi Nghĩa', 'Hai Bà Trưng', 'Hồ Xuân Hương', 'Phạm Đình Toái',
-    'Lê Ngô Cát', 'Trần Quốc Thảo', 'Trương Định', 'Nguyễn Đình Chiểu',
-    'Nguyễn Thông', 'Lý Chính Thắng', 'Sư Thiện Chiếu', 'Võ Thị Sáu',
-    'Cách Mạng Tháng 8', 'Kha Vạn Cân', 'Lê Duẩn', 'Pasteur', 'Lý Tự Trọng',
-    'Lê Lợi', 'Đồng Khởi', 'Nguyễn Du', 'Phan Chu Trinh', 'Phan Bội Châu'
-  ];
+  const clean = cleanAddressForClustering(address);
+  const addrNoTone = removeVietnameseTones(clean);
 
-  const addrNoTone = removeVietnameseTones(addr);
-  for (const st of knownStreets) {
+  // 1. Quét theo danh mục đường chuẩn (sắp xếp dài trước ngắn sau)
+  const sortedStreets = COMPREHENSIVE_STREETS.slice().sort((a, b) => b.length - a.length);
+  for (const st of sortedStreets) {
     const stNoTone = removeVietnameseTones(st);
     const reg = new RegExp('\\b' + stNoTone + '\\b', 'i');
     if (reg.test(addrNoTone)) {
@@ -472,90 +498,24 @@ export function extractClusterName(address) {
     }
   }
 
-  // 5. Tách các phần theo dấu phẩy nếu không trúng danh mục đường đặc thù
-  const parts = addr.split(',').map(p => p.trim()).filter(Boolean);
-
-  const isHouseNumOnly = (s) => /^(?:số|nhà|hẻm|ngõ|ngách|số\s*nhà|sô)?\s*[\d/]+[a-z\d-]*$/i.test(s);
-  const isBuildingPart = (s) => /(?:tòa\s*(?:nhà)?|toà\s*(?:nhà)?|chung\s*cư|cao\s*ốc|building|tower|residence|plaza|apartment)\b/i.test(s);
-  const isNumberedStreet = (s) => /^(?:3\s*Tháng\s*2|30\s*Tháng\s*4|26\s*Tháng\s*3|Số\s*\d+|\d+\s*Tháng\s*\d+)/i.test(s);
-
-  let detectedStreet = '';
-  let detectedBuilding = '';
-
-  // Ưu tiên quét từ trái sang phải để lấy đường ở gần số nhà nhất (tránh nhầm tên công ty/shop ở cuối)
-  for (let i = 0; i < parts.length; i++) {
-    let part = parts[i];
-
-    if (isHouseNumOnly(part)) continue;
-
-    // Bỏ tiền tố hẻm/ngõ/ngách: "Hẻm 450/12/3 Điện Biên Phủ" -> "Điện Biên Phủ"
-    part = part.replace(/^(?:hẻm|ngõ|ngách)\s+[\d/]+[a-z\d-]*\s+(?:đường\s+)?/i, '').trim();
-
-    // Kiểm tra có từ khóa Đường / Phố
-    const mDuong = part.match(/(?:đường|phố|đ\.|đg\.)\s+([^,]+)/i);
-    if (mDuong) {
-      let st = mDuong[1].trim();
-      st = st.replace(/(?:tòa\s*(?:nhà)?|toà\s*(?:nhà)?|chung\s*cư|cao\s*ốc|building|tower).*$/i, '').trim();
-      if (st.length >= 2) {
-        detectedStreet = st;
-        break;
-      }
-    }
-
-    // Kiểm tra số nhà ở đầu part + tên đường: "442 Nguyễn Thị Minh Khai", "6bis bà huyện Thanh quan"
-    const mNumStreet = part.match(/^(?:số|nhà|sô)?\s*[\d/]+[a-z\d-]*\s+(?:đường\s+|phố\s+|đ\.\s*|đg\.\s*|đg\s+)?(.+)$/i);
-    if (mNumStreet) {
-      let st = mNumStreet[1].trim();
-      st = st.replace(/(?:tòa\s*(?:nhà)?|toà\s*(?:nhà)?|chung\s*cư|cao\s*ốc|building|tower).*$/i, '').trim();
-      if (st.length >= 2 && !/^\d+$/.test(st)) {
-        detectedStreet = st;
-        break;
-      }
-    }
-
-    if (!isBuildingPart(part) && part.length >= 3 && !/^\d+$/.test(part)) {
-      if (!detectedStreet) {
-        let st = part.replace(/^(?:đường|phố|đ\.|đg\.)\s+/i, '').trim();
-        st = st.replace(/(?:tòa\s*(?:nhà)?|toà\s*(?:nhà)?|chung\s*cư|cao\s*ốc|building|tower).*$/i, '').trim();
-        if (st.length >= 3) {
-          detectedStreet = st;
-        }
-      }
-    }
-
-    if (isBuildingPart(part) && !detectedBuilding) {
-      detectedBuilding = part;
+  // 2. Tìm theo từ khóa Đường / Phố
+  const mDuong = clean.match(/(?:đường|phố|đ\.|đg\.)\s+([^,]+)/i);
+  if (mDuong) {
+    let stFound = mDuong[1].trim();
+    stFound = stFound.replace(/(?:tòa\s*(?:nhà)?|toà\s*(?:nhà)?|chung\s*cư|cao\s*ốc|building|tower).*$/i, '').trim();
+    stFound = stFound.replace(/\s+(?:p\.?\s*\d+|phường\s*\d+|f\d+|q\.?\s*\d+|quan\s*\d+).*$/i, '').trim();
+    if (stFound.length >= 2) {
+      return 'Đường ' + capitalizeWords(stFound);
     }
   }
 
-  // 6. Quyết định tên nhóm
-  if (detectedStreet) {
-    detectedStreet = detectedStreet.replace(/^(?:đường|phố|đ\.|đg\.)\s+/i, '').trim();
-    detectedStreet = detectedStreet.replace(/^[\s,.-]+|[\s,.-]+$/g, '');
-    
-    if (!isNumberedStreet(detectedStreet)) {
-      detectedStreet = detectedStreet.replace(/^(?:số\s+)?[\d/]+[a-z\d-]*\s+/i, '').trim();
-    }
-
-    // Bỏ các ghi chú phụ ở đuôi nếu có
-    detectedStreet = detectedStreet.replace(/(?:cổng\s*\d+|bệnh\s*viện|tòa\s*nhà|chung\s*cư).*$/i, '').trim();
-
-    if (detectedStreet.length >= 2) {
-      return 'Đường ' + capitalizeWords(detectedStreet);
-    }
-  }
-
-  // Nếu không tìm thấy tên đường nhưng có tên tòa nhà / chung cư
-  if (detectedBuilding) {
-    let bClean = detectedBuilding.replace(/^(?:số\s+)?[\d\w/.-]*\s*/i, '').trim();
-    return capitalizeWords(bClean.slice(0, 30));
-  }
-
-  // Fallback: nếu chuỗi có nội dung
-  if (parts.length > 0) {
-    let fallback = parts[0].replace(/^(?:số\s+)?[\d\w/.-]*\s*/i, '').trim();
-    if (fallback.length >= 3) {
-      return 'Đường ' + capitalizeWords(fallback.slice(0, 25));
+  // 3. Fallback: Lấy phần tên đường ngay sau số nhà
+  const mNum = clean.match(/^(?:số\s*)?[\d/]+[a-zA-Z]*(?:\s*bis)?\s+([^,]+)/i);
+  if (mNum) {
+    let stAfterNum = mNum[1].trim();
+    stAfterNum = stAfterNum.replace(/\s+(?:p\.?\s*\d+|phường\s*\d+|f\d+|q\.?\s*\d+|quan\s*\d+).*$/i, '').trim();
+    if (stAfterNum.length >= 2) {
+      return 'Đường ' + capitalizeWords(stAfterNum);
     }
   }
 
