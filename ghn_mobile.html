@@ -4353,7 +4353,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         'Võ Thị Sáu', 'Nguyễn Thiện Thuật', 'Bàn Cờ', 'Vườn Chuối', 'Lê Văn Sỹ',
         'Kỳ Đồng', 'Rạch Bùng Binh', 'Trần Văn Đang', 'Trương Quyền', 'Phạm Ngọc Thạch',
         'Pasteur', 'Trần Quang Diệu', 'Huỳnh Tịnh Của', 'Lý Thái Tổ',
-        
+        'Trần Cao Vân', 'Công Trường Quốc Tế', 'Ngô Thời Nhiệm', 'Trần Quốc Toản',
+        'Tú Xương', 'Nguyễn Văn Mai', 'Đoàn Công Bửu', 'Trần Quang Khải',
+
         // Quận 1 & lân cận
         'Nguyễn Thị Minh Khai', 'Lê Duẩn', 'Đồng Khởi', 'Nguyễn Huệ', 'Lê Lợi',
         'Lý Tự Trọng', 'Hàm Nghi', 'Bến Vân Đồn', 'Tôn Đức Thắng', 'Đinh Tiên Hoàng',
@@ -4361,6 +4363,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         'Thạch Thị Thanh', 'Mai Thị Lựu', 'Nguyễn Văn Thủ', 'Nguyễn Bỉnh Khiêm',
         'Hoàng Sa', 'Trường Sa', 'Cống Quỳnh', 'Bùi Viện', 'Phạm Ngũ Lão', 'Đề Thám',
         'Trần Hưng Đạo', 'Nguyễn Thái Học', 'Calmette', 'Ký Con', 'Yersin',
+        'Công Xã Paris', 'Công Trường Lam Sơn', 'Công Trường Mê Linh',
 
         // Quận 10 & Tân Bình & Bình Thạnh
         '3 Tháng 2', 'Tô Hiến Thành', 'Thành Thái', 'Sư Vạn Hạnh', 'Ngô Gia Tự',
@@ -4380,32 +4383,85 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         addr = addr.replace(/\([^)]*\)/g, ' ');
         addr = addr.replace(/^[^\w\d]*(?:đchi|đ\/c|địa\s*chỉ|ship|giao|đến|tại|em\s*check\s*lại\s*thử|đc\s*nhận\s*hàng|neu\s*giao|đc|dc)[^:]*:\s*/i, '');
         addr = addr.replace(/^ship\s+[^,]*?\s+(?:về|đến|tại)\s+/i, '');
-        addr = addr.replace(/^[^\w\d]*(?:shop|cty|công\s*ty|báo)\s+[^,]*?\s+(?=\d)/i, '');
+        addr = addr.replace(/^[-–—\s*#]+/g, '');
+        addr = addr.replace(/^[^\w\d]*(?:shop|cty|công\s*ty|báo|toà\s*nhà|tòa\s*nhà|building|tower|chi\s*nhánh|cn|nhà\s*hàng|coffe|cafe|viện|bv|bệnh\s*viện)\s+[^,]*?,\s*(?=\d)/i, '');
+        addr = addr.replace(/^[^\w\d]*(?:shop|cty|công\s*ty|báo|toà\s*nhà|tòa\s*nhà|building|tower|chi\s*nhánh|cn|cổng\s*số\s*\d+)\s+[^,]*?\s+(?=\d)/i, '');
 
-        // 3. Chuẩn hóa viết tắt tên đường phổ biến
+        // Loại bỏ từ khóa phường trùng tên đường (như Phường Võ Thị Sáu) để không làm sai lệch nhận diện đường
+        var addrCheck = addr.replace(/(?:phường|p\.|p\s+|f\.?)\s*(?:võ\s*thị\s*sáu|nguyễn\s*cư\s*trinh|phạm\s*ngũ\s*lão)\b/gi, ' ');
+
+        // 3. Chuẩn hóa địa danh / toà nhà nổi tiếng (chỉ bổ sung nếu chưa có tên đường trong địa chỉ)
+        var hasStreetAlready = false;
+        var tempNoTone = removeVietnameseTones(addrCheck);
+        for (var sIdx = 0; sIdx < COMPREHENSIVE_STREETS.length; sIdx++) {
+          if (new RegExp('\\b' + removeVietnameseTones(COMPREHENSIVE_STREETS[sIdx]) + '\\b', 'i').test(tempNoTone)) {
+            hasStreetAlready = true;
+            break;
+          }
+        }
+
+        if (!hasStreetAlready) {
+          if (/master\s*building/i.test(addr)) {
+            addr = '41-43 Trần Cao Vân, ' + addr;
+          } else if (/an\s*ph[uú]\s*plaza/i.test(addr)) {
+            addr = '117 Lý Chính Thắng, ' + addr;
+          } else if (/ns\s*t[aâ]n\s*đ[iị]nh|nh[aà]\s*s[aá]ch\s*t[aâ]n\s*đ[iị]nh/i.test(addr)) {
+            addr = '387 Hai Bà Trưng, ' + addr;
+          } else if (/b(?:v|ệnh\s*viện)\s*da\s*li[eễ]u/i.test(addr)) {
+            addr = '69b Ngô Thời Nhiệm, ' + addr;
+          } else if (/b(?:v|ệnh\s*viện)\s*y\s*h[oọ]c\s*c[oổ]\s*truy[eề]n/i.test(addr)) {
+            addr = '179 Nam Kỳ Khởi Nghĩa, ' + addr;
+          } else if (/sawaco|daikin|h[oồ]\s*con\s*r[uù]a/i.test(addr)) {
+            addr = 'Công Trường Quốc Tế, ' + addr;
+          }
+        }
+
+        // 4. Chuẩn hóa viết tắt tên đường phổ biến
         addr = addr.replace(/\bCMT8\b/gi, 'Cách Mạng Tháng 8');
+        addr = addr.replace(/\bcm\s*th[aá]ng\s*8\b/gi, 'Cách Mạng Tháng 8');
+        addr = addr.replace(/\bC[aá]ch\s*M[aạ]ng\s*T(?:8|ám)\b/gi, 'Cách Mạng Tháng 8');
         addr = addr.replace(/\bCách\s*Mạng\s*Tháng\s*(?:Tám|8)\b/gi, 'Cách Mạng Tháng 8');
         addr = addr.replace(/\bNTMK\b/gi, 'Nguyễn Thị Minh Khai');
         addr = addr.replace(/\b(?:Võ|Vo)\s*(?:v|văn|van)?\s*(?:tần|tan|tang|tầng)\b/gi, 'Võ Văn Tần');
         addr = addr.replace(/\bVO\s*V\s*TANG\b/gi, 'Võ Văn Tần');
         addr = addr.replace(/\b(?:3\s*tháng\s*2|3\/2)\b/gi, '3 Tháng 2');
 
-        // 4. Lỗi gõ sai / không dấu phổ biến
+        // Nam Kỳ Khởi Nghĩa và các biến thể
+        addr = addr.replace(/\bNam\s*K[iì]\s*(?:Kh[oở]i\s*Ngh[iĩ]a)?\b/gi, 'Nam Kỳ Khởi Nghĩa');
+        addr = addr.replace(/\bn\s*k\s*kh[oở]i\s*n[fgh]+[iĩ]a[x]?\b/gi, 'Nam Kỳ Khởi Nghĩa');
+
+        // Phạm Ngọc Thạch gõ nhầm thành Phạm Ngọc Thạnh
+        addr = addr.replace(/\bPhạm\s*Ngọc\s*Thạnh\b/gi, 'Phạm Ngọc Thạch');
+        addr = addr.replace(/\bpham\s*ngoc\s*thanh\b/gi, 'Phạm Ngọc Thạch');
+
+        // Công Trường Quốc Tế không dấu
+        addr = addr.replace(/\bcong\s*truong\s*quoc\s*te\b/gi, 'Công Trường Quốc Tế');
+
+        // Tú Xương
+        addr = addr.replace(/\btu\s*xuong\b/gi, 'Tú Xương');
+
+        // Lỗi gõ sai khác
         var rawNoTone = removeVietnameseTones(addr);
         if (rawNoTone.indexOf('xuan ha') !== -1 && (rawNoTone.indexOf('p5') !== -1 || rawNoTone.indexOf('phuong 5') !== -1 || rawNoTone.indexOf('q3') !== -1 || rawNoTone.indexOf('quan 3') !== -1)) {
           addr = addr.replace(/xuan\s*ha/gi, 'Sơn Hà').replace(/xuân\s*hà/gi, 'Sơn Hà');
         }
-        if (rawNoTone.indexOf('nguyen gia thieu') !== -1 || rawNoTone.indexOf('nguyen gia thieu') !== -1) {
+        if (rawNoTone.indexOf('nguyen gia thieu') !== -1) {
           addr = addr.replace(/nguy[eên\s]*gia\s*thi[eêú]+/gi, 'Nguyễn Gia Thiều');
         }
         if (rawNoTone.indexOf('nguyen thuong hien') !== -1) {
           addr = addr.replace(/nguy[eên\s]*th[uưoơng\s]*hi[eên]+/gi, 'Nguyễn Thượng Hiền');
         }
 
-        // 5. Chuẩn hóa số nhà có từ "Số" ở đầu: "Số 62 Cao Thắng" -> "62 Cao Thắng"
-        addr = addr.replace(/^(?:đc|đ\/c|địa\s*chỉ)?\s*(?:số|nhà|số\s*nhà|sô)\s*[:\s]*([\d/]+[a-zA-Z]*(?:\s*bis)?)\s*[,.\s]+/i, '$1 ');
+        // 5. Chuẩn hóa số nhà có từ "Số", "sn", "So" ở đầu
+        addr = addr.replace(/^(?:đc|đ\/c|địa\s*chỉ)?\s*(?:số|nhà|số\s*nhà|sô|sn|so)\s*[:\s]*([\d/]+[a-zA-Z]*(?:\s*bis)?)\s*[,.\s]+/i, '$1 ');
 
-        // 6. Chuẩn hóa trường hợp tên đường lặp trước số nhà: "Võ Văn Tần 221/27", "Nguyễn Gia Thiều 11bis Nguyễn Gia Thiều"
+        // Xử lý số nhà dạng kép: "41 43 Trần Cao Vân" -> "41-43 Trần Cao Vân", "71 73 Ngô Thời Nhiệm" -> "71-73 Ngô Thời Nhiệm"
+        addr = addr.replace(/^(\d+)\s+(\d+)\s+(?=[A-ZÀ-Ỹa-zà-ỹ])/i, '$1-$2 ');
+
+        // Xử lý số nhà lặp lại: "30/4 30/4 Ngô Thời Nhiệm" -> "30/4 Ngô Thời Nhiệm"
+        addr = addr.replace(/^([\d/]+[a-zA-Z]*)\s+\1\s+/i, '$1 ');
+
+        // 6. Chuẩn hóa trường hợp tên đường lặp trước số nhà
         for (var idx = 0; idx < COMPREHENSIVE_STREETS.length; idx++) {
           var stItem = COMPREHENSIVE_STREETS[idx];
           var escSt = stItem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -4420,11 +4476,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           }
         }
 
-        // 7. Xử lý số nhà bằng chữ: "Số năm Nguyễn gia thiều" -> "5 Nguyễn Gia Thiều"
+        // 7. Xử lý số nhà bằng chữ
         addr = addr.replace(/\bsố\s*năm\b/gi, '5');
         addr = addr.replace(/\bsố\s*một\b/gi, '1');
 
-        // 8. Xử lý số nhà dính chữ: "220võ" -> "220 Võ"
+        // 8. Xử lý số nhà dính chữ: "220võ" -> "220 Võ", "39tu Xương" -> "39 Tú Xương"
         addr = addr.replace(/(\d+)([a-zA-ZÀ-Ỹà-ỹ]{2,})/g, '$1 $2');
 
         // 9. Cắt sạch các đuôi hành chính lộn xộn ở cuối
@@ -4435,7 +4491,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         return addr.replace(/\s{2,}/g, ' ').trim();
       }
 
-      function extractClusterName(address) {
+      function extractClusterName(address, ward, district) {
         if (!address) return 'Chưa phân nhóm';
 
         var clean = cleanAddressForClustering(address);
@@ -4457,20 +4513,30 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         if (mDuong) {
           var stFound = mDuong[1].trim();
           stFound = stFound.replace(/(?:tòa\s*(?:nhà)?|toà\s*(?:nhà)?|chung\s*cư|cao\s*ốc|building|tower).*$/i, '').trim();
-          stFound = stFound.replace(/\s+(?:p\.?\s*\d+|phường\s*\d+|f\d+|q\.?\s*\d+|quan\s*\d+).*$/i, '').trim();
-          if (stFound.length >= 2) {
+          stFound = stFound.replace(/\s+(?:thuộc|ở|tại)?\s*(?:p\.?\s*\d+|phường\s*\d+|f\d+|q\.?\s*\d+|quan\s*\d+).*$/i, '').trim();
+          stFound = stFound.replace(/[-–—.,\s]+$/g, '').trim();
+          if (stFound.length >= 2 && !/^(?:hồ chí minh|tphcm|vietnam|việt nam)$/i.test(stFound)) {
             return 'Đường ' + capitalizeWords(stFound);
           }
         }
 
-        // 3. Fallback: Lấy phần tên đường ngay sau số nhà
-        var mNum = clean.match(/^(?:số\s*)?[\d/]+[a-zA-Z]*(?:\s*bis)?\s+([^,]+)/i);
+        // 3. Fallback: Lấy phần tên đường ngay sau số nhà (hỗ trợ số nhà có gạch nối như 41-43, có phẩy như 41-43, Trần Cao Vân)
+        var mNum = clean.match(/^(?:số\s*)?[\d/]+(?:-[\d/]+)?[a-zA-Z]*(?:\s*bis)?\s*[,.\s]+\s*([^,]+)/i);
         if (mNum) {
           var stAfterNum = mNum[1].trim();
-          stAfterNum = stAfterNum.replace(/\s+(?:p\.?\s*\d+|phường\s*\d+|f\d+|q\.?\s*\d+|quan\s*\d+).*$/i, '').trim();
-          if (stAfterNum.length >= 2) {
+          stAfterNum = stAfterNum.replace(/\s+(?:thuộc|ở|tại)?\s*(?:p\.?\s*\d+|phường\s*\d+|f\d+|q\.?\s*\d+|quan\s*\d+).*$/i, '').trim();
+          stAfterNum = stAfterNum.replace(/[-–—.,\s]+$/g, '').trim();
+          if (stAfterNum.length >= 2 && !/^(?:hồ chí minh|tphcm|vietnam|việt nam)$/i.test(stAfterNum)) {
             return 'Đường ' + capitalizeWords(stAfterNum);
           }
+        }
+
+        // 4. Nếu chỉ có Phường / Quận mà không có tên đường
+        if (ward || district) {
+          var area = [];
+          if (ward) area.push(ward.startsWith('Phường') || ward.startsWith('P.') ? ward : 'Phường ' + ward);
+          if (district) area.push(district.startsWith('Quận') || district.startsWith('Q.') ? district : 'Quận ' + district);
+          return area.join(', ');
         }
 
         return 'Chưa phân nhóm';
@@ -4489,7 +4555,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         for (var i = 0; i < orders.length; i++) {
           var o = orders[i];
-          var cName = extractClusterName(o.address);
+          var cName = extractClusterName(o.address, o.ward, o.district);
           if (cName === 'Chưa phân nhóm') {
             o.groupId = 'group_ungrouped';
             continue;
