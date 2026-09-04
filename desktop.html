@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Điều Phối Đơn Hàng GHN - Giao Hàng Nhanh</title>
+  <meta name="description" content="Ứng dụng nhập thông tin đơn hàng GHN, sắp xếp lộ trình giao hàng, đánh dấu trạng thái GTB/GTC và lưu trữ dữ liệu an toàn.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Thư viện quét mã QR / Barcode đa nền tảng -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Thư viện Bản đồ Leaflet -->
+  <link rel="stylesheet" href="css/leaflet.css">
+  <script src="js/leaflet.js"></script>
+</head>
+<body>
+
+  <!-- Header ứng dụng -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <!-- Truck / Package Icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>GHN Logistics <span class="brand-tag">Express</span></h1>
+          <p>Điều phối lộ trình & Quản lý đơn hàng</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Nút đồng bộ Mã Chuyến từ Google Sheet -->
+        <button id="btnOpenTripModalDesktop" class="btn btn-trip-header" title="Đồng bộ đơn hàng từ Google Sheet theo Mã Chuyến">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          ⚡ Lấy Đơn Mã Chuyến
+        </button>
+
+        <!-- Nút dọn dẹp data cũ đã xử lý -->
+        <button id="btnOpenCleanModal" class="btn btn-clean" title="Xóa các đơn đã giao thành công hoặc thất bại để làm ca mới">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+          Dọn dẹp đơn đã xử lý
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Khung nội dung chính -->
+  <main class="main-wrapper">
+    <!-- Thanh thống kê thời gian thực -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon total">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span id="statTotal" class="stat-value">0</span>
+          <span class="stat-label">Tổng đơn hàng</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon pending">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span id="statPending" class="stat-value">0</span>
+          <span class="stat-label">Chờ giao</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon gtc">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span id="statGtc" class="stat-value">0</span>
+          <span class="stat-label">GTC (Thành công)</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon gtb">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span id="statGtb" class="stat-value">0</span>
+          <span class="stat-label">GTB (Thất bại)</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon cod">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span id="statCod" class="stat-value">0 đ</span>
+          <span class="stat-label">Tổng tiền COD</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Khu vực nhập liệu & Danh sách đơn hàng -->
+    <div class="content-grid">
+      <!-- Cột trái: Nhập liệu (Hỗ trợ Nhập form & Dán nhanh thông minh) -->
+      <aside class="entry-card">
+        <div class="tab-header">
+          <button class="tab-btn active" data-tab="tabPaste">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </svg>
+            Dán Nhanh (Smart)
+          </button>
+          <button class="tab-btn" data-tab="tabManual">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nhập Thủ Công
+          </button>
+        </div>
+
+        <!-- Tab 1: Dán nhanh thông minh -->
+        <div id="tabPaste" class="tab-content tab-panel">
+          <form id="pasteOrderForm">
+            <div class="form-group">
+              <label class="form-label" for="smartPasteInput">
+                Dán văn bản thông tin đơn hàng
+              </label>
+              <textarea 
+                id="smartPasteInput" 
+                class="form-textarea smart-paste-area" 
+                placeholder="mã vận đơn: VNGH80617648808
+Tên: Ngọc Ánh  
+sdt :0969199184  
+địa chỉ:Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
+giá tiền: 0 VNĐ."
+                required
+              ></textarea>
+              <p class="paste-hint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                Tự động bóc tách mã, tên, sđt, địa chỉ, tiền COD. Có thể dán nhiều đơn liên tiếp.
+              </p>
+              <div id="pastePreviewSummary" class="paste-preview-summary"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              Thêm Đơn Từ Văn Bản
+            </button>
+          </form>
+        </div>
+
+        <!-- Tab 2: Nhập thủ công từng trường -->
+        <div id="tabManual" class="tab-content tab-panel" style="display: none;">
+          <form id="manualOrderForm">
+            <div class="form-group">
+              <label class="form-label" for="inputTracking">Mã vận đơn</label>
+              <input type="text" id="inputTracking" class="form-input" placeholder="Ví dụ: VNGH80617648808">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="inputCustomer">Tên người nhận <span class="req">*</span></label>
+              <input type="text" id="inputCustomer" class="form-input" placeholder="Ví dụ: Ngọc Ánh" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="inputPhone">Số điện thoại <span class="req">*</span></label>
+              <input type="tel" id="inputPhone" class="form-input" placeholder="Ví dụ: 0969199184" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="inputAddress">Địa chỉ giao hàng <span class="req">*</span></label>
+              <textarea id="inputAddress" class="form-textarea" placeholder="Địa chỉ chi tiết..." required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="inputCod">Tiền thu hộ / Giá tiền</label>
+              <input type="text" id="inputCod" class="form-input" placeholder="0 VNĐ" value="0 VNĐ">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              Lưu Đơn Mới
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      <!-- Cột phải: Danh sách đơn hàng & Sắp xếp lộ trình -->
+      <section class="list-section">
+        <!-- Thanh công cụ lọc & Tìm kiếm -->
+        <div class="toolbar-card">
+          <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Tìm theo mã, tên, SĐT, địa chỉ...">
+            <button type="button" id="btnDesktopScanQR" class="btn-desktop-scan-qr" title="Quét mã QR / Barcode trên gói hàng bằng camera">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                <rect x="7" y="7" width="10" height="10" rx="1"></rect>
+              </svg>
+              <span>Quét QR</span>
+            </button>
+          </div>
+
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="all">Tất cả</button>
+            <button class="filter-pill" data-filter="pending">Chờ giao</button>
+            <button class="filter-pill" data-filter="gtc">GTC</button>
+            <button class="filter-pill" data-filter="gtb">GTB</button>
+          </div>
+
+          <!-- Nút chuyển đổi chế độ xem Danh sách / Bản đồ -->
+          <div class="desktop-view-switcher">
+            <button class="desktop-view-btn active" id="btnDesktopViewList" data-view="list">
+              📋 Danh sách
+            </button>
+            <button class="desktop-view-btn map-btn" id="btnDesktopViewMap" data-view="map">
+              🗺️ Bản đồ lộ trình (<span id="desktopMapBadge">0</span>)
+            </button>
+          </div>
+        </div>
+
+        <!-- Thanh gom nhóm tuyến đường & toà nhà -->
+        <div class="desktop-group-bar" id="desktopGroupBar">
+          <button id="btnDesktopAutoGroup" class="btn-group-pill auto">⚡ Tự động gom tuyến</button>
+          <button id="btnDesktopHealGps" class="btn-group-pill heal" title="Tự động phát hiện và nắn sửa tọa độ bị lệch hoặc thiếu">🧭 Nắn sửa tọa độ</button>
+          <button id="btnDesktopNewGroup" class="btn-group-pill add">➕ Thêm nhóm mới</button>
+          <button id="btnDesktopCollapseAll" class="btn-group-pill collapse">🔽 Thu gọn hết</button>
+        </div>
+
+        <!-- Khung bản đồ lộ trình Desktop -->
+        <div id="desktopMapContainer" class="desktop-map-container" style="display: none;">
+          <div class="desktop-map-toolbar">
+            <div class="desktop-map-stats">
+              <span class="d-map-chip"><strong>📍 <span id="dMapPoints">0</span></strong> điểm có GPS</span>
+              <span class="d-map-chip pending"><strong>⏳ <span id="dMapPending">0</span></strong> chờ giao</span>
+              <span class="d-map-chip gtc"><strong>✓ <span id="dMapGtc">0</span></strong> đã xong</span>
+            </div>
+            <div class="desktop-map-actions">
+              <button id="btnDesktopMapLocate" class="btn-d-map" title="Vị trí của bạn (GPS)">🎯 Định vị tôi</button>
+              <button id="btnDesktopMapPolyline" class="btn-d-map active" title="Bật/Tắt đường nối lộ trình">〰️ Lộ trình</button>
+              <button id="btnDesktopMapFit" class="btn-d-map" title="Thu phóng vừa các điểm">⛶ Toàn cảnh</button>
+              <button id="btnDesktopMapLayer" class="btn-d-map" title="Đổi kiểu bản đồ">🗺️ Vệ tinh</button>
+            </div>
+          </div>
+          <div id="desktopDeliveryMap" class="desktop-map-canvas"></div>
+        </div>
+
+        <!-- Danh sách card đơn hàng (Hỗ trợ kéo thả sắp xếp) -->
+        <div id="ordersList" class="orders-list"></div>
+
+        <!-- Trạng thái trống khi chưa có đơn -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+          <div class="empty-state-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+          </div>
+          <h3>Chưa có đơn hàng nào</h3>
+          <p>Hãy dán thông tin đơn hàng ở ô bên trái hoặc bấm thêm đơn mới.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Modal xác nhận dọn dẹp dữ liệu cũ -->
+  <div id="cleanModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-icon-warn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <h3>Xác nhận dọn dẹp đơn cũ</h3>
+      </div>
+      <div class="modal-body">
+        <p id="cleanModalDesc">
+          Bạn có chắc chắn muốn dọn dẹp tất cả các đơn hàng đã xử lý xong (GTC hoặc GTB) không? Dữ liệu này sẽ được xóa khỏi danh sách ca giao hiện tại.
+        </p>
+      </div>
+      <div class="modal-actions">
+        <button id="btnCancelClean" class="btn btn-secondary">Hủy bỏ</button>
+        <button id="btnConfirmClean" class="btn btn-clean">Đồng ý dọn dẹp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Đồng bộ Mã Chuyến từ Google Sheet -->
+  <div id="tripSyncModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-icon-trip" style="background: #fff7ed; color: var(--ghn-orange); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <h3>⚡ Lấy Đơn Hàng Theo Mã Chuyến</h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Nhập <strong>Mã Chuyến (tripCode)</strong> hoặc dán liên kết chuyến giao GHN từ Google Sheet:
+        </p>
+        <div class="form-group">
+          <input type="text" id="desktopTripInput" class="form-input" placeholder="Ví dụ: 26820747000TM9N25 hoặc link chuyến..." value="26820747000TM9N25">
+        </div>
+
+        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #c2410c; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="desktopTripAutoGroup" checked>
+            <span>⚡ Tự động gom nhóm theo tuyến đường/toà nhà</span>
+          </label>
+          <div style="display: flex; gap: 16px; font-size: 12.5px; color: var(--text-main);">
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="radio" name="desktopTripMode" value="replace" checked> Thay thế danh sách hiện tại
+            </label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="radio" name="desktopTripMode" value="append"> Thêm nối tiếp
+            </label>
+          </div>
+        </div>
+
+        <div id="desktopTripStatus" style="display: none; margin-top: 12px; font-size: 13px; padding: 10px; border-radius: 6px;"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="btnCancelTripModal" class="btn btn-secondary">Hủy bỏ</button>
+        <button id="btnSubmitTripDesktop" class="btn btn-primary" style="background: var(--ghn-orange);">
+          🚀 Tải Đơn Hàng Từ Sheet
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Quét QR / Barcode trên Desktop -->
+  <div id="desktopQrModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 420px; background: #0f172a; color: #fff; border: 1px solid #334155;">
+      <div class="modal-header" style="border-bottom: 1px solid #334155;">
+        <h3 style="color: #fff; display: flex; align-items: center; gap: 8px; font-size: 1rem;">
+          <span>📷</span> Quét Mã QR / Barcode Bằng Camera
+        </h3>
+        <button id="btnCloseDesktopQrModal" class="btn-icon" style="color: #94a3b8; font-size: 1.2rem; background: none; border: none; cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 16px; display: flex; flex-direction: column; align-items: center;">
+        <div style="position: relative; width: 100%; aspect-ratio: 1/1; max-height: 280px; background: #000; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div id="desktopQrReader" style="width: 100%; height: 100%;"></div>
+        </div>
+        <p id="desktopQrStatusMsg" style="font-size: 0.8rem; color: #94a3b8; margin-top: 12px; text-align: center;">
+          Đang khởi động camera...
+        </p>
+        <div style="margin-top: 12px; width: 100%; display: flex; justify-content: center;">
+          <label for="desktopQrFileInput" class="btn btn-secondary" style="font-size: 0.8rem; padding: 6px 14px; cursor: pointer; background: #1e293b; color: #cbd5e1; border-color: #334155;">
+            📁 Chọn ảnh từ máy tính
+          </label>
+          <input type="file" id="desktopQrFileInput" accept="image/*" style="display: none;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Script ứng dụng -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

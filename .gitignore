@@ -1,0 +1,13 @@
+# Private SSL certificates and keys
+*.pem
+*.key
+cert.pem
+key.pem
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temporary / OS files
+.DS_Store
+Thumbs.db

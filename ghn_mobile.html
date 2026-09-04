@@ -3496,8 +3496,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           orders = [];
         }
 
-        // Đảm bảo mọi đơn đều có groupId hợp lệ
+        // Đảm bảo mọi đơn đều có groupId hợp lệ và dữ liệu địa chỉ mới
         ensureGroupIntegrity();
+        for (var mi = 0; mi < orders.length; mi++) {
+          var ordItem = orders[mi];
+          if (ordItem.hasHouseNumber === undefined || !ordItem.locationFingerprint) {
+            var pG = parseAndNormalizeAddress(ordItem.address);
+            if (ordItem.hasHouseNumber === undefined) ordItem.hasHouseNumber = pG.hasHouseNumber;
+            if (!ordItem.locationFingerprint) ordItem.locationFingerprint = pG.locationFingerprint;
+            if (ordItem.secondaryPhone === undefined && pG.secondaryPhone) ordItem.secondaryPhone = pG.secondaryPhone;
+          }
+        }
       }
 
       function saveData() {
@@ -3625,6 +3634,314 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         return uniqueTokens.join(', ');
       }
 
+      // ==========================================================
+      // TỪ ĐIỂN LANDMARK POI (TÒA NHÀ / CHUNG CƯ / TTTM ĐÃ XÁC THỰC GPS 100%)
+      // ==========================================================
+      var VERIFIED_LANDMARKS = [
+        {
+          key: 'centec_tower',
+          names: ['centec tower', 'centec', 'tòa nhà centec', 'toà centec', '72 74 nguyen thi minh khai', '72-74 nguyen thi minh khai'],
+          street: 'Nguyễn Thị Minh Khai',
+          houseNumber: '72-74',
+          ward: 'Phường Võ Thị Sáu',
+          district: 'Quận 3',
+          lat: 10.781827,
+          lng: 106.694695
+        },
+        {
+          key: 'diamond_plaza',
+          names: ['diamond plaza', 'diamond', 'tòa nhà diamond'],
+          street: 'Lê Duẩn',
+          houseNumber: '34',
+          ward: 'Phường Bến Nghé',
+          district: 'Quận 1',
+          lat: 10.780721,
+          lng: 106.698755
+        },
+        {
+          key: 'vincom_dong_khoi',
+          names: ['vincom đồng khởi', 'vincom center đồng khởi', 'vincom center', 'vincom dong khoi'],
+          street: 'Đồng Khởi',
+          houseNumber: '72',
+          ward: 'Phường Bến Nghé',
+          district: 'Quận 1',
+          lat: 10.778002,
+          lng: 106.702008
+        },
+        {
+          key: 'bitexco',
+          names: ['bitexco', 'bitexco financial tower', 'tháp tài chính bitexco'],
+          street: 'Hải Triều',
+          houseNumber: '2',
+          ward: 'Phường Bến Nghé',
+          district: 'Quận 1',
+          lat: 10.771661,
+          lng: 106.704439
+        },
+        {
+          key: 'saigon_centre',
+          names: ['saigon centre', 'takashimaya', 'saigon center'],
+          street: 'Lê Lợi',
+          houseNumber: '65',
+          ward: 'Phường Bến Nghé',
+          district: 'Quận 1',
+          lat: 10.773356,
+          lng: 106.701026
+        },
+        {
+          key: 'hado_centrosa',
+          names: ['hà đô centrosa', 'hado centrosa', 'chung cư hà đô', 'hà đô 3/2', 'hado centrosa garden'],
+          street: '3 Tháng 2',
+          houseNumber: '200',
+          ward: 'Phường 12',
+          district: 'Quận 10',
+          lat: 10.774902,
+          lng: 106.674932
+        },
+        {
+          key: 'viettel_complex',
+          names: ['viettel complex', 'tòa nhà viettel', 'viettel 285 cách mạng tháng 8', 'viettel cmt8'],
+          street: 'Cách Mạng Tháng 8',
+          houseNumber: '285',
+          ward: 'Phường 12',
+          district: 'Quận 10',
+          lat: 10.778644,
+          lng: 106.678036
+        },
+        {
+          key: 'landmark_81',
+          names: ['landmark 81', 'vinhome central park landmark 81', 'l81'],
+          street: 'Nguyễn Hữu Cảnh',
+          houseNumber: '720A',
+          ward: 'Phường 22',
+          district: 'Bình Thạnh',
+          lat: 10.795116,
+          lng: 106.721832
+        },
+        {
+          key: 'm_plaza',
+          names: ['mplaza', 'm plaza', 'kumho asiana', 'kumho'],
+          street: 'Lê Duẩn',
+          houseNumber: '39',
+          ward: 'Phường Bến Nghé',
+          district: 'Quận 1',
+          lat: 10.783103,
+          lng: 106.700142
+        },
+        {
+          key: 'lim_tower_1',
+          names: ['lim tower', 'lim tower 1', 'tòa nhà lim'],
+          street: 'Lê Thánh Tôn',
+          houseNumber: '9-11',
+          ward: 'Phường Bến Nghé',
+          district: 'Quận 1',
+          lat: 10.780132,
+          lng: 106.705191
+        },
+        {
+          key: 'lim_tower_2',
+          names: ['lim tower 2', 'lim 2'],
+          street: 'Cách Mạng Tháng 8',
+          houseNumber: '158',
+          ward: 'Phường Võ Thị Sáu',
+          district: 'Quận 3',
+          lat: 10.774351,
+          lng: 106.687612
+        },
+        {
+          key: 'times_square',
+          names: ['times square', 'reverie saigon'],
+          street: 'Nguyễn Huệ',
+          houseNumber: '22-36',
+          ward: 'Phường Bến Nghé',
+          district: 'Quận 1',
+          lat: 10.773822,
+          lng: 106.704289
+        },
+        {
+          key: 'sunwah_tower',
+          names: ['sunwah tower', 'sunwah'],
+          street: 'Nguyễn Huệ',
+          houseNumber: '115',
+          ward: 'Phường Bến Nghé',
+          district: 'Quận 1',
+          lat: 10.773121,
+          lng: 106.703212
+        }
+      ];
+
+      function parseAndNormalizeAddress(rawAddress) {
+        if (!rawAddress) {
+          return {
+            cleanAddress: '',
+            street: 'Chưa rõ đường',
+            houseNumber: '',
+            houseNumVal: 999999,
+            hasHouseNumber: false,
+            buildingName: '',
+            landmarkKey: null,
+            landmarkCoords: null,
+            locationFingerprint: '',
+            secondaryPhone: null,
+            extraNotes: '',
+            warningFlags: []
+          };
+        }
+
+        var addr = String(rawAddress).trim();
+        var secondaryPhone = null;
+        var extraNotes = '';
+        var warningFlags = [];
+
+        // 1. Bóc tách số điện thoại nhúng trong địa chỉ
+        var phoneObj = extractPhone(addr);
+        if (phoneObj) {
+          secondaryPhone = phoneObj.phone;
+          addr = addr.replace(phoneObj.raw, ' ').trim();
+        }
+
+        // 2. Bóc tách ghi chú giao hàng / giờ giấc nhúng trong địa chỉ
+        var noteRegexes = [
+          /\(([^)]*(?:gọi\s*trước|sau\s*5h|giờ\s*hành\s*chính|thu\s*khách|xem\s*hàng|kiểm\s*hàng|thất\s*bại|lưu\s*ý|giao\s*lại)[^)]*)\)/gi,
+          /(?:ghi\s*chú|lưu\s*ý|note|gọi\s*trước\s*khi\s*(?:giao|tới)|gọi\s*trước|giao\s*giờ\s*hành\s*chính|sau\s*(?:17h|5h)|cho\s*khách\s*kiểm|thu\s*người\s*nhận|giao\s*thất\s*bại\s*thu)\s*[:\s]*([^,;.]+)/gi
+        ];
+
+        for (var nIdx = 0; nIdx < noteRegexes.length; nIdx++) {
+          var reg = noteRegexes[nIdx];
+          var match = addr.match(reg);
+          if (match) {
+            extraNotes += (extraNotes ? ' | ' : '') + match.join('; ').replace(/[()]/g, '').trim();
+            addr = addr.replace(reg, ' ').trim();
+          }
+        }
+
+        // 3. Chuẩn hóa cơ bản
+        addr = normalizeAddress(addr);
+
+        // 4. Nhận diện và xử lý Landmark POI
+        var matchedLandmark = null;
+        var addrNoTone = removeDiacritics(addr).toLowerCase();
+
+        for (var lIdx = 0; lIdx < VERIFIED_LANDMARKS.length; lIdx++) {
+          var lm = VERIFIED_LANDMARKS[lIdx];
+          var isMatched = false;
+          for (var nmIdx = 0; nmIdx < lm.names.length; nmIdx++) {
+            var name = lm.names[nmIdx];
+            var nameNoTone = removeDiacritics(name).toLowerCase();
+            var escaped = nameNoTone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            var nameReg = new RegExp('\\b' + escaped + '\\b', 'i');
+            if (nameReg.test(addrNoTone)) {
+              isMatched = true;
+              break;
+            }
+          }
+          if (!isMatched && lm.street && lm.houseNumber) {
+            var stNoTone = removeDiacritics(lm.street).toLowerCase();
+            if (addrNoTone.indexOf(stNoTone) !== -1) {
+              var parts = lm.houseNumber.split(/[-–/]/).map(function(p) { return p.trim(); });
+              if (parts.some(function(p) { return new RegExp('(?:^|\\D)' + p + '(?:\\D|$)').test(addrNoTone); })) {
+                isMatched = true;
+              }
+            }
+          }
+          if (isMatched) {
+            matchedLandmark = lm;
+            break;
+          }
+        }
+
+        // 5. Xử lý thứ tự đảo: Tên đường trước, số nhà sau
+        var mNumberedStreet = addr.match(/^(?:đường|phố)?\s*(số\s*\d+[a-zA-Z]?)\s*,?\s*(?:nhà\s*số|số\s*nhà|nhà|số)?\s*[:\s]*([\d/]+[a-zA-Z-]*)(.*)$/i);
+        if (mNumberedStreet) {
+          var streetPart = 'Đường ' + mNumberedStreet[1].trim();
+          var housePart = mNumberedStreet[2].trim();
+          var restPart = mNumberedStreet[3].trim();
+          addr = housePart + ' ' + streetPart + (restPart ? ', ' + restPart.replace(/^[,.\s]+/, '') : '');
+        } else {
+          var mInverted = addr.match(/^(?:đường|phố)?\s*([a-zA-ZÀ-Ỹà-ỹ0-9\s/]+?)\s+(?:nhà\s*số|số\s*nhà|số|nhà)\s*[:\s]*([\d/]+[a-zA-Z-]*)(.*)$/i);
+          if (mInverted && !/^\s*số\s*\d+/i.test(mInverted[1])) {
+            var streetPart2 = mInverted[1].trim();
+            var housePart2 = mInverted[2].trim();
+            var restPart2 = mInverted[3].trim();
+            addr = housePart2 + ' ' + streetPart2 + (restPart2 ? ', ' + restPart2.replace(/^[,.\s]+/, '') : '');
+          }
+        }
+
+        addr = addr.replace(/\s{2,}/g, ' ').replace(/^[,.\s-]+|[,.\s-]+$/g, '').trim();
+
+        // 6. Trích xuất Tên đường và Số nhà
+        var clusterRaw = extractClusterName(addr);
+        var streetName = clusterRaw.replace(/^(?:đường|phố)\s+/i, '').trim();
+
+        var houseNumber = '';
+        var houseNumVal = 999999;
+        var hasHouseNumber = false;
+
+        var addrForHouseNum = addr.replace(/(?:tầng|lầu|phòng|p\.|căn\s*hộ|block|lô)\s*[\d\w-]+\s*,?\s*/gi, '');
+        var mNum = addrForHouseNum.match(/^(?:số|nhà|sô)?\s*([\d]+[a-zA-Z]*(?:[\/\-][\d]+[a-zA-Z]*)*(?:\s*[\/\-]\s*[\d]+[a-zA-Z]*)*)/i);
+        if (mNum) {
+          houseNumber = mNum[1].replace(/\s+/g, '');
+          var firstDigits = houseNumber.match(/\d+/);
+          if (firstDigits) {
+            houseNumVal = parseInt(firstDigits[0], 10);
+            hasHouseNumber = true;
+          }
+        } else if (matchedLandmark) {
+          houseNumber = matchedLandmark.houseNumber;
+          var firstDigitsLm = houseNumber.match(/\d+/);
+          houseNumVal = firstDigitsLm ? parseInt(firstDigitsLm[0], 10) : 999999;
+          hasHouseNumber = true;
+        }
+
+        if (!hasHouseNumber) {
+          warningFlags.push('missing_house_number');
+        }
+
+        // 7. Xây dựng locationFingerprint duy nhất
+        var locationFingerprint = '';
+        if (matchedLandmark) {
+          locationFingerprint = 'bld_' + matchedLandmark.key;
+        } else {
+          var cleanStKey = removeDiacritics(streetName).toLowerCase().replace(/[^a-z0-9]/g, '');
+          var cleanHouseKey = houseNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
+          var mDist = addr.match(/\b(?:quận|q\.?|huyện)\s*(\d+|[a-zà-ỹ]+)\b/i);
+          var distKey = mDist ? ('_q' + removeDiacritics(mDist[1]).toLowerCase().replace(/[^a-z0-9]/g, '')) : '';
+
+          if (cleanStKey && cleanHouseKey) {
+            locationFingerprint = 'addr_' + cleanHouseKey + '_' + cleanStKey + distKey;
+          } else if (cleanStKey) {
+            locationFingerprint = 'street_' + cleanStKey + distKey;
+          } else {
+            locationFingerprint = 'raw_' + Math.abs(hashString(addr));
+          }
+        }
+
+        return {
+          cleanAddress: addr,
+          street: streetName,
+          clusterGroup: clusterRaw,
+          houseNumber: houseNumber,
+          houseNumVal: houseNumVal,
+          hasHouseNumber: hasHouseNumber,
+          buildingName: matchedLandmark ? matchedLandmark.names[0] : '',
+          landmarkKey: matchedLandmark ? matchedLandmark.key : null,
+          landmarkCoords: matchedLandmark ? { lat: matchedLandmark.lat, lng: matchedLandmark.lng } : null,
+          locationFingerprint: locationFingerprint,
+          secondaryPhone: secondaryPhone,
+          extraNotes: extraNotes,
+          warningFlags: warningFlags
+        };
+      }
+
+      function hashString(str) {
+        var hash = 0;
+        for (var i = 0; i < str.length; i++) {
+          hash = ((hash << 5) - hash) + str.charCodeAt(i);
+          hash |= 0;
+        }
+        return hash;
+      }
+
       function extractPhone(line) {
         if (!line) return null;
         if (/giao\s*thất\s*bại\s*thu|ghi\s*chú|lưu\s*ý/i.test(line)) return null;
@@ -3695,6 +4012,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               if (district && fullAddr.toLowerCase().indexOf(district.toLowerCase()) === -1) fullAddr += ', ' + district;
               if (city && fullAddr.toLowerCase().indexOf(city.toLowerCase()) === -1) fullAddr += ', ' + city;
 
+              var pGeo = parseAndNormalizeAddress(fullAddr);
               var ph = extractPhone(rawCols[4]);
               var phaiThu = parseMoneyCell({ v: rawCols[11] });
               var gtbThu = parseMoneyCell({ v: rawCols[12] });
@@ -3704,16 +4022,20 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 trackingCode: rawCols[1].replace(/^[#\s]+|[.,\s]+$/g, ''),
                 tripCode: rawCols[2] || '',
                 customerName: (rawCols[3] || 'Khách lẻ').replace(/[<>]/g, '').trim(),
-                phone: ph ? ph.phone : (rawCols[4] || '').replace(/[^\d+]/g, '').trim(),
-                address: normalizeAddress(fullAddr),
+                phone: ph ? ph.phone : (pGeo.secondaryPhone || (rawCols[4] || '').replace(/[^\d+]/g, '').trim()),
+                secondaryPhone: pGeo.secondaryPhone,
+                address: pGeo.cleanAddress || normalizeAddress(fullAddr),
                 codAmount: phaiThu,
                 phaiThu: phaiThu,
                 gtbThu: gtbThu,
-                notes: '',
+                notes: pGeo.extraNotes || '',
                 status: 'pending',
                 groupId: 'group_ungrouped',
-                lat: rawCols[9] ? Number(rawCols[9]) : null,
-                lng: rawCols[10] ? Number(rawCols[10]) : null
+                lat: rawCols[9] ? Number(rawCols[9]) : (pGeo.landmarkCoords ? pGeo.landmarkCoords.lat : null),
+                lng: rawCols[10] ? Number(rawCols[10]) : (pGeo.landmarkCoords ? pGeo.landmarkCoords.lng : null),
+                locationFingerprint: pGeo.locationFingerprint,
+                hasHouseNumber: pGeo.hasHouseNumber,
+                parsedGeo: pGeo
               });
               continue;
             }
@@ -3747,12 +4069,29 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   var val = parseInt(numM[0].replace(/[^\d]/g, ''), 10);
                   if (/k/i.test(col) && val < 1000) val *= 1000;
                   tItem.codAmount = isNaN(val) ? 0 : val;
+                  tItem.phaiThu = tItem.codAmount;
                 }
               } else if (!tItem.customerName) {
                 tItem.customerName = col.replace(/[<>]/g, '').trim();
               }
             }
             if (tItem.trackingCode || tItem.customerName || tItem.phone || tItem.address) {
+              if (tItem.address) {
+                var pGeoCol = parseAndNormalizeAddress(tItem.address);
+                tItem.address = pGeoCol.cleanAddress;
+                tItem.locationFingerprint = pGeoCol.locationFingerprint;
+                tItem.hasHouseNumber = pGeoCol.hasHouseNumber;
+                tItem.parsedGeo = pGeoCol;
+                if (pGeoCol.secondaryPhone && !tItem.phone) tItem.phone = pGeoCol.secondaryPhone;
+                else if (pGeoCol.secondaryPhone) tItem.secondaryPhone = pGeoCol.secondaryPhone;
+                if (pGeoCol.extraNotes) tItem.notes = tItem.notes ? (tItem.notes + ' | ' + pGeoCol.extraNotes) : pGeoCol.extraNotes;
+                if (pGeoCol.landmarkCoords) {
+                  tItem.lat = pGeoCol.landmarkCoords.lat;
+                  tItem.lng = pGeoCol.landmarkCoords.lng;
+                  tItem.isGpsHealed = true;
+                  tItem.healedSource = 'landmark_poi';
+                }
+              }
               results.push(tItem);
             }
             continue;
@@ -3765,6 +4104,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             phone: '',
             address: '',
             codAmount: 0,
+            phaiThu: 0,
+            gtbThu: 0,
             notes: '',
             status: 'pending',
             groupId: 'group_ungrouped'
@@ -3808,6 +4149,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 var num = parseInt(numMatch[0].replace(/[^\d]/g, ''), 10);
                 if (/k/i.test(line) && num < 1000) num *= 1000;
                 item.codAmount = isNaN(num) ? 0 : num;
+                item.phaiThu = item.codAmount;
               }
               continue;
             }
@@ -3937,7 +4279,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               if (district && fullAddr.toLowerCase().indexOf(district.toLowerCase()) === -1) fullAddr += ', ' + district;
               if (city && fullAddr.toLowerCase().indexOf(city.toLowerCase()) === -1) fullAddr += ', ' + city;
 
-              // Trích xuất giá Phải Thu (cột 11 - L) và GTB-Thu (cột 12 - M)
+              var pGeo = parseAndNormalizeAddress(fullAddr);
+              var rawPhone = c[4] && c[4].v ? String(c[4].v).replace(/[^\d+]/g, '').trim() : '';
+              var ph = extractPhone(rawPhone);
               var phaiThu = parseMoneyCell(c[11]);
               var gtbThu = parseMoneyCell(c[12]);
 
@@ -3946,17 +4290,28 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 trackingCode: c[1] && c[1].v ? String(c[1].v).trim() : 'ĐƠN_' + (i+1),
                 tripCode: cleanCode,
                 customerName: c[3] && c[3].v ? String(c[3].v).replace(/[<>]/g, '').trim() : 'Khách lẻ',
-                phone: c[4] && c[4].v ? String(c[4].v).replace(/[^\d+]/g, '').trim() : '',
-                address: normalizeAddress(fullAddr),
+                phone: ph ? ph.phone : (pGeo.secondaryPhone || rawPhone),
+                secondaryPhone: pGeo.secondaryPhone,
+                address: pGeo.cleanAddress || normalizeAddress(fullAddr),
                 codAmount: phaiThu,
                 phaiThu: phaiThu,
                 gtbThu: gtbThu,
                 status: 'pending',
-                notes: '',
+                notes: pGeo.extraNotes || '',
                 groupId: 'group_ungrouped',
-                lat: c[9] && c[9].v ? Number(c[9].v) : null,
-                lng: c[10] && c[10].v ? Number(c[10].v) : null
+                lat: c[9] && c[9].v ? Number(c[9].v) : (pGeo.landmarkCoords ? pGeo.landmarkCoords.lat : null),
+                lng: c[10] && c[10].v ? Number(c[10].v) : (pGeo.landmarkCoords ? pGeo.landmarkCoords.lng : null),
+                locationFingerprint: pGeo.locationFingerprint,
+                hasHouseNumber: pGeo.hasHouseNumber,
+                parsedGeo: pGeo
               };
+
+              if (pGeo.landmarkCoords && (!c[9] || !c[9].v || !c[10] || !c[10].v)) {
+                ord.lat = pGeo.landmarkCoords.lat;
+                ord.lng = pGeo.landmarkCoords.lng;
+                ord.isGpsHealed = true;
+                ord.healedSource = 'landmark_poi';
+              }
 
               mappedOrders.push(ord);
             }
@@ -5206,49 +5561,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
       function getAddressFingerprint(address) {
         if (!address) return '';
-        var raw = String(address).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-        
-        // 1. Nhận diện các tòa nhà / chung cư / TTTM lớn
-        var landmarks = [
-          { key: 'centec_tower', pattern: /\bcentec\b/i },
-          { key: 'vincom_dong_khoi', pattern: /\bvincom\s*(?:center)?\s*(?:dong\s*khoi)?\b/i },
-          { key: 'diamond_plaza', pattern: /\bdiamond\s*plaza\b/i },
-          { key: 'bitexco', pattern: /\bbitexco\b/i },
-          { key: 'landmark_81', pattern: /\blandmark\s*81\b/i },
-          { key: 'saigon_centre', pattern: /\bsaigon\s*centre\b/i },
-          { key: 'mplaza', pattern: /\bm\s*plaza\b/i },
-          { key: 'sunwah', pattern: /\bsunwah\b/i },
-          { key: 'times_square', pattern: /\btimes\s*square\b/i },
-          { key: 'vinhomes_golden_river', pattern: /\b(?:vinhomes\s*golden\s*river|bason|ba\s*son)\b/i },
-          { key: 'vinhomes_central_park', pattern: /\bvinhomes\s*central\s*park\b/i },
-          { key: 'masteri_thao_dien', pattern: /\bmasteri\s*thao\s*dien\b/i },
-          { key: 'cantavil', pattern: /\bcantavil\b/i }
-        ];
-
-        for (var i = 0; i < landmarks.length; i++) {
-          if (landmarks[i].pattern.test(raw)) {
-            return 'bld_' + landmarks[i].key;
-          }
-        }
-
-        // 2. Trích xuất tên đường và số nhà
-        var info = extractStreetAndHouseNumber(address);
-        var cleanStreet = removeVietnameseTones(info.street).replace(/[^a-z0-9]/g, '');
-        var cleanHouse = String(info.houseNumber || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-        // Trích xuất quận/huyện nếu có để tránh trùng tên đường khác quận
-        var distMatch = raw.match(/\b(?:quan|q\.?|huyen)\s*(\d+|[a-z]+)\b/i);
-        var distKey = distMatch ? ('_q' + distMatch[1].toLowerCase()) : '';
-
-        if (cleanStreet && cleanHouse) {
-          return 'addr_' + cleanHouse + '_' + cleanStreet + distKey;
-        }
-
-        if (cleanStreet) {
-          return 'street_' + cleanStreet + distKey;
-        }
-
-        return '';
+        var p = parseAndNormalizeAddress(address);
+        return p.locationFingerprint || '';
       }
 
       function detectCoordinateOutliers(ordersList) {
@@ -5267,12 +5581,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (isValidCoordinate(o.lat, o.lng)) {
             var info = extractStreetAndHouseNumber(o.address);
             var st = info.street;
-            if (!streetCoords[st]) streetCoords[st] = [];
-            streetCoords[st].push({ lat: Number(o.lat), lng: Number(o.lng), order: o });
+            if (st) {
+              if (!streetCoords[st]) streetCoords[st] = [];
+              streetCoords[st].push({ lat: Number(o.lat), lng: Number(o.lng), order: o });
+            }
           }
         }
 
-        // Tính trung vị cho từng đường và kiểm tra lệch > 1.5km
+        // Tính trung vị cho từng đường và kiểm tra lệch
+        var streetMedians = {};
         for (var stName in streetCoords) {
           var list = streetCoords[stName];
           if (list.length >= 2) {
@@ -5280,13 +5597,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var mid = Math.floor(list.length / 2);
             var medLat = list[mid].lat;
             var medLng = list[mid].lng;
+            streetMedians[stName] = { lat: medLat, lng: medLng };
 
             for (var k = 0; k < list.length; k++) {
               var item = list[k];
               var dist = getCoordDistanceMeters(item.lat, item.lng, medLat, medLng);
-              item.order.streetMedianLat = medLat;
-              item.order.streetMedianLng = medLng;
-
               var outlierThreshold = list.length >= 4 ? 850 : 1400;
               if (dist > outlierThreshold) { // Lệch xa so với cụm đường
                 item.order.isGpsOutlier = true;
@@ -5296,6 +5611,16 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 }
               }
             }
+          }
+        }
+
+        // Gán streetMedianLat / streetMedianLng cho TẤT CẢ các đơn cùng đường (kể cả đơn lat == null)
+        for (var m = 0; m < ordersList.length; m++) {
+          var ord = ordersList[m];
+          var infoOrd = extractStreetAndHouseNumber(ord.address);
+          if (infoOrd.street && streetMedians[infoOrd.street]) {
+            ord.streetMedianLat = streetMedians[infoOrd.street].lat;
+            ord.streetMedianLng = streetMedians[infoOrd.street].lng;
           }
         }
 
@@ -5318,7 +5643,36 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         detectCoordinateOutliers(orders);
 
-        // Gom các đơn theo Address Fingerprint
+        // TẦNG 1: Nắn tọa độ theo Landmark POI danh mục chuẩn đã xác thực
+        for (var p = 0; p < orders.length; p++) {
+          var ordLandmark = orders[p];
+          if (!isValidCoordinate(ordLandmark.lat, ordLandmark.lng) || ordLandmark.isGpsOutlier) {
+            var rawLower = removeDiacritics(ordLandmark.address || '').toLowerCase();
+            for (var lIdx = 0; lIdx < VERIFIED_LANDMARKS.length; lIdx++) {
+              var lm = VERIFIED_LANDMARKS[lIdx];
+              var matched = false;
+              for (var nIdx = 0; nIdx < lm.names.length; nIdx++) {
+                var nmNoTone = removeDiacritics(lm.names[nIdx]).toLowerCase();
+                var esc = nmNoTone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                if (new RegExp('\\b' + esc + '\\b', 'i').test(rawLower)) {
+                  matched = true;
+                  break;
+                }
+              }
+              if (matched && isValidCoordinate(lm.lat, lm.lng)) {
+                ordLandmark.lat = lm.lat;
+                ordLandmark.lng = lm.lng;
+                ordLandmark.isGpsOutlier = false;
+                ordLandmark.isGpsHealed = true;
+                ordLandmark.healedSource = 'landmark_poi';
+                healedCount++;
+                break;
+              }
+            }
+          }
+        }
+
+        // TẦNG 2: Gom các đơn theo Address Fingerprint (Cùng tòa nhà / cùng số nhà + đường)
         var groups = {};
         for (var i = 0; i < orders.length; i++) {
           var o = orders[i];
@@ -5373,17 +5727,36 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 target.lat = bestLat;
                 target.lng = bestLng;
                 target.isGpsOutlier = false;
+                target.isGpsHealed = true;
+                target.healedSource = 'co_location';
                 healedCount++;
               }
             }
           }
         }
 
-        // 3. Với các đơn còn lại chưa có GPS hoặc bị lệch GPS, thử bắt dính vào tòa nhà / nội suy số nhà
+        // TẦNG 3: Bắt dính vào tòa nhà / nội suy số nhà
         for (var k = 0; k < orders.length; k++) {
           var singleOrder = orders[k];
           if (!isValidCoordinate(singleOrder.lat, singleOrder.lng) || singleOrder.isGpsOutlier) {
             if (snapOrderToBuildingNumber(singleOrder)) {
+              singleOrder.isGpsHealed = true;
+              singleOrder.healedSource = 'building_snap';
+              healedCount++;
+            }
+          }
+        }
+
+        // TẦNG 4: Street Median Fallback (Cho đơn thiếu số nhà hoặc GPS không xác định)
+        for (var s = 0; s < orders.length; s++) {
+          var ordStreet = orders[s];
+          if (!isValidCoordinate(ordStreet.lat, ordStreet.lng) || ordStreet.isGpsOutlier) {
+            if (ordStreet.streetMedianLat && ordStreet.streetMedianLng) {
+              ordStreet.lat = ordStreet.streetMedianLat;
+              ordStreet.lng = ordStreet.streetMedianLng;
+              ordStreet.isGpsOutlier = false;
+              ordStreet.isGpsHealed = true;
+              ordStreet.healedSource = 'street_median';
               healedCount++;
             }
           }
@@ -7010,6 +7383,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 '<span class="tracking-tag">' + (escapeHtml(item.trackingCode) || 'Chưa có mã') + '</span>' +
                 '<span class="cust-name">' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span><br>' +
                 (item.phone ? '<a href="tel:' + item.phone + '" class="phone-btn">📞 ' + item.phone + '</a> ' : '') +
+                (item.secondaryPhone ? '<a href="tel:' + item.secondaryPhone + '" class="phone-btn" style="background:#f1f5f9; color:#0369a1; border-color:#bae6fd;" title="Số phụ trong địa chỉ">📞 Phụ: ' + item.secondaryPhone + '</a> ' : '') +
                 '<span class="order-group-badge" title="Đổi nhóm">📁 ' + escapeHtml(group.name) + '</span>' +
                 (item.notes ? '<br><span class="note-pill">⚠️ ' + escapeHtml(item.notes) + '</span>' : '') +
               '</td>' +
@@ -7018,6 +7392,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 '<div style="margin-top: 4px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">' +
                   (hasGps ? '<button type="button" class="btn-jump-map" data-order-id="' + item.id + '" title="Xem vị trí trên bản đồ lộ trình">🗺 Bản đồ</button>' : '') +
                   (item.isGpsOutlier ? '<span class="note-pill" style="background: #fef2f2; color: #b91c1c; border-color: #fecaca;" title="Tọa độ nghi ngờ bị lệch xa cụm đường ' + (item.gpsOutlierDist / 1000).toFixed(1) + ' km">⚠️ Lệch GPS</span>' : '') +
+                  (item.isGpsHealed ? '<span class="note-pill" style="background: #ecfdf5; color: #047857; border-color: #a7f3d0;" title="Đã tự động nắn chỉnh GPS (' + (item.healedSource === 'landmark_poi' ? 'Tòa nhà Landmark' : (item.healedSource === 'street_median' ? 'Tâm tuyến đường' : 'Cùng địa chỉ')) + ')">⚡ Đã nắn GPS</span>' : '') +
+                  (item.hasHouseNumber === false ? '<span class="note-pill" style="background: #fffbeb; color: #b45309; border-color: #fde68a;" title="Địa chỉ chỉ có tên đường/phường, thiếu số nhà cụ thể">⚠️ Thiếu số</span>' : '') +
                   (item.address || hasGps ? '<a href="' + mapsUrl + '" target="_blank" class="map-link" title="Dẫn đường Google Maps">🧭 Chỉ đường</a>' : '') +
                   '<button type="button" class="btn-row-edit-loc" data-order-id="' + item.id + '" title="Sửa vị trí định vị">📍 Sửa vị trí</button>' +
                 '</div>' +
@@ -7166,11 +7542,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 '<div class="m-card-body">' +
                   '<div><strong>' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</strong> ' +
                   (item.phone ? '<a href="tel:' + item.phone + '" class="phone-btn">📞 ' + item.phone + '</a>' : '') +
+                  (item.secondaryPhone ? ' <a href="tel:' + item.secondaryPhone + '" class="phone-btn" style="background:#f1f5f9; color:#0369a1; border-color:#bae6fd;" title="Số phụ trong địa chỉ">📞 Phụ: ' + item.secondaryPhone + '</a>' : '') +
                   ' <span class="order-group-badge card-grp-btn">📁 ' + escapeHtml(group.name) + '</span></div>' +
                   '<div class="addr-text" style="margin-top: 4px;">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</div>' +
-                  '<div style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">' +
+                  '<div style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">' +
                     (hasGps ? '<button type="button" class="btn-jump-map" data-order-id="' + item.id + '">🗺️ Xem trên bản đồ</button>' : '') +
                     (item.isGpsOutlier ? '<span class="note-pill" style="background: #fef2f2; color: #b91c1c; border-color: #fecaca;" title="Tọa độ nghi ngờ bị lệch xa cụm đường ' + (item.gpsOutlierDist / 1000).toFixed(1) + ' km">⚠️ Lệch GPS</span>' : '') +
+                    (item.isGpsHealed ? '<span class="note-pill" style="background: #ecfdf5; color: #047857; border-color: #a7f3d0;" title="Đã tự động nắn chỉnh GPS (' + (item.healedSource === 'landmark_poi' ? 'Tòa nhà Landmark' : (item.healedSource === 'street_median' ? 'Tâm tuyến đường' : 'Cùng địa chỉ')) + ')">⚡ Đã nắn GPS</span>' : '') +
+                    (item.hasHouseNumber === false ? '<span class="note-pill" style="background: #fffbeb; color: #b45309; border-color: #fde68a;" title="Địa chỉ chỉ có tên đường/phường, thiếu số nhà cụ thể">⚠️ Thiếu số</span>' : '') +
                     (item.address || hasGps ? '<a href="' + mapsUrl + '" target="_blank" class="map-link">🧭 Dẫn đường</a>' : '') +
                     '<button type="button" class="btn-row-edit-loc" data-order-id="' + item.id + '">📍 Sửa vị trí</button>' +
                   '</div>' +
