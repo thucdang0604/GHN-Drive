@@ -555,8 +555,16 @@ function setupDesktopQrScanner() {
       }
 
       desktopHtml5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 15, qrbox: { width: 220, height: 220 } },
+        { facingMode: "environment", width: { min: 640, ideal: 1280, max: 1920 }, height: { min: 480, ideal: 720, max: 1080 } },
+        {
+          fps: 20,
+          qrbox: (w, h) => {
+            const minEdge = Math.min(w, h);
+            const size = Math.max(260, Math.floor(minEdge * 0.86));
+            return { width: size, height: size };
+          },
+          experimentalFeatures: { useBarCodeDetectorIfSupported: false }
+        },
         onDesktopScanSuccess,
         () => {}
       ).then(() => {
@@ -701,13 +709,14 @@ function setupDesktopQrSync() {
     if (!canvasContainer) return;
     const qrsync = window.QRSync || (typeof QRSync !== 'undefined' ? QRSync : null);
     if (qrsync && qrsync.renderQR) {
-      qrsync.renderQR(canvasContainer, text, { cellSize: 3, margin: 4 });
+      qrsync.renderQR(canvasContainer, text, { cellSize: 5, margin: 3 });
     } else if (typeof QRCode !== 'undefined') {
       try {
+        canvasContainer.innerHTML = '';
         new QRCode(canvasContainer, {
           text: text,
-          width: 220,
-          height: 220,
+          width: 290,
+          height: 290,
           colorDark: "#000000",
           colorLight: "#ffffff",
           correctLevel: 'L'
@@ -755,9 +764,9 @@ function setupDesktopQrSync() {
     }
 
     if (currentDesktopSyncMode === 'patch') {
-      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 75);
+      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 20);
     } else {
-      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 22);
+      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 7);
     }
     currentDesktopQRPageIndex = 0;
     displayCurrentDesktopQR();

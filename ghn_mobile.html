@@ -338,10 +338,12 @@
     .scanner-viewport-wrapper {
       position: relative;
       width: 100%;
+      max-width: 380px;
       aspect-ratio: 1 / 1;
-      max-height: 300px;
+      min-height: 280px;
+      max-height: min(80vw, 360px);
       background: #000;
-      border-radius: 12px;
+      border-radius: 14px;
       overflow: hidden;
       display: flex;
       align-items: center;
@@ -370,11 +372,12 @@
     }
 
     .scanner-aim-box {
-      width: 200px;
-      height: 200px;
+      width: 84%;
+      height: 84%;
       position: relative;
       box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.45);
-      border-radius: 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
     }
 
     .aim-corner {
@@ -2958,22 +2961,74 @@
     }
 
     .qr-canvas-box {
-      width: 240px;
-      height: 240px;
+      width: min(310px, 86vw);
+      height: min(310px, 86vw);
       background: #ffffff;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 8px;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .qr-canvas-box:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     .qr-canvas-box img, .qr-canvas-box canvas {
       max-width: 100%;
+      max-height: 100%;
+      width: 100%;
       height: auto;
+      aspect-ratio: 1 / 1;
       display: block;
+      image-rendering: pixelated;
+    }
+
+    .qr-zoom-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #ffffff;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .qr-zoom-header {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .qr-zoom-canvas {
+      width: min(88vw, 88vh, 390px);
+      height: min(88vw, 88vh, 390px);
+      background: #fff;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-zoom-canvas img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
     }
 
     .qr-paging-bar {
@@ -3670,12 +3725,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
           <!-- Khung hiển thị Mã QR -->
           <div class="qr-display-card">
-            <div id="qrSyncCanvasContainer" class="qr-canvas-box"></div>
+            <div id="qrSyncCanvasContainer" class="qr-canvas-box" title="Chạm vào mã để phóng to"></div>
             <div id="qrPagingControl" class="qr-paging-bar" style="display: none;">
               <button type="button" id="btnPrevQRPage" class="btn-qr-nav">&lt; Phần trước</button>
               <span id="qrPageIndicator" class="qr-page-text">Phần 1/1</span>
               <button type="button" id="btnNextQRPage" class="btn-qr-nav">Phần sau &gt;</button>
             </div>
+            <button type="button" id="btnOpenQrZoom" style="background: none; border: none; color: #2563eb; font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 4px 8px; margin: 2px 0 4px 0;">
+              🔍 Chạm vào mã để phóng to toàn màn hình
+            </button>
             <p id="qrSyncGuideText" class="qr-tip-text">
               Dùng <strong>Thiết bị B</strong> mở tính năng Quét QR trong app và hướng camera vào mã này.
             </p>
@@ -3707,6 +3765,19 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- POPUP 5: PHÓNG TO MÃ QR FULLSCREEN (DỄ QUÉT) -->
+  <div id="qrZoomModal" class="qr-zoom-modal" style="display: none;">
+    <div class="qr-zoom-header">
+      <div style="font-weight: 800; font-size: 15px; color: #0f172a;">Phóng To Mã QR (Dễ Quét)</div>
+      <button type="button" id="btnCloseQrZoom" class="btn-card-close" style="font-size: 28px; color: #64748b;">&times;</button>
+    </div>
+    <div id="qrZoomCanvasContainer" class="qr-zoom-canvas"></div>
+    <div id="qrZoomPageIndicator" style="font-size: 13px; font-weight: 800; color: #2563eb; margin-top: 14px;">Phần 1/1</div>
+    <p style="font-size: 11.5px; color: #64748b; margin-top: 8px; text-align: center; max-width: 320px;">
+      💡 Hãy để Thiết Bị B cách màn hình khoảng 25-35cm để camera tự động lấy nét nhanh nhất.
+    </p>
   </div>
 
   <!-- Toast Thông báo ngắn -->
@@ -8135,25 +8206,41 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         if (typeof Html5Qrcode !== 'undefined') {
           if (!html5QrCodeScanner) {
-            html5QrCodeScanner = new Html5Qrcode("qrReaderContainer");
+            html5QrCodeScanner = new Html5Qrcode("qrReaderContainer", {
+              formatsToSupport: (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39
+              ] : undefined,
+              verbose: false
+            });
           }
 
+          var cameraConstraints = {
+            facingMode: "environment",
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
+          };
+
           var config = {
-            fps: 15,
-            qrbox: { width: 200, height: 200 },
-            aspectRatio: 1.0,
+            fps: 20,
+            qrbox: function(viewfinderWidth, viewfinderHeight) {
+              var minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+              var size = Math.max(260, Math.floor(minEdge * 0.86));
+              return { width: size, height: size };
+            },
             experimentalFeatures: {
-              useBarCodeDetectorIfSupported: true
+              useBarCodeDetectorIfSupported: false
             }
           };
 
           html5QrCodeScanner.start(
-            { facingMode: "environment" },
+            cameraConstraints,
             config,
             onScanSuccess,
             function() {}
           ).then(function() {
-            statusTip.textContent = '🟢 Đang quét... Hướng camera vào mã trên bưu kiện.';
+            statusTip.textContent = '🟢 Camera sẵn sàng! Hướng vào mã QR hoặc mã vận đơn.';
             try {
               var caps = html5QrCodeScanner.getRunningTrackCapabilities();
               if (caps && caps.torch) {
@@ -8185,7 +8272,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         if (typeof Html5Qrcode !== 'undefined') {
           var hiddenScanner = new Html5Qrcode("qrHiddenContainer");
-          hiddenScanner.scanFile(file, true)
+          hiddenScanner.scanFile(file, false)
             .then(function(decodedText) {
               onScanSuccess(decodedText);
             })
@@ -8234,19 +8321,43 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       function hideQrSyncModal() {
         var modal = document.getElementById('qrSyncModal');
         if (modal) modal.style.display = 'none';
+        hideQrZoomModal();
+      }
+
+      function showQrZoomModal() {
+        if (!syncQRPages || syncQRPages.length === 0) return;
+        var modal = document.getElementById('qrZoomModal');
+        var container = document.getElementById('qrZoomCanvasContainer');
+        var indicator = document.getElementById('qrZoomPageIndicator');
+        if (!modal || !container) return;
+
+        var text = syncQRPages[currentSyncQRPageIndex];
+        if (typeof QRSync !== 'undefined' && QRSync.renderQR) {
+          QRSync.renderQR(container, text, { cellSize: 6, margin: 3 });
+        }
+        if (indicator) {
+          indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length;
+        }
+        modal.style.display = 'flex';
+      }
+
+      function hideQrZoomModal() {
+        var modal = document.getElementById('qrZoomModal');
+        if (modal) modal.style.display = 'none';
       }
 
       function renderQRCanvas(text) {
         var container = document.getElementById('qrSyncCanvasContainer');
         if (!container) return;
         if (typeof QRSync !== 'undefined' && QRSync.renderQR) {
-          QRSync.renderQR(container, text, { cellSize: 3, margin: 4 });
+          QRSync.renderQR(container, text, { cellSize: 5, margin: 3 });
         } else if (typeof QRCode !== 'undefined') {
           try {
+            container.innerHTML = '';
             new QRCode(container, {
               text: text,
-              width: 220,
-              height: 220,
+              width: 290,
+              height: 290,
               colorDark: "#000000",
               colorLight: "#ffffff",
               correctLevel: 'L'
@@ -8265,10 +8376,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           console.warn('Module QRSync chưa sẵn sàng');
           return;
         }
+        // 20 đơn/mã cho patch, 7 đơn/mã cho full: Giúp module to rõ, camera quét tức thì trong 0.2s!
         if (currentSyncMode === 'patch') {
-          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 75);
+          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 20);
         } else {
-          syncQRPages = QRSync.generateFullQRs(orders, groups, 22);
+          syncQRPages = QRSync.generateFullQRs(orders, groups, 7);
         }
         currentSyncQRPageIndex = 0;
         displayCurrentQRPage();
@@ -8360,9 +8472,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       function handleSyncQRScanned(decodedText) {
+        if (typeof QRSync === 'undefined') {
+          showToast('⚠️ Module QRSync chưa tải xong. Vui lòng tải lại trang (F5)!');
+          return;
+        }
         var payload = QRSync.parseQR(decodedText);
         if (!payload) {
-          showToast('❌ Mã đồng bộ không hợp lệ hoặc bị lỗi!');
+          console.warn('Lỗi parseQR:', decodedText);
+          showToast('❌ Không thể giải mã dữ liệu QR! Hãy đảm bảo 2 máy đều dùng bản mới nhất.');
           return;
         }
 
@@ -8381,10 +8498,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           var receivedCount = Object.keys(syncMultiPartCache.parts).length;
 
           if (receivedCount < pTotal) {
-            showToast('🟢 Đã nhận phần ' + pIndex + '/' + pTotal + '! Hướng camera vào phần còn lại.');
+            showToast('🟢 Đã nhận phần ' + pIndex + '/' + pTotal + '! Hãy chuyển sang phần tiếp theo trên máy kia.');
             var statusTip = document.getElementById('scannerStatusMsg');
             if (statusTip) {
-              statusTip.textContent = '🟢 Đã quét ' + receivedCount + '/' + pTotal + ' phần. Hướng camera vào phần tiếp theo!';
+              statusTip.textContent = '🟢 Đã quét ' + receivedCount + '/' + pTotal + ' phần! Hướng camera vào phần tiếp theo.';
               statusTip.style.color = '#10b981';
             }
             return;
@@ -8457,7 +8574,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         if (!decodedText) return;
 
         // KIỂM TRA MÃ ĐỒNG BỘ QR OFFLINE
-        if (typeof QRSync !== 'undefined' && QRSync.isSyncQR(decodedText)) {
+        if ((typeof QRSync !== 'undefined' && QRSync.isSyncQR(decodedText)) ||
+            decodedText.indexOf('GHNPATCH') !== -1 || decodedText.indexOf('GHNFULL') !== -1) {
           handleSyncQRScanned(decodedText);
           return;
         }
@@ -8850,6 +8968,27 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           btnLaunchScanner.addEventListener('click', function() {
             hideQrSyncModal();
             openScanner();
+          });
+        }
+
+        // Sự kiện phóng to mã QR toàn màn hình
+        var qrCanvasContainer = document.getElementById('qrSyncCanvasContainer');
+        var btnOpenQrZoom = document.getElementById('btnOpenQrZoom');
+        var btnCloseQrZoom = document.getElementById('btnCloseQrZoom');
+        var qrZoomModal = document.getElementById('qrZoomModal');
+
+        if (qrCanvasContainer) {
+          qrCanvasContainer.addEventListener('click', showQrZoomModal);
+        }
+        if (btnOpenQrZoom) {
+          btnOpenQrZoom.addEventListener('click', showQrZoomModal);
+        }
+        if (btnCloseQrZoom) {
+          btnCloseQrZoom.addEventListener('click', hideQrZoomModal);
+        }
+        if (qrZoomModal) {
+          qrZoomModal.addEventListener('click', function(e) {
+            if (e.target === qrZoomModal) hideQrZoomModal();
           });
         }
       });

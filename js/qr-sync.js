@@ -16,14 +16,177 @@
   var PREFIX_FULL   = 'GHNFULL:';
   var PREFIX_FULLZ  = 'GHNFULLZ:';
 
+  // Bộ giải nén/nén LZString nhúng trực tiếp làm phương án dự phòng 100% độc lập
+  var _embeddedLZ = (function() {
+    var r = String.fromCharCode,
+        n = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",
+        e = {};
+    function t(r, o) {
+      if (!e[r]) {
+        e[r] = {};
+        for (var n = 0; n < r.length; n++) e[r][r.charAt(n)] = n;
+      }
+      return e[r][o];
+    }
+    var i = {
+      compressToEncodedURIComponent: function(r) {
+        return null == r ? "" : i._compress(r, 6, function(r) { return n.charAt(r); });
+      },
+      decompressFromEncodedURIComponent: function(r) {
+        if (null == r) return "";
+        if ("" == r) return null;
+        r = r.replace(/ /g, "+");
+        return i._decompress(r.length, 32, function(o) { return t(n, r.charAt(o)); });
+      },
+      _compress: function(r, o, n) {
+        if (null == r) return "";
+        var e, t, i, s = {}, u = {}, a = "", p = "", c = "", l = 2, f = 3, h = 2, d = [], m = 0, v = 0;
+        for (i = 0; i < r.length; i += 1) {
+          a = r.charAt(i);
+          if (!Object.prototype.hasOwnProperty.call(s, a)) { s[a] = f++; u[a] = true; }
+          p = c + a;
+          if (Object.prototype.hasOwnProperty.call(s, p)) { c = p; }
+          else {
+            if (Object.prototype.hasOwnProperty.call(u, c)) {
+              if (c.charCodeAt(0) < 256) {
+                for (e = 0; e < h; e++) { m <<= 1; if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } }
+                for (t = c.charCodeAt(0), e = 0; e < 8; e++) { m = m << 1 | (1 & t); if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t >>= 1; }
+              } else {
+                for (t = 1, e = 0; e < h; e++) { m = m << 1 | t; if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t = 0; }
+                for (t = c.charCodeAt(0), e = 0; e < 16; e++) { m = m << 1 | (1 & t); if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t >>= 1; }
+              }
+              if (0 == --l) { l = Math.pow(2, h); h++; }
+              delete u[c];
+            } else {
+              for (t = s[c], e = 0; e < h; e++) { m = m << 1 | (1 & t); if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t >>= 1; }
+            }
+            if (0 == --l) { l = Math.pow(2, h); h++; }
+            s[p] = f++;
+            c = String(a);
+          }
+        }
+        if ("" !== c) {
+          if (Object.prototype.hasOwnProperty.call(u, c)) {
+            if (c.charCodeAt(0) < 256) {
+              for (e = 0; e < h; e++) { m <<= 1; if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } }
+              for (t = c.charCodeAt(0), e = 0; e < 8; e++) { m = m << 1 | (1 & t); if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t >>= 1; }
+            } else {
+              for (t = 1, e = 0; e < h; e++) { m = m << 1 | t; if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t = 0; }
+              for (t = c.charCodeAt(0), e = 0; e < 16; e++) { m = m << 1 | (1 & t); if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t >>= 1; }
+            }
+            if (0 == --l) { l = Math.pow(2, h); h++; }
+            delete u[c];
+          } else {
+            for (t = s[c], e = 0; e < h; e++) { m = m << 1 | (1 & t); if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t >>= 1; }
+          }
+          if (0 == --l) { l = Math.pow(2, h); h++; }
+        }
+        for (t = 2, e = 0; e < h; e++) { m = m << 1 | (1 & t); if (v == o - 1) { v = 0; d.push(n(m)); m = 0; } else { v++; } t >>= 1; }
+        for (;;) {
+          m <<= 1;
+          if (v == o - 1) { d.push(n(m)); break; }
+          v++;
+        }
+        return d.join("");
+      },
+      _decompress: function(o, n, e) {
+        var t, i, s, u, a, p, c, l = [], f = 4, h = 4, d = 3, m = "", v = [], g = { val: e(0), position: n, index: 1 };
+        for (t = 0; t < 3; t += 1) l[t] = t;
+        for (s = 0, a = Math.pow(2, 2), p = 1; p != a;) {
+          u = g.val & g.position;
+          g.position >>= 1;
+          if (0 == g.position) { g.position = n; g.val = e(g.index++); }
+          s |= (u > 0 ? 1 : 0) * p;
+          p <<= 1;
+        }
+        switch (s) {
+          case 0:
+            for (s = 0, a = Math.pow(2, 8), p = 1; p != a;) {
+              u = g.val & g.position;
+              g.position >>= 1;
+              if (0 == g.position) { g.position = n; g.val = e(g.index++); }
+              s |= (u > 0 ? 1 : 0) * p;
+              p <<= 1;
+            }
+            c = r(s);
+            break;
+          case 1:
+            for (s = 0, a = Math.pow(2, 16), p = 1; p != a;) {
+              u = g.val & g.position;
+              g.position >>= 1;
+              if (0 == g.position) { g.position = n; g.val = e(g.index++); }
+              s |= (u > 0 ? 1 : 0) * p;
+              p <<= 1;
+            }
+            c = r(s);
+            break;
+          case 2:
+            return "";
+        }
+        for (l[3] = c, i = c, v.push(c);;) {
+          if (g.index > o) return "";
+          for (s = 0, a = Math.pow(2, d), p = 1; p != a;) {
+            u = g.val & g.position;
+            g.position >>= 1;
+            if (0 == g.position) { g.position = n; g.val = e(g.index++); }
+            s |= (u > 0 ? 1 : 0) * p;
+            p <<= 1;
+          }
+          switch (c = s) {
+            case 0:
+              for (s = 0, a = Math.pow(2, 8), p = 1; p != a;) {
+                u = g.val & g.position;
+                g.position >>= 1;
+                if (0 == g.position) { g.position = n; g.val = e(g.index++); }
+                s |= (u > 0 ? 1 : 0) * p;
+                p <<= 1;
+              }
+              l[h++] = r(s);
+              c = h - 1;
+              f--;
+              break;
+            case 1:
+              for (s = 0, a = Math.pow(2, 16), p = 1; p != a;) {
+                u = g.val & g.position;
+                g.position >>= 1;
+                if (0 == g.position) { g.position = n; g.val = e(g.index++); }
+                s |= (u > 0 ? 1 : 0) * p;
+                p <<= 1;
+              }
+              l[h++] = r(s);
+              c = h - 1;
+              f--;
+              break;
+            case 2:
+              return v.join("");
+          }
+          if (0 == f) { f = Math.pow(2, d); d++; }
+          if (l[c]) { m = l[c]; }
+          else {
+            if (c !== h) return null;
+            m = i + i.charAt(0);
+          }
+          v.push(m);
+          l[h++] = i + m.charAt(0);
+          i = m;
+          if (0 == --f) { f = Math.pow(2, d); d++; }
+        }
+      }
+    };
+    return i;
+  })();
+
   function getLZ() {
-    if (typeof LZString !== 'undefined') return LZString;
-    if (typeof window !== 'undefined' && window.LZString) return window.LZString;
-    if (typeof global !== 'undefined' && global.LZString) return global.LZString;
+    if (typeof LZString !== 'undefined' && LZString.decompressFromEncodedURIComponent) return LZString;
+    if (typeof window !== 'undefined' && window.LZString && window.LZString.decompressFromEncodedURIComponent) return window.LZString;
+    if (typeof global !== 'undefined' && global.LZString && global.LZString.decompressFromEncodedURIComponent) return global.LZString;
     try {
-      if (typeof require === 'function') return require('./lz-string.min.js');
+      if (typeof require === 'function') {
+        var reqLZ = require('./lz-string.min.js');
+        if (reqLZ && reqLZ.decompressFromEncodedURIComponent) return reqLZ;
+      }
     } catch(e) {}
-    return null;
+    return _embeddedLZ;
   }
 
   var QRSync = {
@@ -33,7 +196,7 @@
     PREFIX_FULLZ: PREFIX_FULLZ,
 
     /**
-     * Hàm sinh và vẽ mã QR vào container bằng thẻ <img> chuẩn, không lỗi hiển thị
+     * Hàm sinh và vẽ mã QR vào container bằng thẻ <img> chuẩn, module to rõ nét
      */
     renderQR: function(container, text, options) {
       if (!container) return false;
@@ -50,12 +213,16 @@
         var qr = qrEngine(0, 'L');
         qr.addData(text);
         qr.make();
-        container.innerHTML = qr.createImgTag(options.cellSize || 3, options.margin || 4);
+        var cellSize = options.cellSize || 4;
+        var margin = (options.margin !== undefined) ? options.margin : 3;
+        container.innerHTML = qr.createImgTag(cellSize, margin);
         var img = container.querySelector('img');
         if (img) {
           img.style.maxWidth = '100%';
           img.style.maxHeight = '100%';
+          img.style.width = '100%';
           img.style.height = 'auto';
+          img.style.aspectRatio = '1 / 1';
           img.style.display = 'block';
           img.style.margin = '0 auto';
           img.style.borderRadius = '6px';
@@ -71,15 +238,15 @@
 
     /**
      * Tạo danh sách các chuỗi mã QR theo chế độ PATCH (chỉ nhóm & tọa độ kéo ghim)
-     * Nhờ nén LZString & mã hóa nhóm theo chỉ mục, có thể chứa tới 75-80 đơn hàng trong 1 MÃ DUY NHẤT!
+     * Mặc định 20 đơn/mã để giữ mật độ điểm thưa, to, camera điện thoại quét tức thì (<0.2 giây).
      * @param {Array} orders - Danh sách đơn hàng hiện tại
      * @param {Array} groups - Danh sách các nhóm địa chỉ
      * @param {Object} geocache - Cache tọa độ đã lưu (tùy chọn)
-     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 75 đơn/mã)
+     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 20 đơn/mã)
      * @returns {Array<string>} - Mảng các chuỗi mã QR sẵn sàng render
      */
     generatePatchQRs: function(orders, groups, geocache, maxItemsPerQR) {
-      maxItemsPerQR = maxItemsPerQR || 75;
+      maxItemsPerQR = maxItemsPerQR || 20;
       var sid = Date.now().toString(36);
       var LZ = getLZ();
 
@@ -131,14 +298,14 @@
 
     /**
      * Tạo danh sách các chuỗi mã QR theo chế độ FULL (toàn bộ đơn hàng)
-     * Nhờ nén LZString và định dạng mảng gọn, tăng từ 4 đơn/mã lên 22 đơn/mã (giảm từ 13 trang xuống 2-3 trang!)
+     * Mặc định 7 đơn/mã để giữ mật độ QR thấp, giúp camera máy B giải mã ngay không cần căn chỉnh.
      * @param {Array} orders - Danh sách đơn hàng
      * @param {Array} groups - Danh sách nhóm
-     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 22 đơn/mã)
+     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 7 đơn/mã)
      * @returns {Array<string>} - Mảng chuỗi mã QR
      */
     generateFullQRs: function(orders, groups, maxItemsPerQR) {
-      maxItemsPerQR = maxItemsPerQR || 22;
+      maxItemsPerQR = maxItemsPerQR || 7;
       var sid = Date.now().toString(36);
       var LZ = getLZ();
 
@@ -205,7 +372,12 @@
           trimmed.indexOf(PREFIX_FULLZ) === 0 || trimmed.indexOf(PREFIX_FULL) === 0) {
         return true;
       }
-      if (trimmed.indexOf('{') === 0 && (trimmed.indexOf('"type":"patch"') !== -1 || trimmed.indexOf('"t":"patch"') !== -1 || trimmed.indexOf('"t":"full"') !== -1)) {
+      if (trimmed.indexOf('{') === 0 && (
+          trimmed.indexOf('"type":"patch"') !== -1 ||
+          trimmed.indexOf('"t":"patch"') !== -1 ||
+          trimmed.indexOf('"t":"p"') !== -1 ||
+          trimmed.indexOf('"t":"full"') !== -1 ||
+          trimmed.indexOf('"t":"f"') !== -1)) {
         return true;
       }
       return false;
@@ -220,13 +392,20 @@
       var jsonStr = '';
       var LZ = getLZ();
 
+      var rawCompressed = '';
       if (trimmed.indexOf(PREFIX_PATCHZ) === 0) {
-        var rawCompressed = trimmed.substring(PREFIX_PATCHZ.length);
-        if (LZ && LZ.decompressFromEncodedURIComponent) {
-          jsonStr = LZ.decompressFromEncodedURIComponent(rawCompressed);
-        }
+        rawCompressed = trimmed.substring(PREFIX_PATCHZ.length);
       } else if (trimmed.indexOf(PREFIX_FULLZ) === 0) {
-        var rawCompressed = trimmed.substring(PREFIX_FULLZ.length);
+        rawCompressed = trimmed.substring(PREFIX_FULLZ.length);
+      }
+
+      if (rawCompressed) {
+        if (rawCompressed.indexOf('%') !== -1) {
+          try {
+            rawCompressed = decodeURIComponent(rawCompressed);
+          } catch(e) {}
+        }
+        rawCompressed = rawCompressed.replace(/ /g, '+');
         if (LZ && LZ.decompressFromEncodedURIComponent) {
           jsonStr = LZ.decompressFromEncodedURIComponent(rawCompressed);
         }
@@ -242,6 +421,13 @@
 
       try {
         var data = JSON.parse(jsonStr);
+        if (data) {
+          if (data.i !== undefined && data.pIndex === undefined) data.pIndex = data.i;
+          if (data.n !== undefined && data.pTotal === undefined) data.pTotal = data.n;
+          if (data.s !== undefined && data.sid === undefined) data.sid = data.s;
+          if (data.t === 'p') data.t = 'patch';
+          if (data.t === 'f') data.t = 'full';
+        }
         return data;
       } catch(e) {
         console.error('Lỗi phân tích mã QR đồng bộ:', e);
@@ -349,7 +535,6 @@
       if (Array.isArray(fullPayload.o)) {
         unpackedOrders = fullPayload.o.map(function(item) {
           if (Array.isArray(item)) {
-            // Compact format v2: [c, n, p, a, m, s, gIdx, lat, lng, t]
             var gVal = item[6];
             var gId = (gVal !== '' && gVal != null && groupIndexMap[gVal]) ? groupIndexMap[gVal] : (typeof gVal === 'string' && gVal.indexOf('group_') === 0 ? gVal : 'group_ungrouped');
             return {
@@ -370,7 +555,6 @@
               updatedAt: new Date().toISOString()
             };
           } else {
-            // Legacy format v1
             return {
               id: item.id || ('ghn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
               trackingCode: item.c || '',
