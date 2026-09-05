@@ -699,28 +699,35 @@ function setupDesktopQrSync() {
 
   function renderDesktopQRCanvas(text) {
     if (!canvasContainer) return;
-    canvasContainer.innerHTML = '';
-    if (typeof QRCode === 'undefined') {
+    const qrsync = window.QRSync || (typeof QRSync !== 'undefined' ? QRSync : null);
+    if (qrsync && qrsync.renderQR) {
+      qrsync.renderQR(canvasContainer, text, { cellSize: 3, margin: 4 });
+    } else if (typeof QRCode !== 'undefined') {
+      try {
+        new QRCode(canvasContainer, {
+          text: text,
+          width: 220,
+          height: 220,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: 'L'
+        });
+      } catch(e) {
+        console.error('Lỗi tạo mã QR trên Desktop:', e);
+        canvasContainer.innerHTML = `<div style="color:#ef4444; font-size:12px; padding:15px; text-align:center;">⚠️ Lỗi tạo mã: ${e.message || e}</div>`;
+      }
+    } else {
       canvasContainer.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:20px; text-align:center;">⚠️ Chưa tải được thư viện QRCode (js/qrcode.min.js)!</div>';
-      return;
-    }
-    try {
-      new QRCode(canvasContainer, {
-        text: text,
-        width: 220,
-        height: 220,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    } catch(e) {
-      console.error('Lỗi tạo mã QR trên Desktop:', e);
-      canvasContainer.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:15px; text-align:center;">Dữ liệu quá dài. Hãy chuyển sang chế độ "Chỉ Tọa độ & Nhóm" hoặc Tải File JSON!</div>';
     }
   }
 
   function displayCurrentDesktopQR() {
-    if (!desktopSyncQRPages || desktopSyncQRPages.length === 0) return;
+    if (!desktopSyncQRPages || desktopSyncQRPages.length === 0) {
+      if (canvasContainer) {
+        canvasContainer.innerHTML = '<div style="color:#64748b; font-size:12px; padding:20px; text-align:center;">Chưa có đơn hàng nào để tạo mã QR!</div>';
+      }
+      return;
+    }
     const text = desktopSyncQRPages[currentDesktopQRPageIndex];
     renderDesktopQRCanvas(text);
 
@@ -748,9 +755,9 @@ function setupDesktopQrSync() {
     }
 
     if (currentDesktopSyncMode === 'patch') {
-      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 35);
+      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 20);
     } else {
-      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 8);
+      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 4);
     }
     currentDesktopQRPageIndex = 0;
     displayCurrentDesktopQR();

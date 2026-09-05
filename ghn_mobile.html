@@ -8237,23 +8237,24 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       function renderQRCanvas(text) {
         var container = document.getElementById('qrSyncCanvasContainer');
         if (!container) return;
-        container.innerHTML = '';
-        if (typeof QRCode === 'undefined') {
+        if (typeof QRSync !== 'undefined' && QRSync.renderQR) {
+          QRSync.renderQR(container, text, { cellSize: 3, margin: 4 });
+        } else if (typeof QRCode !== 'undefined') {
+          try {
+            new QRCode(container, {
+              text: text,
+              width: 220,
+              height: 220,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: 'L'
+            });
+          } catch(e) {
+            console.error('Lỗi tạo mã QR:', e);
+            container.innerHTML = '<div style="color:#ef4444; font-size:11.5px; padding:15px; text-align:center;">⚠️ Lỗi tạo mã: ' + (e.message || e) + '</div>';
+          }
+        } else {
           container.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:20px; text-align:center;">⚠️ Chưa tải được thư viện QRCode (js/qrcode.min.js). Vui lòng thử lại!</div>';
-          return;
-        }
-        try {
-          new QRCode(container, {
-            text: text,
-            width: 220,
-            height: 220,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.M
-          });
-        } catch(e) {
-          console.error('Lỗi tạo mã QR:', e);
-          container.innerHTML = '<div style="color:#ef4444; font-size:11.5px; padding:15px; text-align:center;">Dữ liệu quá dài. Hãy chuyển sang chế độ "Chỉ Tọa độ & Gom nhóm" hoặc Tải File JSON!</div>';
         }
       }
 
@@ -8263,16 +8264,22 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           return;
         }
         if (currentSyncMode === 'patch') {
-          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 35);
+          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 20);
         } else {
-          syncQRPages = QRSync.generateFullQRs(orders, groups, 8);
+          syncQRPages = QRSync.generateFullQRs(orders, groups, 4);
         }
         currentSyncQRPageIndex = 0;
         displayCurrentQRPage();
       }
 
       function displayCurrentQRPage() {
-        if (!syncQRPages || syncQRPages.length === 0) return;
+        var container = document.getElementById('qrSyncCanvasContainer');
+        if (!syncQRPages || syncQRPages.length === 0) {
+          if (container) {
+            container.innerHTML = '<div style="color:#64748b; font-size:12px; padding:20px; text-align:center;">Chưa có đơn hàng nào để tạo mã QR đồng bộ!</div>';
+          }
+          return;
+        }
         var text = syncQRPages[currentSyncQRPageIndex];
         renderQRCanvas(text);
         updateQrPagingUI();
@@ -8340,7 +8347,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             ensureGroupIntegrity();
             saveData();
             render();
-            if (mobileMap) initOrUpdateMap();
+            if (mobileMap) renderMap(orders);
             hideQrSyncModal();
             showToast('🎉 Đã nạp thành công ' + orders.length + ' đơn và ' + groups.length + ' nhóm từ file!');
           } catch(err) {
@@ -8364,8 +8371,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var pTotal = payload.pTotal || 1;
 
         if (pTotal > 1) {
-          if (!syncMultiPartCache.type || syncMultiPartCache.type !== payload.t) {
-            syncMultiPartCache = { type: payload.t, pTotal: pTotal, parts: {} };
+          var sid = payload.sid || 'batch';
+          if (!syncMultiPartCache.sid || syncMultiPartCache.sid !== sid || syncMultiPartCache.type !== payload.t) {
+            syncMultiPartCache = { sid: sid, type: payload.t, pTotal: pTotal, parts: {} };
           }
           syncMultiPartCache.parts[pIndex] = payload;
           var receivedCount = Object.keys(syncMultiPartCache.parts).length;
@@ -8405,7 +8413,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             }
             applySyncedFull({ g: allGroups, o: allOrders });
           }
-          syncMultiPartCache = { type: null, pTotal: 1, parts: {} };
+          syncMultiPartCache = { sid: null, type: null, pTotal: 1, parts: {} };
           return;
         }
 
@@ -8424,8 +8432,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         groups = result.groups;
         saveData();
         render();
-        if (mobileMap) initOrUpdateMap();
-        showToast('🎉 Đã đồng bộ tọa độ & nhóm cho ' + result.matchedCount + ' đơn!');
+        if (mobileMap) renderMap(orders);
+        if (result.matchedCount > 0) {
+          showToast('🎉 Đã đồng bộ tọa độ & nhóm cho ' + result.matchedCount + ' đơn!');
+        } else {
+          showToast('⚠️ Đã nhận mã nhưng không có đơn nào trùng mã vận đơn trên máy này!');
+        }
       }
 
       function applySyncedFull(payload) {
@@ -8435,7 +8447,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         ensureGroupIntegrity();
         saveData();
         render();
-        if (mobileMap) initOrUpdateMap();
+        if (mobileMap) renderMap(orders);
         showToast('🎉 Đã nạp thành công ' + result.importedCount + ' đơn và ' + groups.length + ' nhóm!');
       }
 

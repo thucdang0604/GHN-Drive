@@ -19,32 +19,74 @@
     PREFIX_FULL: PREFIX_FULL,
 
     /**
+     * Hàm sinh và vẽ mã QR vào container bằng thẻ <img> chuẩn, không lỗi hiển thị
+     */
+    renderQR: function(container, text, options) {
+      if (!container) return false;
+      options = options || {};
+      container.innerHTML = '';
+
+      var qrEngine = (typeof qrcode !== 'undefined') ? qrcode : (typeof window !== 'undefined' ? window.qrcode : null);
+      if (!qrEngine) {
+        container.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:15px; text-align:center;">⚠️ Chưa tải được thư viện tạo mã QR (js/qrcode.min.js)!</div>';
+        return false;
+      }
+
+      try {
+        var qr = qrEngine(0, 'L');
+        qr.addData(text);
+        qr.make();
+        container.innerHTML = qr.createImgTag(options.cellSize || 3, options.margin || 4);
+        var img = container.querySelector('img');
+        if (img) {
+          img.style.maxWidth = '100%';
+          img.style.maxHeight = '100%';
+          img.style.height = 'auto';
+          img.style.display = 'block';
+          img.style.margin = '0 auto';
+          img.style.borderRadius = '6px';
+          img.style.imageRendering = 'pixelated';
+        }
+        return true;
+      } catch(err) {
+        console.error('Lỗi tạo mã QR:', err);
+        container.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:15px; text-align:center;">⚠️ Không thể tạo mã: ' + (err.message || err) + '</div>';
+        return false;
+      }
+    },
+
+    /**
      * Tạo danh sách các chuỗi mã QR theo chế độ PATCH (chỉ nhóm & tọa độ kéo ghim)
      * Thích hợp cho Thiết bị B đã có sẵn danh sách đơn.
      * @param {Array} orders - Danh sách đơn hàng hiện tại
      * @param {Array} groups - Danh sách các nhóm địa chỉ
      * @param {Object} geocache - Cache tọa độ đã lưu (tùy chọn)
-     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 40 đơn/mã để quét cực nhạy)
+     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 20 đơn/mã để quét cực nhạy)
      * @returns {Array<string>} - Mảng các chuỗi mã QR sẵn sàng render
      */
     generatePatchQRs: function(orders, groups, geocache, maxItemsPerQR) {
-      maxItemsPerQR = maxItemsPerQR || 40;
+      maxItemsPerQR = maxItemsPerQR || 20;
+      var sid = Date.now().toString(36);
       var patches = [];
       for (var i = 0; i < (orders || []).length; i++) {
         var o = orders[i];
         var idKey = o.trackingCode || o.id;
         var lat = (o.lat != null && !isNaN(o.lat)) ? Number(Number(o.lat).toFixed(6)) : null;
         var lng = (o.lng != null && !isNaN(o.lng)) ? Number(Number(o.lng).toFixed(6)) : null;
-        patches.push([idKey, o.groupId || 'group_ungrouped', lat, lng]);
+        var grp = (o.groupId && o.groupId !== 'group_ungrouped') ? o.groupId : '';
+        patches.push([idKey, grp, lat, lng]);
       }
 
-      var cleanGroups = (groups || []).map(function(g) {
-        return { id: g.id, name: g.name };
+      var cleanGroups = (groups || []).filter(function(g) {
+        return g && g.id && g.id !== 'group_ungrouped';
+      }).map(function(g) {
+        return { id: g.id, name: g.name || '' };
       });
 
       if (patches.length <= maxItemsPerQR) {
         var payload = {
           v: 1,
+          sid: sid,
           t: 'patch',
           pIndex: 1,
           pTotal: 1,
@@ -60,6 +102,7 @@
         var slice = patches.slice(p * maxItemsPerQR, (p + 1) * maxItemsPerQR);
         var partPayload = {
           v: 1,
+          sid: sid,
           t: 'patch',
           pIndex: p + 1,
           pTotal: totalParts,
@@ -75,13 +118,16 @@
      * Tạo danh sách các chuỗi mã QR theo chế độ FULL (toàn bộ đơn hàng)
      * @param {Array} orders - Danh sách đơn hàng
      * @param {Array} groups - Danh sách nhóm
-     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 18 đơn/mã để mã không bị dày)
+     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 4 đơn/mã để mã thoáng, quét nhạy)
      * @returns {Array<string>} - Mảng chuỗi mã QR
      */
     generateFullQRs: function(orders, groups, maxItemsPerQR) {
-      maxItemsPerQR = maxItemsPerQR || 8;
-      var cleanGroups = (groups || []).map(function(g) {
-        return { id: g.id, name: g.name };
+      maxItemsPerQR = maxItemsPerQR || 4;
+      var sid = Date.now().toString(36);
+      var cleanGroups = (groups || []).filter(function(g) {
+        return g && g.id && g.id !== 'group_ungrouped';
+      }).map(function(g) {
+        return { id: g.id, name: g.name || '' };
       });
 
       var compactOrders = (orders || []).map(function(o) {
@@ -103,6 +149,7 @@
       if (compactOrders.length <= maxItemsPerQR) {
         var payload = {
           v: 1,
+          sid: sid,
           t: 'full',
           pIndex: 1,
           pTotal: 1,
@@ -118,6 +165,7 @@
         var slice = compactOrders.slice(p * maxItemsPerQR, (p + 1) * maxItemsPerQR);
         var partPayload = {
           v: 1,
+          sid: sid,
           t: 'full',
           pIndex: p + 1,
           pTotal: totalParts,
@@ -201,13 +249,16 @@
           var lat = item[2];
           var lng = item[3];
 
+          var idKeyUpper = idKey.toUpperCase();
           for (var i = 0; i < updatedOrders.length; i++) {
             var ord = updatedOrders[i];
-            var ordTrack = String(ord.trackingCode || '').trim();
+            var ordTrack = String(ord.trackingCode || '').trim().toUpperCase();
             var ordId = String(ord.id || '').trim();
 
-            if (ordTrack === idKey || ordId === idKey) {
-              if (grpId) ord.groupId = grpId;
+            if (ordTrack === idKeyUpper || ordId === idKey) {
+              if (grpId !== undefined && grpId !== null) {
+                ord.groupId = grpId || 'group_ungrouped';
+              }
               if (lat != null && lng != null) {
                 ord.lat = Number(lat);
                 ord.lng = Number(lng);
@@ -276,7 +327,7 @@
         finalOrders = [].concat(currentOrders || []);
         unpackedOrders.forEach(function(newOrd) {
           var existIdx = finalOrders.findIndex(function(o) {
-            return (newOrd.trackingCode && o.trackingCode === newOrd.trackingCode) || o.id === newOrd.id;
+            return (newOrd.trackingCode && String(o.trackingCode || '').trim().toUpperCase() === String(newOrd.trackingCode).trim().toUpperCase()) || o.id === newOrd.id;
           });
           if (existIdx !== -1) {
             finalOrders[existIdx] = Object.assign({}, finalOrders[existIdx], newOrd);
