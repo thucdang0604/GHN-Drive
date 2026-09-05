@@ -755,9 +755,9 @@ function setupDesktopQrSync() {
     }
 
     if (currentDesktopSyncMode === 'patch') {
-      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 20);
+      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 75);
     } else {
-      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 4);
+      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 22);
     }
     currentDesktopQRPageIndex = 0;
     displayCurrentDesktopQR();

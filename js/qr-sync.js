@@ -1,6 +1,6 @@
 /**
  * js/qr-sync.js - Module Đồng Bộ Dữ Liệu GHN Qua Mã QR (100% Offline)
- * Hỗ trợ tạo mã QR nén, chia nhỏ phân đoạn (multi-part), và giải mã tự động nạp dữ liệu.
+ * Hỗ trợ nén LZ-String siêu nhẹ, chia nhỏ phân đoạn thông minh, và giải mã tự động nạp dữ liệu.
  */
 (function(root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -11,12 +11,26 @@
 })(typeof self !== 'undefined' ? self : this, function() {
   'use strict';
 
-  var PREFIX_PATCH = 'GHNPATCH:';
-  var PREFIX_FULL  = 'GHNFULL:';
+  var PREFIX_PATCH  = 'GHNPATCH:';
+  var PREFIX_PATCHZ = 'GHNPATCHZ:';
+  var PREFIX_FULL   = 'GHNFULL:';
+  var PREFIX_FULLZ  = 'GHNFULLZ:';
+
+  function getLZ() {
+    if (typeof LZString !== 'undefined') return LZString;
+    if (typeof window !== 'undefined' && window.LZString) return window.LZString;
+    if (typeof global !== 'undefined' && global.LZString) return global.LZString;
+    try {
+      if (typeof require === 'function') return require('./lz-string.min.js');
+    } catch(e) {}
+    return null;
+  }
 
   var QRSync = {
     PREFIX_PATCH: PREFIX_PATCH,
+    PREFIX_PATCHZ: PREFIX_PATCHZ,
     PREFIX_FULL: PREFIX_FULL,
+    PREFIX_FULLZ: PREFIX_FULLZ,
 
     /**
      * Hàm sinh và vẽ mã QR vào container bằng thẻ <img> chuẩn, không lỗi hiển thị
@@ -57,51 +71,47 @@
 
     /**
      * Tạo danh sách các chuỗi mã QR theo chế độ PATCH (chỉ nhóm & tọa độ kéo ghim)
-     * Thích hợp cho Thiết bị B đã có sẵn danh sách đơn.
+     * Nhờ nén LZString & mã hóa nhóm theo chỉ mục, có thể chứa tới 75-80 đơn hàng trong 1 MÃ DUY NHẤT!
      * @param {Array} orders - Danh sách đơn hàng hiện tại
      * @param {Array} groups - Danh sách các nhóm địa chỉ
      * @param {Object} geocache - Cache tọa độ đã lưu (tùy chọn)
-     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 20 đơn/mã để quét cực nhạy)
+     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 75 đơn/mã)
      * @returns {Array<string>} - Mảng các chuỗi mã QR sẵn sàng render
      */
     generatePatchQRs: function(orders, groups, geocache, maxItemsPerQR) {
-      maxItemsPerQR = maxItemsPerQR || 20;
+      maxItemsPerQR = maxItemsPerQR || 75;
       var sid = Date.now().toString(36);
-      var patches = [];
-      for (var i = 0; i < (orders || []).length; i++) {
-        var o = orders[i];
-        var idKey = o.trackingCode || o.id;
-        var lat = (o.lat != null && !isNaN(o.lat)) ? Number(Number(o.lat).toFixed(6)) : null;
-        var lng = (o.lng != null && !isNaN(o.lng)) ? Number(Number(o.lng).toFixed(6)) : null;
-        var grp = (o.groupId && o.groupId !== 'group_ungrouped') ? o.groupId : '';
-        patches.push([idKey, grp, lat, lng]);
-      }
+      var LZ = getLZ();
 
       var cleanGroups = (groups || []).filter(function(g) {
         return g && g.id && g.id !== 'group_ungrouped';
       }).map(function(g) {
-        return { id: g.id, name: g.name || '' };
+        return [g.id, g.name || ''];
       });
 
-      if (patches.length <= maxItemsPerQR) {
-        var payload = {
-          v: 1,
-          sid: sid,
-          t: 'patch',
-          pIndex: 1,
-          pTotal: 1,
-          g: cleanGroups,
-          p: patches
-        };
-        return [PREFIX_PATCH + JSON.stringify(payload)];
+      var grpMap = {};
+      cleanGroups.forEach(function(item, idx) {
+        grpMap[item[0]] = idx;
+      });
+
+      var patches = [];
+      for (var i = 0; i < (orders || []).length; i++) {
+        var o = orders[i];
+        var idKey = String(o.trackingCode || o.id || '').trim();
+        if (!idKey) continue;
+        var lat = (o.lat != null && !isNaN(o.lat)) ? Number(Number(o.lat).toFixed(5)) : null;
+        var lng = (o.lng != null && !isNaN(o.lng)) ? Number(Number(o.lng).toFixed(5)) : null;
+        var grpIdx = (o.groupId && grpMap[o.groupId] !== undefined) ? grpMap[o.groupId] : '';
+        patches.push([idKey, grpIdx, lat, lng]);
       }
 
-      var totalParts = Math.ceil(patches.length / maxItemsPerQR);
+      var totalParts = Math.max(1, Math.ceil(patches.length / maxItemsPerQR));
       var result = [];
+
       for (var p = 0; p < totalParts; p++) {
         var slice = patches.slice(p * maxItemsPerQR, (p + 1) * maxItemsPerQR);
         var partPayload = {
-          v: 1,
+          v: 2,
           sid: sid,
           t: 'patch',
           pIndex: p + 1,
@@ -109,62 +119,65 @@
           g: p === 0 ? cleanGroups : [],
           p: slice
         };
-        result.push(PREFIX_PATCH + JSON.stringify(partPayload));
+        var jsonStr = JSON.stringify(partPayload);
+        if (LZ && LZ.compressToEncodedURIComponent) {
+          result.push(PREFIX_PATCHZ + LZ.compressToEncodedURIComponent(jsonStr));
+        } else {
+          result.push(PREFIX_PATCH + jsonStr);
+        }
       }
       return result;
     },
 
     /**
      * Tạo danh sách các chuỗi mã QR theo chế độ FULL (toàn bộ đơn hàng)
+     * Nhờ nén LZString và định dạng mảng gọn, tăng từ 4 đơn/mã lên 22 đơn/mã (giảm từ 13 trang xuống 2-3 trang!)
      * @param {Array} orders - Danh sách đơn hàng
      * @param {Array} groups - Danh sách nhóm
-     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 4 đơn/mã để mã thoáng, quét nhạy)
+     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 22 đơn/mã)
      * @returns {Array<string>} - Mảng chuỗi mã QR
      */
     generateFullQRs: function(orders, groups, maxItemsPerQR) {
-      maxItemsPerQR = maxItemsPerQR || 4;
+      maxItemsPerQR = maxItemsPerQR || 22;
       var sid = Date.now().toString(36);
+      var LZ = getLZ();
+
       var cleanGroups = (groups || []).filter(function(g) {
         return g && g.id && g.id !== 'group_ungrouped';
       }).map(function(g) {
-        return { id: g.id, name: g.name || '' };
+        return [g.id, g.name || ''];
+      });
+
+      var grpMap = {};
+      cleanGroups.forEach(function(item, idx) {
+        grpMap[item[0]] = idx;
       });
 
       var compactOrders = (orders || []).map(function(o) {
-        return {
-          id: o.id,
-          c: o.trackingCode || '',
-          n: o.customerName || '',
-          p: o.phone || '',
-          a: o.address || '',
-          m: Number(o.codAmount) || 0,
-          s: o.status || 'pending',
-          g: o.groupId || 'group_ungrouped',
-          x: (o.lat != null && !isNaN(o.lat)) ? Number(Number(o.lat).toFixed(6)) : null,
-          y: (o.lng != null && !isNaN(o.lng)) ? Number(Number(o.lng).toFixed(6)) : null,
-          t: o.tripCode || ''
-        };
+        var grpIdx = (o.groupId && grpMap[o.groupId] !== undefined) ? grpMap[o.groupId] : '';
+        var lat = (o.lat != null && !isNaN(o.lat)) ? Number(Number(o.lat).toFixed(5)) : null;
+        var lng = (o.lng != null && !isNaN(o.lng)) ? Number(Number(o.lng).toFixed(5)) : null;
+        return [
+          o.trackingCode || '',
+          o.customerName || '',
+          o.phone || '',
+          o.address || '',
+          Number(o.codAmount) || 0,
+          (o.status && o.status !== 'pending') ? o.status : '',
+          grpIdx,
+          lat,
+          lng,
+          o.tripCode || ''
+        ];
       });
 
-      if (compactOrders.length <= maxItemsPerQR) {
-        var payload = {
-          v: 1,
-          sid: sid,
-          t: 'full',
-          pIndex: 1,
-          pTotal: 1,
-          g: cleanGroups,
-          o: compactOrders
-        };
-        return [PREFIX_FULL + JSON.stringify(payload)];
-      }
-
-      var totalParts = Math.ceil(compactOrders.length / maxItemsPerQR);
+      var totalParts = Math.max(1, Math.ceil(compactOrders.length / maxItemsPerQR));
       var result = [];
+
       for (var p = 0; p < totalParts; p++) {
         var slice = compactOrders.slice(p * maxItemsPerQR, (p + 1) * maxItemsPerQR);
         var partPayload = {
-          v: 1,
+          v: 2,
           sid: sid,
           t: 'full',
           pIndex: p + 1,
@@ -172,7 +185,12 @@
           g: p === 0 ? cleanGroups : [],
           o: slice
         };
-        result.push(PREFIX_FULL + JSON.stringify(partPayload));
+        var jsonStr = JSON.stringify(partPayload);
+        if (LZ && LZ.compressToEncodedURIComponent) {
+          result.push(PREFIX_FULLZ + LZ.compressToEncodedURIComponent(jsonStr));
+        } else {
+          result.push(PREFIX_FULL + jsonStr);
+        }
       }
       return result;
     },
@@ -183,7 +201,8 @@
     isSyncQR: function(text) {
       if (!text || typeof text !== 'string') return false;
       var trimmed = text.trim();
-      if (trimmed.indexOf(PREFIX_PATCH) === 0 || trimmed.indexOf(PREFIX_FULL) === 0) {
+      if (trimmed.indexOf(PREFIX_PATCHZ) === 0 || trimmed.indexOf(PREFIX_PATCH) === 0 ||
+          trimmed.indexOf(PREFIX_FULLZ) === 0 || trimmed.indexOf(PREFIX_FULL) === 0) {
         return true;
       }
       if (trimmed.indexOf('{') === 0 && (trimmed.indexOf('"type":"patch"') !== -1 || trimmed.indexOf('"t":"patch"') !== -1 || trimmed.indexOf('"t":"full"') !== -1)) {
@@ -193,19 +212,33 @@
     },
 
     /**
-     * Giải mã chuỗi QR và trả về payload
+     * Giải mã chuỗi QR và trả về payload (hỗ trợ cả nén LZString v2 và uncompressed v1)
      */
     parseQR: function(text) {
       if (!this.isSyncQR(text)) return null;
       var trimmed = text.trim();
       var jsonStr = '';
-      if (trimmed.indexOf(PREFIX_PATCH) === 0) {
+      var LZ = getLZ();
+
+      if (trimmed.indexOf(PREFIX_PATCHZ) === 0) {
+        var rawCompressed = trimmed.substring(PREFIX_PATCHZ.length);
+        if (LZ && LZ.decompressFromEncodedURIComponent) {
+          jsonStr = LZ.decompressFromEncodedURIComponent(rawCompressed);
+        }
+      } else if (trimmed.indexOf(PREFIX_FULLZ) === 0) {
+        var rawCompressed = trimmed.substring(PREFIX_FULLZ.length);
+        if (LZ && LZ.decompressFromEncodedURIComponent) {
+          jsonStr = LZ.decompressFromEncodedURIComponent(rawCompressed);
+        }
+      } else if (trimmed.indexOf(PREFIX_PATCH) === 0) {
         jsonStr = trimmed.substring(PREFIX_PATCH.length);
       } else if (trimmed.indexOf(PREFIX_FULL) === 0) {
         jsonStr = trimmed.substring(PREFIX_FULL.length);
       } else {
         jsonStr = trimmed;
       }
+
+      if (!jsonStr) return null;
 
       try {
         var data = JSON.parse(jsonStr);
@@ -223,19 +256,21 @@
       var updatedOrders = [].concat(currentOrders || []);
       var updatedGroups = [].concat(currentGroups || []);
 
-      // 1. Cập nhật nhóm mới nếu có
+      // 1. Cập nhật nhóm
+      var groupIndexMap = {};
       if (Array.isArray(patchPayload.g) && patchPayload.g.length > 0) {
-        patchPayload.g.forEach(function(newGrp) {
-          if (!newGrp || !newGrp.id) return;
-          var found = updatedGroups.find(function(g) { return g.id === newGrp.id; });
-          if (found) {
-            found.name = newGrp.name || found.name;
-          } else {
-            updatedGroups.push({
-              id: newGrp.id,
-              name: newGrp.name || 'Nhóm mới',
-              isCollapsed: false
-            });
+        patchPayload.g.forEach(function(item, idx) {
+          var gId = Array.isArray(item) ? item[0] : (item && item.id);
+          var gName = Array.isArray(item) ? item[1] : (item && item.name);
+          if (gId) {
+            groupIndexMap[idx] = gId;
+            groupIndexMap[gId] = gId;
+            var found = updatedGroups.find(function(g) { return g.id === gId; });
+            if (found) {
+              found.name = gName || found.name;
+            } else {
+              updatedGroups.push({ id: gId, name: gName || 'Nhóm mới', isCollapsed: false });
+            }
           }
         });
       }
@@ -245,9 +280,18 @@
       if (Array.isArray(patchPayload.p)) {
         patchPayload.p.forEach(function(item) {
           var idKey = String(item[0]).trim();
-          var grpId = item[1];
+          var rawGrp = item[1];
           var lat = item[2];
           var lng = item[3];
+
+          var resolvedGrpId = 'group_ungrouped';
+          if (rawGrp !== '' && rawGrp != null) {
+            if (groupIndexMap[rawGrp]) {
+              resolvedGrpId = groupIndexMap[rawGrp];
+            } else if (typeof rawGrp === 'string' && rawGrp.indexOf('group_') === 0) {
+              resolvedGrpId = rawGrp;
+            }
+          }
 
           var idKeyUpper = idKey.toUpperCase();
           for (var i = 0; i < updatedOrders.length; i++) {
@@ -256,8 +300,8 @@
             var ordId = String(ord.id || '').trim();
 
             if (ordTrack === idKeyUpper || ordId === idKey) {
-              if (grpId !== undefined && grpId !== null) {
-                ord.groupId = grpId || 'group_ungrouped';
+              if (rawGrp !== undefined && rawGrp !== null) {
+                ord.groupId = resolvedGrpId;
               }
               if (lat != null && lng != null) {
                 ord.lat = Number(lat);
@@ -285,40 +329,66 @@
      */
     applyFull: function(fullPayload, currentOrders, currentGroups, isAppend) {
       var groups = [].concat(currentGroups || []);
+      var groupIndexMap = {};
+
       if (Array.isArray(fullPayload.g) && fullPayload.g.length > 0) {
-        if (!isAppend) {
-          groups = fullPayload.g.map(function(g) {
-            return { id: g.id, name: g.name, isCollapsed: false };
-          });
-        } else {
-          fullPayload.g.forEach(function(newG) {
-            if (!groups.some(function(g) { return g.id === newG.id; })) {
-              groups.push({ id: newG.id, name: newG.name, isCollapsed: false });
+        fullPayload.g.forEach(function(item, idx) {
+          var gId = Array.isArray(item) ? item[0] : (item && item.id);
+          var gName = Array.isArray(item) ? item[1] : (item && item.name);
+          if (gId) {
+            groupIndexMap[idx] = gId;
+            groupIndexMap[gId] = gId;
+            if (!groups.some(function(g) { return g.id === gId; })) {
+              groups.push({ id: gId, name: gName, isCollapsed: false });
             }
-          });
-        }
+          }
+        });
       }
 
       var unpackedOrders = [];
       if (Array.isArray(fullPayload.o)) {
         unpackedOrders = fullPayload.o.map(function(item) {
-          return {
-            id: item.id || ('ghn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
-            trackingCode: item.c || '',
-            customerName: item.n || '',
-            phone: item.p || '',
-            address: item.a || '',
-            codAmount: Number(item.m) || 0,
-            phaiThu: Number(item.m) || 0,
-            gtbThu: 0,
-            status: item.s || 'pending',
-            groupId: item.g || 'group_ungrouped',
-            lat: (item.x != null && !isNaN(item.x)) ? Number(item.x) : null,
-            lng: (item.y != null && !isNaN(item.y)) ? Number(item.y) : null,
-            tripCode: item.t || '',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
+          if (Array.isArray(item)) {
+            // Compact format v2: [c, n, p, a, m, s, gIdx, lat, lng, t]
+            var gVal = item[6];
+            var gId = (gVal !== '' && gVal != null && groupIndexMap[gVal]) ? groupIndexMap[gVal] : (typeof gVal === 'string' && gVal.indexOf('group_') === 0 ? gVal : 'group_ungrouped');
+            return {
+              id: 'ghn_' + (item[0] || Date.now()) + '_' + Math.random().toString(36).substr(2, 4),
+              trackingCode: item[0] || '',
+              customerName: item[1] || '',
+              phone: item[2] || '',
+              address: item[3] || '',
+              codAmount: Number(item[4]) || 0,
+              phaiThu: Number(item[4]) || 0,
+              gtbThu: 0,
+              status: item[5] || 'pending',
+              groupId: gId,
+              lat: (item[7] != null && item[7] !== '' && !isNaN(item[7])) ? Number(item[7]) : null,
+              lng: (item[8] != null && item[8] !== '' && !isNaN(item[8])) ? Number(item[8]) : null,
+              tripCode: item[9] || '',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+          } else {
+            // Legacy format v1
+            return {
+              id: item.id || ('ghn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
+              trackingCode: item.c || '',
+              customerName: item.n || '',
+              phone: item.p || '',
+              address: item.a || '',
+              codAmount: Number(item.m) || 0,
+              phaiThu: Number(item.m) || 0,
+              gtbThu: 0,
+              status: item.s || 'pending',
+              groupId: item.g || 'group_ungrouped',
+              lat: (item.x != null && !isNaN(item.x)) ? Number(item.x) : null,
+              lng: (item.y != null && !isNaN(item.y)) ? Number(item.y) : null,
+              tripCode: item.t || '',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+          }
         });
       }
 

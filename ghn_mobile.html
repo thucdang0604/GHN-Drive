@@ -8,6 +8,8 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Thư viện sinh mã QR offline 100% -->
   <script src="js/qrcode.min.js"></script>
+  <!-- Thư viện nén dữ liệu LZString offline 100% -->
+  <script src="js/lz-string.min.js"></script>
   <!-- Module đồng bộ mã QR offline -->
   <script src="js/qr-sync.js"></script>
   <!-- Thư viện Bản đồ Leaflet (CDN online giúp file chạy độc lập 100% khi deploy) -->
@@ -8264,9 +8266,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           return;
         }
         if (currentSyncMode === 'patch') {
-          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 20);
+          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 75);
         } else {
-          syncQRPages = QRSync.generateFullQRs(orders, groups, 4);
+          syncQRPages = QRSync.generateFullQRs(orders, groups, 22);
         }
         currentSyncQRPageIndex = 0;
         displayCurrentQRPage();
@@ -8400,7 +8402,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 if (part.p && part.p.length) allPatches = allPatches.concat(part.p);
               }
             }
-            applySyncedPatch({ g: allGroups, p: allPatches });
+            applySyncedPatch({ v: payload.v || 2, g: allGroups, p: allPatches });
           } else if (payload.t === 'full') {
             var allOrders = [];
             var allGroups = [];
@@ -8411,7 +8413,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 if (part.o && part.o.length) allOrders = allOrders.concat(part.o);
               }
             }
-            applySyncedFull({ g: allGroups, o: allOrders });
+            applySyncedFull({ v: payload.v || 2, g: allGroups, o: allOrders });
           }
           syncMultiPartCache = { sid: null, type: null, pTotal: 1, parts: {} };
           return;
