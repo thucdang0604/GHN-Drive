@@ -557,7 +557,7 @@ function setupDesktopQrScanner() {
       desktopHtml5QrCode.start(
         { facingMode: "environment" },
         {
-          fps: 15,
+          fps: 24,
           qrbox: (w, h) => {
             const minEdge = Math.min(w, h);
             const size = Math.floor(minEdge * 0.85);
@@ -618,22 +618,28 @@ function setupDesktopQrScanner() {
     if (qrsync && qrsync.isSyncQR(decodedText)) {
       const payload = qrsync.parseQR(decodedText);
       if (payload) {
-        const pIndex = payload.pIndex || 1;
-        const pTotal = payload.pTotal || 1;
-        const sid = payload.sid || 'batch';
+        // Hỗ trợ chia nhiều phần nếu danh sách dài
+        if (payload.part && payload.total) {
+          const pIndex = payload.part;
+          const pTotal = payload.total;
+          const sid = payload.sid || 's';
 
-        if (pTotal > 1) {
-          if (!desktopSyncMultiPartCache.sid || desktopSyncMultiPartCache.sid !== sid || desktopSyncMultiPartCache.type !== payload.t) {
+          if (desktopSyncMultiPartCache.sid !== sid || desktopSyncMultiPartCache.pTotal !== pTotal) {
             desktopSyncMultiPartCache = { sid: sid, type: payload.t, pTotal: pTotal, parts: {} };
           }
+
           const isNewPart = !desktopSyncMultiPartCache.parts[pIndex];
           desktopSyncMultiPartCache.parts[pIndex] = payload;
           const receivedCount = Object.keys(desktopSyncMultiPartCache.parts).length;
 
           if (receivedCount < pTotal) {
             if (isNewPart) {
-              showToast(`🟢 Đã nhận phần ${pIndex}/${pTotal}! Hãy chuyển sang phần tiếp theo trên thiết bị gửi.`, 'info');
-              statusMsg.innerHTML = `🟢 Đã quét <strong>${receivedCount}/${pTotal} phần</strong>! Hướng camera vào phần tiếp theo.`;
+              const missingParts = [];
+              for (let mi = 1; mi <= pTotal; mi++) {
+                if (!desktopSyncMultiPartCache.parts[mi]) missingParts.push(mi);
+              }
+              showToast(`🟢 Đã nhận ${receivedCount}/${pTotal} phần! Còn thiếu: ${missingParts.join(', ')}`, 'info');
+              statusMsg.innerHTML = `🟢 Đã nhận <strong>${receivedCount}/${pTotal} phần</strong>.<br><span style="color:#f59e0b; font-size:12px; font-weight:700;">👉 Còn thiếu: Phần ${missingParts.join(', ')}</span>`;
             }
             return;
           }
@@ -772,7 +778,26 @@ function setupDesktopQrSync() {
   let currentDesktopSyncMode = 'patch';
   let desktopQRAutoPlayTimer = null;
   let isDesktopQRAutoPlay = true;
-  const DESKTOP_QR_INTERVAL = 1400; // 1.4s chuyển mã vòng lặp
+  let DESKTOP_QR_INTERVAL = 800; // Mặc định 0.8s: Nhanh, mượt, bắt tức thì
+
+  const speedBox = document.getElementById('desktopQrSpeedSelectorBox');
+  const pillsBox = document.getElementById('desktopQrPartPillsContainer');
+
+  function setDesktopQRAutoPlaySpeed(speedMs) {
+    DESKTOP_QR_INTERVAL = speedMs;
+    const buttons = document.querySelectorAll('#desktopQrSpeedSelectorBox .btn-qr-speed');
+    buttons.forEach(btn => {
+      if (parseInt(btn.getAttribute('data-speed')) === speedMs) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    updateDesktopAutoPlayBtnUI();
+    if (isDesktopQRAutoPlay && desktopSyncQRPages && desktopSyncQRPages.length > 1) {
+      startDesktopQRAutoPlay();
+    }
+  }
 
   function startDesktopQRAutoPlay() {
     stopDesktopQRAutoPlay();
@@ -806,8 +831,9 @@ function setupDesktopQrSync() {
 
   function updateDesktopAutoPlayBtnUI() {
     if (!btnToggleAutoPlay) return;
+    const secText = (DESKTOP_QR_INTERVAL / 1000).toFixed(1) + 's';
     if (isDesktopQRAutoPlay) {
-      btnToggleAutoPlay.innerHTML = '⏸ Tự chuyển (1.4s)';
+      btnToggleAutoPlay.innerHTML = `⏸ Tự chuyển (${secText})`;
       btnToggleAutoPlay.style.background = '#10b981';
       btnToggleAutoPlay.style.borderColor = '#10b981';
       btnToggleAutoPlay.title = 'Bấm để tạm dừng tự chuyển mã';
@@ -817,6 +843,43 @@ function setupDesktopQrSync() {
       btnToggleAutoPlay.style.borderColor = '#2563eb';
       btnToggleAutoPlay.title = 'Bấm để bật tự động chuyển mã vòng lặp';
     }
+  }
+
+  function renderDesktopQRPills() {
+    if (!pillsBox) return;
+    if (!desktopSyncQRPages || desktopSyncQRPages.length <= 1) {
+      pillsBox.style.display = 'none';
+      pillsBox.innerHTML = '';
+      return;
+    }
+    pillsBox.style.display = 'flex';
+    pillsBox.innerHTML = '';
+    for (let i = 0; i < desktopSyncQRPages.length; i++) {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'qr-pill' + (i === currentDesktopQRPageIndex ? ' active' : '');
+      pill.textContent = 'P' + (i + 1);
+      pill.setAttribute('data-idx', i);
+      pill.title = `Bấm để chuyển ngay sang Phần ${i + 1}`;
+      pill.addEventListener('click', function() {
+        currentDesktopQRPageIndex = parseInt(this.getAttribute('data-idx'));
+        displayCurrentDesktopQR();
+        if (isDesktopQRAutoPlay) startDesktopQRAutoPlay();
+      });
+      pillsBox.appendChild(pill);
+    }
+  }
+
+  function updateDesktopActivePillUI() {
+    const pills = document.querySelectorAll('#desktopQrPartPillsContainer .qr-pill');
+    pills.forEach(p => {
+      const idx = parseInt(p.getAttribute('data-idx'));
+      if (idx === currentDesktopQRPageIndex) {
+        p.classList.add('active');
+      } else {
+        p.classList.remove('active');
+      }
+    });
   }
 
   function renderDesktopQRCanvas(text) {
@@ -856,17 +919,23 @@ function setupDesktopQrSync() {
 
     if (desktopSyncQRPages.length > 1) {
       pagingControl.style.display = 'flex';
+      if (speedBox) speedBox.style.display = 'flex';
       pageIndicator.textContent = `Phần ${currentDesktopQRPageIndex + 1} / ${desktopSyncQRPages.length}`;
       btnPrev.disabled = false;
       btnNext.disabled = false;
       updateDesktopAutoPlayBtnUI();
+      renderDesktopQRPills();
+      updateDesktopActivePillUI();
+      const secText = (DESKTOP_QR_INTERVAL / 1000).toFixed(1) + 's';
       if (guideTip) {
         guideTip.innerHTML = isDesktopQRAutoPlay
-          ? `⚡ Đang <strong>tự động đổi mã sau 1.4s</strong> (Vòng lặp ${desktopSyncQRPages.length} phần). Chỉ cần giữ camera điện thoại để quét liên tục!`
-          : `Đã tạm dừng tự chuyển. Dùng nút &lt; &gt; hoặc bấm <strong>"Tiếp tục chạy"</strong> để chạy vòng lặp.`;
+          ? `⚡ Đang <strong>tự động đổi mã sau ${secText}</strong> (${desktopSyncQRPages.length} phần). Chỉ cần giữ camera điện thoại để quét liên tục!`
+          : `Đã tạm dừng. Bấm số phần bên trên để xem ngay, hoặc bấm <strong>"Tiếp tục chạy"</strong>.`;
       }
     } else {
       pagingControl.style.display = 'none';
+      if (speedBox) speedBox.style.display = 'none';
+      if (pillsBox) pillsBox.style.display = 'none';
       stopDesktopQRAutoPlay();
       if (guideTip) {
         guideTip.innerHTML = `Mở app GHN trên <strong>Điện thoại</strong>, bấm <strong>📷 Quét mã</strong> và hướng camera vào mã QR trên màn hình.`;
@@ -882,7 +951,7 @@ function setupDesktopQrSync() {
     }
 
     if (currentDesktopSyncMode === 'patch') {
-      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 8);
+      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 12);
     } else {
       desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 3);
     }
@@ -958,6 +1027,14 @@ function setupDesktopQrSync() {
       displayCurrentDesktopQR();
     });
   }
+
+  const speedButtons = document.querySelectorAll('#desktopQrSpeedSelectorBox .btn-qr-speed');
+  speedButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const sp = parseInt(this.getAttribute('data-speed'));
+      if (!isNaN(sp)) setDesktopQRAutoPlaySpeed(sp);
+    });
+  });
 
   if (btnDownloadJson) {
     btnDownloadJson.addEventListener('click', () => {

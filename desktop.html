@@ -444,11 +444,22 @@ giá tiền: 0 VNĐ."
           <div id="desktopQrPagingControl" style="display: none; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center;">
             <button type="button" id="btnDesktopPrevQR" class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Phần trước">&lt;</button>
             <button type="button" id="btnDesktopToggleAutoPlayQR" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px; background: #10b981; border-color: #10b981; font-weight: 700;" title="Bật/Tắt tự động chạy">
-              ⏸ Tự chuyển (1.4s)
+              ⏸ Tự chuyển (0.8s)
             </button>
             <span id="desktopQrPageIndicator" style="font-size: 12px; font-weight: 800; color: #2563eb;">Phần 1/1</span>
             <button type="button" id="btnDesktopNextQR" class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Phần sau">&gt;</button>
           </div>
+
+          <!-- Tùy chọn tốc độ chuyển mã -->
+          <div id="desktopQrSpeedSelectorBox" class="qr-speed-bar" style="display: none;">
+            <span style="font-size: 11px; color: #64748b; font-weight: 600;">Tốc độ:</span>
+            <button type="button" class="btn-qr-speed" data-speed="500">⚡ 0.5s</button>
+            <button type="button" class="btn-qr-speed active" data-speed="800">🚀 0.8s</button>
+            <button type="button" class="btn-qr-speed" data-speed="1400">⏳ 1.4s</button>
+          </div>
+
+          <!-- Danh sách các nút chọn nhanh từng phần -->
+          <div id="desktopQrPartPillsContainer" class="qr-part-pills" style="display: none;"></div>
 
           <p id="desktopQrGuideTip" style="font-size: 12px; color: #475569; text-align: center; margin-top: 10px; line-height: 1.4;">
             Mở app GHN trên <strong>Điện thoại</strong>, bấm <strong>📷 Quét mã</strong> và hướng camera vào màn hình máy tính.

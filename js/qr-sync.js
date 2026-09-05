@@ -271,12 +271,12 @@
         patches.push([idKey, grpIdx, lat, lng]);
       }
 
-      // Cân bằng thông minh: Tối đa 8 đơn và 2 nhóm mỗi phần để QR luôn thưa, to (65x65 modules), quét tức thì (<0.1s)
-      var targetItems = (typeof maxItemsPerQR === 'number' && maxItemsPerQR > 0 && maxItemsPerQR <= 8) ? maxItemsPerQR : 8;
+      // Cân bằng thông minh: Tối đa 12 đơn và 3 nhóm mỗi phần để vừa ít trang (chỉ 3-5 mã), vừa thưa to (69x69 modules), quét tức thì (<0.1s)
+      var targetItems = (typeof maxItemsPerQR === 'number' && maxItemsPerQR > 0 && maxItemsPerQR <= 12) ? maxItemsPerQR : 12;
       var numParts = 1;
-      if (patches.length > targetItems || cleanGroups.length > 2) {
+      if (patches.length > targetItems || cleanGroups.length > 3) {
         var partsByOrders = Math.ceil(patches.length / targetItems);
-        var partsByGroups = Math.ceil(cleanGroups.length / 2);
+        var partsByGroups = Math.ceil(cleanGroups.length / 3);
         numParts = Math.max(partsByOrders, partsByGroups, 1);
       }
 
