@@ -3727,9 +3727,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           <div class="qr-display-card">
             <div id="qrSyncCanvasContainer" class="qr-canvas-box" title="Chạm vào mã để phóng to"></div>
             <div id="qrPagingControl" class="qr-paging-bar" style="display: none;">
-              <button type="button" id="btnPrevQRPage" class="btn-qr-nav">&lt; Phần trước</button>
+              <button type="button" id="btnPrevQRPage" class="btn-qr-nav" title="Phần trước">&lt;</button>
+              <button type="button" id="btnToggleAutoPlayQR" class="btn-qr-nav" style="background: #10b981; font-weight: 700;" title="Bật/Tắt tự động chạy">
+                ⏸ Tự chuyển (1.4s)
+              </button>
               <span id="qrPageIndicator" class="qr-page-text">Phần 1/1</span>
-              <button type="button" id="btnNextQRPage" class="btn-qr-nav">Phần sau &gt;</button>
+              <button type="button" id="btnNextQRPage" class="btn-qr-nav" title="Phần sau">&gt;</button>
             </div>
             <button type="button" id="btnOpenQrZoom" style="background: none; border: none; color: #2563eb; font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 4px 8px; margin: 2px 0 4px 0;">
               🔍 Chạm vào mã để phóng to toàn màn hình
@@ -8302,9 +8305,75 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         generateAndRenderSyncQR();
       }
 
+      var qrAutoPlayTimer = null;
+      var isQRAutoPlay = true;
+      var QR_AUTO_PLAY_INTERVAL = 1400; // 1.4s mỗi mã QR trong vòng lặp liên tục
+
+      function startQRAutoPlay() {
+        stopQRAutoPlay();
+        if (!syncQRPages || syncQRPages.length <= 1) return;
+        isQRAutoPlay = true;
+        updateAutoPlayBtnUI();
+        qrAutoPlayTimer = setInterval(function() {
+          if (syncQRPages && syncQRPages.length > 1) {
+            currentSyncQRPageIndex = (currentSyncQRPageIndex + 1) % syncQRPages.length;
+            displayCurrentQRPage();
+            updateZoomQRIfOpen();
+          }
+        }, QR_AUTO_PLAY_INTERVAL);
+      }
+
+      function stopQRAutoPlay() {
+        if (qrAutoPlayTimer) {
+          clearInterval(qrAutoPlayTimer);
+          qrAutoPlayTimer = null;
+        }
+        isQRAutoPlay = false;
+        updateAutoPlayBtnUI();
+      }
+
+      function toggleQRAutoPlay() {
+        if (isQRAutoPlay) {
+          stopQRAutoPlay();
+        } else {
+          startQRAutoPlay();
+        }
+      }
+
+      function updateAutoPlayBtnUI() {
+        var btn = document.getElementById('btnToggleAutoPlayQR');
+        if (!btn) return;
+        if (isQRAutoPlay) {
+          btn.innerHTML = '⏸ Tự chuyển (1.4s)';
+          btn.style.background = '#10b981';
+          btn.title = 'Bấm để tạm dừng chuyển mã tự động';
+        } else {
+          btn.innerHTML = '▶ Tiếp tục chạy';
+          btn.style.background = '#0f172a';
+          btn.title = 'Bấm để bật tự động chuyển mã vòng lặp';
+        }
+      }
+
+      function updateZoomQRIfOpen() {
+        var zoomModal = document.getElementById('qrZoomModal');
+        if (zoomModal && zoomModal.style.display === 'flex') {
+          var container = document.getElementById('qrZoomCanvasContainer');
+          var indicator = document.getElementById('qrZoomPageIndicator');
+          if (container && syncQRPages && syncQRPages[currentSyncQRPageIndex]) {
+            if (typeof QRSync !== 'undefined' && QRSync.renderQR) {
+              QRSync.renderQR(container, syncQRPages[currentSyncQRPageIndex], { cellSize: 6, margin: 3 });
+            }
+          }
+          if (indicator) {
+            indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length + (isQRAutoPlay ? ' (⚡ Đang tự chuyển...)' : '');
+          }
+        }
+      }
+
       function hideQrSyncModal() {
         var modal = document.getElementById('qrSyncModal');
         if (modal) modal.style.display = 'none';
+        stopQRAutoPlay();
         hideQrZoomModal();
       }
 
@@ -8320,7 +8389,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           QRSync.renderQR(container, text, { cellSize: 6, margin: 3 });
         }
         if (indicator) {
-          indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length;
+          indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length + (isQRAutoPlay ? ' (⚡ Đang tự chuyển...)' : '');
         }
         modal.style.display = 'flex';
       }
@@ -8368,6 +8437,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         }
         currentSyncQRPageIndex = 0;
         displayCurrentQRPage();
+        if (syncQRPages && syncQRPages.length > 1) {
+          startQRAutoPlay();
+        } else {
+          stopQRAutoPlay();
+        }
       }
 
       function displayCurrentQRPage() {
@@ -8392,16 +8466,20 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         if (!pagingBox) return;
 
-        if (syncQRPages.length > 1) {
+        if (syncQRPages && syncQRPages.length > 1) {
           pagingBox.style.display = 'flex';
           indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length;
-          btnPrev.disabled = currentSyncQRPageIndex === 0;
-          btnNext.disabled = currentSyncQRPageIndex === syncQRPages.length - 1;
+          btnPrev.disabled = false;
+          btnNext.disabled = false;
+          updateAutoPlayBtnUI();
           if (guide) {
-            guide.innerHTML = '⚡ Gói dữ liệu gồm <strong>' + syncQRPages.length + ' phần</strong>. Dùng Thiết bị B quét lần lượt từng phần.';
+            guide.innerHTML = isQRAutoPlay
+              ? '⚡ Đang <strong>tự động đổi mã sau 1.4s</strong> (Vòng lặp ' + syncQRPages.length + ' phần). Chỉ cần giữ camera máy B để quét liên tục!'
+              : 'Đã tạm dừng tự chuyển. Dùng nút &lt; &gt; hoặc bấm <strong>"Tiếp tục chạy"</strong> để tiếp tục vòng lặp.';
           }
         } else {
           pagingBox.style.display = 'none';
+          stopQRAutoPlay();
           if (guide) {
             guide.innerHTML = 'Dùng <strong>Thiết bị B</strong> mở Camera quét mã trong app để nạp ngay dữ liệu (100% Offline).';
           }
@@ -8904,6 +8982,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             tabExportQR.classList.remove('active');
             if (panelExport) panelExport.style.display = 'none';
             if (panelImport) panelImport.style.display = 'block';
+            stopQRAutoPlay();
           });
         }
 
@@ -8920,20 +8999,32 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         var btnPrevQR = document.getElementById('btnPrevQRPage');
         var btnNextQR = document.getElementById('btnNextQRPage');
+        var btnToggleAutoPlay = document.getElementById('btnToggleAutoPlayQR');
+
         if (btnPrevQR) {
           btnPrevQR.addEventListener('click', function() {
-            if (currentSyncQRPageIndex > 0) {
-              currentSyncQRPageIndex--;
+            if (syncQRPages && syncQRPages.length > 1) {
+              currentSyncQRPageIndex = (currentSyncQRPageIndex - 1 + syncQRPages.length) % syncQRPages.length;
               displayCurrentQRPage();
+              updateZoomQRIfOpen();
+              if (isQRAutoPlay) startQRAutoPlay();
             }
           });
         }
         if (btnNextQR) {
           btnNextQR.addEventListener('click', function() {
-            if (currentSyncQRPageIndex < syncQRPages.length - 1) {
-              currentSyncQRPageIndex++;
+            if (syncQRPages && syncQRPages.length > 1) {
+              currentSyncQRPageIndex = (currentSyncQRPageIndex + 1) % syncQRPages.length;
               displayCurrentQRPage();
+              updateZoomQRIfOpen();
+              if (isQRAutoPlay) startQRAutoPlay();
             }
+          });
+        }
+        if (btnToggleAutoPlay) {
+          btnToggleAutoPlay.addEventListener('click', function() {
+            toggleQRAutoPlay();
+            updateQrPagingUI();
           });
         }
 

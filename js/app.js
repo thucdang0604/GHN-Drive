@@ -760,6 +760,7 @@ function setupDesktopQrSync() {
   const pageIndicator = document.getElementById('desktopQrPageIndicator');
   const btnPrev = document.getElementById('btnDesktopPrevQR');
   const btnNext = document.getElementById('btnDesktopNextQR');
+  const btnToggleAutoPlay = document.getElementById('btnDesktopToggleAutoPlayQR');
   const guideTip = document.getElementById('desktopQrGuideTip');
   const btnDownloadJson = document.getElementById('btnDesktopDownloadJson');
   const importJsonInput = document.getElementById('desktopImportJsonFile');
@@ -769,6 +770,54 @@ function setupDesktopQrSync() {
   let desktopSyncQRPages = [];
   let currentDesktopQRPageIndex = 0;
   let currentDesktopSyncMode = 'patch';
+  let desktopQRAutoPlayTimer = null;
+  let isDesktopQRAutoPlay = true;
+  const DESKTOP_QR_INTERVAL = 1400; // 1.4s chuyển mã vòng lặp
+
+  function startDesktopQRAutoPlay() {
+    stopDesktopQRAutoPlay();
+    if (!desktopSyncQRPages || desktopSyncQRPages.length <= 1) return;
+    isDesktopQRAutoPlay = true;
+    updateDesktopAutoPlayBtnUI();
+    desktopQRAutoPlayTimer = setInterval(() => {
+      if (desktopSyncQRPages && desktopSyncQRPages.length > 1) {
+        currentDesktopQRPageIndex = (currentDesktopQRPageIndex + 1) % desktopSyncQRPages.length;
+        displayCurrentDesktopQR();
+      }
+    }, DESKTOP_QR_INTERVAL);
+  }
+
+  function stopDesktopQRAutoPlay() {
+    if (desktopQRAutoPlayTimer) {
+      clearInterval(desktopQRAutoPlayTimer);
+      desktopQRAutoPlayTimer = null;
+    }
+    isDesktopQRAutoPlay = false;
+    updateDesktopAutoPlayBtnUI();
+  }
+
+  function toggleDesktopQRAutoPlay() {
+    if (isDesktopQRAutoPlay) {
+      stopDesktopQRAutoPlay();
+    } else {
+      startDesktopQRAutoPlay();
+    }
+  }
+
+  function updateDesktopAutoPlayBtnUI() {
+    if (!btnToggleAutoPlay) return;
+    if (isDesktopQRAutoPlay) {
+      btnToggleAutoPlay.innerHTML = '⏸ Tự chuyển (1.4s)';
+      btnToggleAutoPlay.style.background = '#10b981';
+      btnToggleAutoPlay.style.borderColor = '#10b981';
+      btnToggleAutoPlay.title = 'Bấm để tạm dừng tự chuyển mã';
+    } else {
+      btnToggleAutoPlay.innerHTML = '▶ Tiếp tục chạy';
+      btnToggleAutoPlay.style.background = '#2563eb';
+      btnToggleAutoPlay.style.borderColor = '#2563eb';
+      btnToggleAutoPlay.title = 'Bấm để bật tự động chuyển mã vòng lặp';
+    }
+  }
 
   function renderDesktopQRCanvas(text) {
     if (!canvasContainer) return;
@@ -808,13 +857,17 @@ function setupDesktopQrSync() {
     if (desktopSyncQRPages.length > 1) {
       pagingControl.style.display = 'flex';
       pageIndicator.textContent = `Phần ${currentDesktopQRPageIndex + 1} / ${desktopSyncQRPages.length}`;
-      btnPrev.disabled = currentDesktopQRPageIndex === 0;
-      btnNext.disabled = currentDesktopQRPageIndex === desktopSyncQRPages.length - 1;
+      btnPrev.disabled = false;
+      btnNext.disabled = false;
+      updateDesktopAutoPlayBtnUI();
       if (guideTip) {
-        guideTip.innerHTML = `⚡ Dữ liệu gồm <strong>${desktopSyncQRPages.length} phần</strong>. Dùng điện thoại quét lần lượt từ Phần 1 đến ${desktopSyncQRPages.length}.`;
+        guideTip.innerHTML = isDesktopQRAutoPlay
+          ? `⚡ Đang <strong>tự động đổi mã sau 1.4s</strong> (Vòng lặp ${desktopSyncQRPages.length} phần). Chỉ cần giữ camera điện thoại để quét liên tục!`
+          : `Đã tạm dừng tự chuyển. Dùng nút &lt; &gt; hoặc bấm <strong>"Tiếp tục chạy"</strong> để chạy vòng lặp.`;
       }
     } else {
       pagingControl.style.display = 'none';
+      stopDesktopQRAutoPlay();
       if (guideTip) {
         guideTip.innerHTML = `Mở app GHN trên <strong>Điện thoại</strong>, bấm <strong>📷 Quét mã</strong> và hướng camera vào mã QR trên màn hình.`;
       }
@@ -835,6 +888,11 @@ function setupDesktopQrSync() {
     }
     currentDesktopQRPageIndex = 0;
     displayCurrentDesktopQR();
+    if (desktopSyncQRPages.length > 1) {
+      startDesktopQRAutoPlay();
+    } else {
+      stopDesktopQRAutoPlay();
+    }
   }
 
   btnOpen.addEventListener('click', () => {
@@ -845,12 +903,14 @@ function setupDesktopQrSync() {
   if (btnClose) {
     btnClose.addEventListener('click', () => {
       modal.style.display = 'none';
+      stopDesktopQRAutoPlay();
     });
   }
 
   window.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.style.display = 'none';
+      stopDesktopQRAutoPlay();
     }
   });
 
@@ -874,19 +934,28 @@ function setupDesktopQrSync() {
 
   if (btnPrev) {
     btnPrev.addEventListener('click', () => {
-      if (currentDesktopQRPageIndex > 0) {
-        currentDesktopQRPageIndex--;
+      if (desktopSyncQRPages && desktopSyncQRPages.length > 1) {
+        currentDesktopQRPageIndex = (currentDesktopQRPageIndex - 1 + desktopSyncQRPages.length) % desktopSyncQRPages.length;
         displayCurrentDesktopQR();
+        if (isDesktopQRAutoPlay) startDesktopQRAutoPlay();
       }
     });
   }
 
   if (btnNext) {
     btnNext.addEventListener('click', () => {
-      if (currentDesktopQRPageIndex < desktopSyncQRPages.length - 1) {
-        currentDesktopQRPageIndex++;
+      if (desktopSyncQRPages && desktopSyncQRPages.length > 1) {
+        currentDesktopQRPageIndex = (currentDesktopQRPageIndex + 1) % desktopSyncQRPages.length;
         displayCurrentDesktopQR();
+        if (isDesktopQRAutoPlay) startDesktopQRAutoPlay();
       }
+    });
+  }
+
+  if (btnToggleAutoPlay) {
+    btnToggleAutoPlay.addEventListener('click', () => {
+      toggleDesktopQRAutoPlay();
+      displayCurrentDesktopQR();
     });
   }
 
