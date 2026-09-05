@@ -3797,6 +3797,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             <!-- Tùy chọn tốc độ chuyển mã -->
             <div id="qrSpeedSelectorBox" class="qr-speed-bar" style="display: none;">
               <span style="font-size: 11px; color: #64748b; font-weight: 600;">Tốc độ:</span>
+              <button type="button" class="btn-qr-speed" data-speed="300">⚡ 0.3s</button>
               <button type="button" class="btn-qr-speed" data-speed="500">⚡ 0.5s</button>
               <button type="button" class="btn-qr-speed active" data-speed="800">🚀 0.8s</button>
               <button type="button" class="btn-qr-speed" data-speed="1400">⏳ 1.4s</button>
@@ -8231,11 +8232,16 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var mCarrier = clean.match(/\b(VNGH[0-9]{8,16}|GY[A-Z0-9]{6,10}|SPX[A-Z0-9]{6,16}|[A-Z]{2}[0-9]{6,14})\b/i);
         if (mCarrier) return mCarrier[0].toUpperCase();
 
-        // 4. Chuỗi ký tự chữ và số 6-25 ký tự
+        // 4. Chuỗi ký tự chữ và số 6-25 ký tự (dạng mã đơn)
         var mAlphanum = clean.match(/^[A-Z0-9_-]{6,25}$/i);
         if (mAlphanum) return mAlphanum[0].toUpperCase();
 
-        return clean;
+        // Tuyệt đối không nhận chuỗi dài hoặc có ký tự json/cấu trúc dữ liệu làm mã đơn
+        if (clean.length > 25 || /[{}\[\]"':;\r\n]/.test(clean)) {
+          return '';
+        }
+
+        return '';
       }
 
       function isSecureOrigin() {
@@ -8244,7 +8250,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         return host === 'localhost' || host === '127.0.0.1';
       }
 
-      function openScanner() {
+      var currentScannerMode = 'search'; // 'search' | 'sync'
+
+      function openScanner(mode) {
+        currentScannerMode = mode || 'search';
         var modal = document.getElementById('qrScannerModal');
         var statusTip = document.getElementById('scannerStatusMsg');
         var btnTorch = document.getElementById('btnToggleTorch');
@@ -8252,6 +8261,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var insecureBox = document.getElementById('insecureCameraBox');
         var fallbackRow = document.getElementById('fallbackActionRow');
         var currentOriginCode = document.getElementById('currentOriginCode');
+        var titleEl = document.querySelector('#qrScannerModal .scanner-title h3');
+
+        if (titleEl) {
+          titleEl.textContent = currentScannerMode === 'sync' ? 'Quét Mã Đồng Bộ (Thiết Bị A)' : 'Quét Mã Đơn Hàng GHN';
+        }
 
         modal.classList.add('show');
         btnTorch.style.display = 'none';
@@ -8299,7 +8313,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             onScanSuccess,
             function() {}
           ).then(function() {
-            statusTip.textContent = '🟢 Camera sẵn sàng! Hướng vào mã QR hoặc mã vận đơn.';
+            if (currentScannerMode === 'sync') {
+              statusTip.textContent = '🟢 Camera sẵn sàng! Hướng vào mã QR trên Thiết Bị A.';
+            } else {
+              statusTip.textContent = '🟢 Camera sẵn sàng! Hướng vào mã QR hoặc mã vận đơn.';
+            }
             try {
               var caps = html5QrCodeScanner.getRunningTrackCapabilities();
               if (caps && caps.torch) {
@@ -8671,88 +8689,95 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       function handleSyncQRScanned(decodedText) {
-        if (typeof QRSync === 'undefined') {
-          showToast('⚠️ Module QRSync chưa tải xong. Vui lòng tải lại trang (F5)!');
-          return;
-        }
-        var payload = QRSync.parseQR(decodedText);
-        if (!payload) {
-          console.warn('Lỗi parseQR:', decodedText);
-          showToast('❌ Không thể giải mã dữ liệu QR! Hãy đảm bảo 2 máy đều dùng bản mới nhất.');
-          return;
-        }
-
-        var pIndex = payload.pIndex || 1;
-        var pTotal = payload.pTotal || 1;
-
-        if (pTotal > 1) {
-          var sid = payload.sid || 'batch';
-          if (!syncMultiPartCache.sid || syncMultiPartCache.sid !== sid || syncMultiPartCache.type !== payload.t) {
-            syncMultiPartCache = { sid: sid, type: payload.t, pTotal: pTotal, parts: {} };
+        try {
+          if (typeof QRSync === 'undefined') {
+            showToast('⚠️ Module QRSync chưa tải xong. Vui lòng tải lại trang (F5)!');
+            return;
           }
-          var isNewPart = !syncMultiPartCache.parts[pIndex];
-          syncMultiPartCache.parts[pIndex] = payload;
-          var receivedCount = Object.keys(syncMultiPartCache.parts).length;
-
-          if (isNewPart) {
-            playBeep();
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-          }
-
-          if (receivedCount < pTotal) {
-            if (isNewPart) {
-              var missingParts = [];
-              for (var mi = 1; mi <= pTotal; mi++) {
-                if (!syncMultiPartCache.parts[mi]) missingParts.push(mi);
-              }
-              showToast('🟢 Đã nhận ' + receivedCount + '/' + pTotal + ' phần! Còn thiếu: ' + missingParts.join(', '));
-              var statusTip = document.getElementById('scannerStatusMsg');
-              if (statusTip) {
-                statusTip.innerHTML = '🟢 Đã nhận <strong>' + receivedCount + '/' + pTotal + ' phần</strong>.<br>' +
-                  '<span style="color:#f59e0b; font-size:12px; font-weight:700;">👉 Còn thiếu: Phần ' + missingParts.join(', ') + '</span>';
-                statusTip.style.color = '#10b981';
-              }
-            }
+          var payload = QRSync.parseQR(decodedText);
+          if (!payload) {
+            console.warn('Lỗi parseQR:', decodedText);
+            showToast('❌ Không thể giải mã dữ liệu QR! Hãy đảm bảo 2 máy đều dùng bản mới nhất.');
             return;
           }
 
-          // Đã đủ các phần
+          var pIndex = payload.pIndex || payload.part || payload.i || 1;
+          var pTotal = payload.pTotal || payload.total || payload.n || 1;
+
+          if (pTotal > 1) {
+            var sid = payload.sid || 'batch';
+            if (!syncMultiPartCache.sid || syncMultiPartCache.sid !== sid || syncMultiPartCache.type !== payload.t) {
+              syncMultiPartCache = { sid: sid, type: payload.t, pTotal: pTotal, parts: {} };
+            }
+            var isNewPart = !syncMultiPartCache.parts[pIndex];
+            syncMultiPartCache.parts[pIndex] = payload;
+            var receivedCount = Object.keys(syncMultiPartCache.parts).length;
+
+            if (isNewPart) {
+              playBeep();
+              if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            }
+
+            if (receivedCount < pTotal) {
+              if (isNewPart) {
+                var missingParts = [];
+                for (var mi = 1; mi <= pTotal; mi++) {
+                  if (!syncMultiPartCache.parts[mi]) missingParts.push(mi);
+                }
+                showToast('🟢 Đã nhận ' + receivedCount + '/' + pTotal + ' phần! Còn thiếu: ' + missingParts.join(', '));
+                var statusTip = document.getElementById('scannerStatusMsg');
+                if (statusTip) {
+                  statusTip.innerHTML = '🟢 Đã nhận <strong>' + receivedCount + '/' + pTotal + ' phần</strong>.<br>' +
+                    '<span style="color:#f59e0b; font-size:12px; font-weight:700;">👉 Còn thiếu: Phần ' + missingParts.join(', ') + '</span>';
+                  statusTip.style.color = '#10b981';
+                }
+              }
+              return;
+            }
+
+            // Đã đủ tất cả các phần!
+            playBeep();
+            if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+            closeScanner();
+            if (payload.t === 'patch') {
+              var allPatches = [];
+              var allGroups = [];
+              for (var pi = 1; pi <= pTotal; pi++) {
+                var part = syncMultiPartCache.parts[pi];
+                if (part) {
+                  if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
+                  if (part.p && part.p.length) allPatches = allPatches.concat(part.p);
+                }
+              }
+              applySyncedPatch({ v: payload.v || 2, g: allGroups, p: allPatches });
+            } else if (payload.t === 'full') {
+              var allOrders = [];
+              var allGroups = [];
+              for (var pi = 1; pi <= pTotal; pi++) {
+                var part = syncMultiPartCache.parts[pi];
+                if (part) {
+                  if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
+                  if (part.o && part.o.length) allOrders = allOrders.concat(part.o);
+                }
+              }
+              applySyncedFull({ v: payload.v || 2, g: allGroups, o: allOrders });
+            }
+            syncMultiPartCache = { sid: null, type: null, pTotal: 1, parts: {} };
+            return;
+          }
+
+          // 1 phần duy nhất
           playBeep();
           if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
           closeScanner();
           if (payload.t === 'patch') {
-            var allPatches = [];
-            var allGroups = [];
-            for (var pi = 1; pi <= pTotal; pi++) {
-              var part = syncMultiPartCache.parts[pi];
-              if (part) {
-                if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
-                if (part.p && part.p.length) allPatches = allPatches.concat(part.p);
-              }
-            }
-            applySyncedPatch({ v: payload.v || 2, g: allGroups, p: allPatches });
+            applySyncedPatch(payload);
           } else if (payload.t === 'full') {
-            var allOrders = [];
-            var allGroups = [];
-            for (var pi = 1; pi <= pTotal; pi++) {
-              var part = syncMultiPartCache.parts[pi];
-              if (part) {
-                if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
-                if (part.o && part.o.length) allOrders = allOrders.concat(part.o);
-              }
-            }
-            applySyncedFull({ v: payload.v || 2, g: allGroups, o: allOrders });
+            applySyncedFull(payload);
           }
-          syncMultiPartCache = { sid: null, type: null, pTotal: 1, parts: {} };
-          return;
-        }
-
-        // 1 phần duy nhất
-        closeScanner();
-        if (payload.t === 'patch') {
-          applySyncedPatch(payload);
-        } else if (payload.t === 'full') {
-          applySyncedFull(payload);
+        } catch(err) {
+          console.error('Lỗi khi xử lý dữ liệu đồng bộ:', err);
+          showToast('⚠️ Lỗi nạp dữ liệu: ' + (err.message || err));
         }
       }
 
@@ -8784,13 +8809,24 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       function onScanSuccess(decodedText) {
         if (!decodedText) return;
 
-        // KIỂM TRA MÃ ĐỒNG BỘ QR OFFLINE
+        // 1. KIỂM TRA MÃ ĐỒNG BỘ QR OFFLINE
         if ((typeof QRSync !== 'undefined' && QRSync.isSyncQR(decodedText)) ||
             decodedText.indexOf('GHNPATCH') !== -1 || decodedText.indexOf('GHNFULL') !== -1) {
           handleSyncQRScanned(decodedText);
           return;
         }
 
+        // 2. NẾU ĐANG Ở CHẾ ĐỘ QUÉT ĐỒNG BỘ THIẾT BỊ A:
+        // TUYỆT ĐỐI KHÔNG TẮT CAMERA NẾU QUÉT PHẢI MÃ KHÁC
+        if (currentScannerMode === 'sync') {
+          var statusTip = document.getElementById('scannerStatusMsg');
+          if (statusTip) {
+            statusTip.innerHTML = '<span style="color:#f59e0b; font-weight:700;">⚠️ Chưa phải mã đồng bộ. Hãy hướng camera vào mã QR trên Thiết Bị A!</span>';
+          }
+          return;
+        }
+
+        // 3. Chế độ tìm đơn hàng thông thường:
         var code = extractTrackingCodeFromScan(decodedText);
         if (!code) return;
 
@@ -8889,7 +8925,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         // Nút Quét QR
         var btnOpenScanner = document.getElementById('btnOpenScanner');
         if (btnOpenScanner) {
-          btnOpenScanner.addEventListener('click', openScanner);
+          btnOpenScanner.addEventListener('click', function() {
+            openScanner('search');
+          });
         }
 
         var btnCloseScanner = document.getElementById('btnCloseScanner');
@@ -8902,12 +8940,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           btnToggleTorch.addEventListener('click', toggleTorch);
         }
 
-        var qrScannerModal = document.getElementById('qrScannerModal');
-        if (qrScannerModal) {
-          qrScannerModal.addEventListener('click', function(e) {
-            if (e.target === qrScannerModal) closeScanner();
-          });
-        }
+        // Không tự đóng khi chạm nền backdrop để tránh tắt oan camera khi người dùng cầm nghiêng máy
 
         // Tải ảnh quét QR từ camera hoặc thư viện máy (File Input)
         var qrFileInput = document.getElementById('qrFileInput');
@@ -9201,7 +9234,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         if (btnLaunchScanner) {
           btnLaunchScanner.addEventListener('click', function() {
             hideQrSyncModal();
-            openScanner();
+            openScanner('sync');
           });
         }
 

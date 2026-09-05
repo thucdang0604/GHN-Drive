@@ -442,7 +442,9 @@
         var data = JSON.parse(jsonStr);
         if (data) {
           if (data.i !== undefined && data.pIndex === undefined) data.pIndex = data.i;
+          if (data.part !== undefined && data.pIndex === undefined) data.pIndex = data.part;
           if (data.n !== undefined && data.pTotal === undefined) data.pTotal = data.n;
+          if (data.total !== undefined && data.pTotal === undefined) data.pTotal = data.total;
           if (data.s !== undefined && data.sid === undefined) data.sid = data.s;
           if (data.t === 'p') data.t = 'patch';
           if (data.t === 'f') data.t = 'full';

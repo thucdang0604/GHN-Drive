@@ -619,9 +619,9 @@ function setupDesktopQrScanner() {
       const payload = qrsync.parseQR(decodedText);
       if (payload) {
         // Hỗ trợ chia nhiều phần nếu danh sách dài
-        if (payload.part && payload.total) {
-          const pIndex = payload.part;
-          const pTotal = payload.total;
+        const pIndex = payload.pIndex || payload.part || payload.i || 1;
+        const pTotal = payload.pTotal || payload.total || payload.n || 1;
+        if (pTotal > 1) {
           const sid = payload.sid || 's';
 
           if (desktopSyncMultiPartCache.sid !== sid || desktopSyncMultiPartCache.pTotal !== pTotal) {
