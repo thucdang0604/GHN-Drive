@@ -244,6 +244,9 @@ function setupEventListeners() {
 
   // Chuyển đổi chế độ xem Danh sách / Bản đồ
   setupDesktopViewSwitcher();
+
+  // Modal Đồng bộ QR Offline sang Mobile
+  setupDesktopQrSync();
 }
 
 /**
@@ -599,6 +602,36 @@ function setupDesktopQrScanner() {
 
   function onDesktopScanSuccess(decodedText) {
     if (!decodedText) return;
+
+    // Kiểm tra mã đồng bộ QR Offline
+    const qrsync = window.QRSync || (typeof QRSync !== 'undefined' ? QRSync : null);
+    if (qrsync && qrsync.isSyncQR(decodedText)) {
+      const payload = qrsync.parseQR(decodedText);
+      if (payload) {
+        closeDesktopScanner();
+        if (payload.t === 'patch') {
+          const res = qrsync.applyPatch(payload, currentOrders, currentGroups);
+          currentOrders = res.orders;
+          currentGroups = res.groups;
+          StorageService.saveOrders(currentOrders);
+          StorageService.saveGroups(currentGroups);
+          renderApp();
+          showToast(`🎉 Đã đồng bộ tọa độ & nhóm cho ${res.matchedCount} đơn!`, 'success');
+          return;
+        } else if (payload.t === 'full') {
+          const res = qrsync.applyFull(payload, currentOrders, currentGroups, false);
+          currentOrders = res.orders;
+          currentGroups = res.groups;
+          ensureGroupIntegrity();
+          StorageService.saveOrders(currentOrders);
+          StorageService.saveGroups(currentGroups);
+          renderApp();
+          showToast(`🎉 Đã nạp thành công ${res.importedCount} đơn từ mã QR!`, 'success');
+          return;
+        }
+      }
+    }
+
     const code = extractTrackingCode(decodedText);
     if (!code) return;
 
@@ -636,6 +669,194 @@ function setupDesktopQrScanner() {
     const mAlphanum = clean.match(/^[A-Z0-9_-]{6,25}$/i);
     if (mAlphanum) return mAlphanum[0].toUpperCase();
     return clean;
+  }
+}
+
+/**
+ * Xử lý Modal Xuất Mã QR Đồng Bộ Sang Mobile (100% Offline)
+ */
+function setupDesktopQrSync() {
+  const modal = document.getElementById('desktopQrSyncModal');
+  const btnOpen = document.getElementById('btnOpenQrSyncModalDesktop');
+  const btnClose = document.getElementById('btnCloseDesktopQrSyncModal');
+  const optPatchBox = document.getElementById('desktopOptPatchBox');
+  const optFullBox = document.getElementById('desktopOptFullBox');
+  const syncModeRadios = document.querySelectorAll('input[name="desktopSyncMode"]');
+  const canvasContainer = document.getElementById('desktopQrCanvasContainer');
+  const pagingControl = document.getElementById('desktopQrPagingControl');
+  const pageIndicator = document.getElementById('desktopQrPageIndicator');
+  const btnPrev = document.getElementById('btnDesktopPrevQR');
+  const btnNext = document.getElementById('btnDesktopNextQR');
+  const guideTip = document.getElementById('desktopQrGuideTip');
+  const btnDownloadJson = document.getElementById('btnDesktopDownloadJson');
+  const importJsonInput = document.getElementById('desktopImportJsonFile');
+
+  if (!modal || !btnOpen) return;
+
+  let desktopSyncQRPages = [];
+  let currentDesktopQRPageIndex = 0;
+  let currentDesktopSyncMode = 'patch';
+
+  function renderDesktopQRCanvas(text) {
+    if (!canvasContainer) return;
+    canvasContainer.innerHTML = '';
+    if (typeof QRCode === 'undefined') {
+      canvasContainer.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:20px; text-align:center;">⚠️ Chưa tải được thư viện QRCode (js/qrcode.min.js)!</div>';
+      return;
+    }
+    try {
+      new QRCode(canvasContainer, {
+        text: text,
+        width: 220,
+        height: 220,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch(e) {
+      console.error('Lỗi tạo mã QR trên Desktop:', e);
+      canvasContainer.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:15px; text-align:center;">Dữ liệu quá dài. Hãy chuyển sang chế độ "Chỉ Tọa độ & Nhóm" hoặc Tải File JSON!</div>';
+    }
+  }
+
+  function displayCurrentDesktopQR() {
+    if (!desktopSyncQRPages || desktopSyncQRPages.length === 0) return;
+    const text = desktopSyncQRPages[currentDesktopQRPageIndex];
+    renderDesktopQRCanvas(text);
+
+    if (desktopSyncQRPages.length > 1) {
+      pagingControl.style.display = 'flex';
+      pageIndicator.textContent = `Phần ${currentDesktopQRPageIndex + 1} / ${desktopSyncQRPages.length}`;
+      btnPrev.disabled = currentDesktopQRPageIndex === 0;
+      btnNext.disabled = currentDesktopQRPageIndex === desktopSyncQRPages.length - 1;
+      if (guideTip) {
+        guideTip.innerHTML = `⚡ Dữ liệu gồm <strong>${desktopSyncQRPages.length} phần</strong>. Dùng điện thoại quét lần lượt từ Phần 1 đến ${desktopSyncQRPages.length}.`;
+      }
+    } else {
+      pagingControl.style.display = 'none';
+      if (guideTip) {
+        guideTip.innerHTML = `Mở app GHN trên <strong>Điện thoại</strong>, bấm <strong>📷 Quét mã</strong> và hướng camera vào mã QR trên màn hình.`;
+      }
+    }
+  }
+
+  function generateDesktopQR() {
+    const qrsync = window.QRSync || (typeof QRSync !== 'undefined' ? QRSync : null);
+    if (!qrsync) {
+      console.warn('QRSync module chưa sẵn sàng');
+      return;
+    }
+
+    if (currentDesktopSyncMode === 'patch') {
+      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 35);
+    } else {
+      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 8);
+    }
+    currentDesktopQRPageIndex = 0;
+    displayCurrentDesktopQR();
+  }
+
+  btnOpen.addEventListener('click', () => {
+    modal.style.display = 'flex';
+    generateDesktopQR();
+  });
+
+  if (btnClose) {
+    btnClose.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
+
+  window.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+
+  syncModeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      currentDesktopSyncMode = e.target.value;
+      if (currentDesktopSyncMode === 'patch') {
+        optPatchBox.style.borderColor = '#2563eb';
+        optPatchBox.style.background = '#eff6ff';
+        optFullBox.style.borderColor = 'var(--border-color)';
+        optFullBox.style.background = '#f8fafc';
+      } else {
+        optFullBox.style.borderColor = '#2563eb';
+        optFullBox.style.background = '#eff6ff';
+        optPatchBox.style.borderColor = 'var(--border-color)';
+        optPatchBox.style.background = '#f8fafc';
+      }
+      generateDesktopQR();
+    });
+  });
+
+  if (btnPrev) {
+    btnPrev.addEventListener('click', () => {
+      if (currentDesktopQRPageIndex > 0) {
+        currentDesktopQRPageIndex--;
+        displayCurrentDesktopQR();
+      }
+    });
+  }
+
+  if (btnNext) {
+    btnNext.addEventListener('click', () => {
+      if (currentDesktopQRPageIndex < desktopSyncQRPages.length - 1) {
+        currentDesktopQRPageIndex++;
+        displayCurrentDesktopQR();
+      }
+    });
+  }
+
+  if (btnDownloadJson) {
+    btnDownloadJson.addEventListener('click', () => {
+      const qrsync = window.QRSync || (typeof QRSync !== 'undefined' ? QRSync : null);
+      if (!qrsync) return;
+      const jsonStr = qrsync.exportToFileData(currentOrders, currentGroups);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const now = new Date();
+      const dateStr = now.getFullYear() + ('0' + (now.getMonth() + 1)).slice(-2) + ('0' + now.getDate()).slice(-2) + '_' + ('0' + now.getHours()).slice(-2) + ('0' + now.getMinutes()).slice(-2);
+      const fileName = `GHN_Backup_${dateStr}.json`;
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      showToast(`Đã tải file sao lưu: ${fileName}`, 'success');
+    });
+  }
+
+  if (importJsonInput) {
+    importJsonInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (!data || (!data.orders && !data.groups)) {
+            showToast('File không đúng định dạng sao lưu GHN!', 'error');
+            return;
+          }
+          if (Array.isArray(data.orders)) currentOrders = data.orders;
+          if (Array.isArray(data.groups)) currentGroups = data.groups;
+          ensureGroupIntegrity();
+          StorageService.saveOrders(currentOrders);
+          StorageService.saveGroups(currentGroups);
+          renderApp();
+          modal.style.display = 'none';
+          showToast(`Đã nạp thành công ${currentOrders.length} đơn và ${currentGroups.length} nhóm!`, 'success');
+        } catch(err) {
+          showToast(`Lỗi đọc file JSON: ${err.message}`, 'error');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
   }
 }
 

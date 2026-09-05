@@ -11,6 +11,10 @@
   <link rel="stylesheet" href="css/style.css">
   <!-- Thư viện quét mã QR / Barcode đa nền tảng -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Thư viện sinh mã QR offline 100% -->
+  <script src="js/qrcode.min.js"></script>
+  <!-- Module đồng bộ mã QR offline -->
+  <script src="js/qr-sync.js"></script>
   <!-- Thư viện Bản đồ Leaflet -->
   <link rel="stylesheet" href="css/leaflet.css">
   <script src="js/leaflet.js"></script>
@@ -43,6 +47,17 @@
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
           </svg>
           ⚡ Lấy Đơn Mã Chuyến
+        </button>
+
+        <!-- Nút Xuất Mã QR Đồng Bộ Sang Mobile -->
+        <button id="btnOpenQrSyncModalDesktop" class="btn btn-trip-header" style="background: #2563eb; border-color: #1d4ed8; color: #fff;" title="Tạo mã QR để đồng bộ sang điện thoại (100% Offline)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          📲 Xuất QR sang Mobile
         </button>
 
         <!-- Nút dọn dẹp data cũ đã xử lý -->
@@ -380,6 +395,71 @@ giá tiền: 0 VNĐ."
         <button id="btnSubmitTripDesktop" class="btn btn-primary" style="background: var(--ghn-orange);">
           🚀 Tải Đơn Hàng Từ Sheet
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Đồng Bộ QR Sang Mobile (Desktop) -->
+  <div id="desktopQrSyncModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-header" style="justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="background: #eff6ff; color: #2563eb; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            📲
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem; color: var(--brand-navy);">Đồng Bộ Sang Điện Thoại (100% Offline)</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Quét mã QR từ điện thoại để chuyển nhóm & tọa độ</p>
+          </div>
+        </div>
+        <button id="btnCloseDesktopQrSyncModal" class="btn-icon" style="font-size: 1.4rem; background: none; border: none; cursor: pointer; color: #94a3b8;">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+        <!-- Lựa chọn chế độ -->
+        <div style="display: flex; gap: 10px;">
+          <label style="flex: 1; border: 1.5px solid #2563eb; background: #eff6ff; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;" id="desktopOptPatchBox">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="radio" name="desktopSyncMode" value="patch" checked>
+              <strong style="font-size: 12.5px; color: #1e3a8a;">⚡ Chỉ Tọa độ & Nhóm</strong>
+            </div>
+            <span style="font-size: 11px; color: #475569; padding-left: 20px;">1 mã QR siêu nhẹ (Điện thoại đã có đơn)</span>
+          </label>
+
+          <label style="flex: 1; border: 1.5px solid var(--border-color); background: #f8fafc; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;" id="desktopOptFullBox">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="radio" name="desktopSyncMode" value="full">
+              <strong style="font-size: 12.5px; color: #0f172a;">📦 Toàn bộ đơn hàng</strong>
+            </div>
+            <span style="font-size: 11px; color: #64748b; padding-left: 20px;">Chuyển hết (Điện thoại chưa có đơn)</span>
+          </label>
+        </div>
+
+        <!-- Khung hiển thị QR Code -->
+        <div style="display: flex; flex-direction: column; align-items: center; background: #f8fafc; border: 1px dashed var(--border-color); border-radius: 10px; padding: 16px;">
+          <div id="desktopQrCanvasContainer" style="width: 240px; height: 240px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center;"></div>
+          
+          <div id="desktopQrPagingControl" style="display: none; align-items: center; gap: 12px; margin-top: 10px;">
+            <button type="button" id="btnDesktopPrevQR" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">&lt; Phần trước</button>
+            <span id="desktopQrPageIndicator" style="font-size: 12px; font-weight: 800; color: #2563eb;">Phần 1/1</span>
+            <button type="button" id="btnDesktopNextQR" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">Phần sau &gt;</button>
+          </div>
+
+          <p id="desktopQrGuideTip" style="font-size: 12px; color: #475569; text-align: center; margin-top: 10px; line-height: 1.4;">
+            Mở app GHN trên <strong>Điện thoại</strong>, bấm <strong>📷 Quét mã</strong> và hướng camera vào màn hình máy tính.
+          </p>
+        </div>
+
+        <!-- Các tùy chọn file sao lưu dự phòng -->
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button type="button" id="btnDesktopDownloadJson" class="btn btn-secondary" style="font-size: 12px; display: flex; align-items: center; gap: 6px;">
+            💾 Tải File Sao Lưu (.json)
+          </button>
+          <label for="desktopImportJsonFile" class="btn btn-secondary" style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            📁 Nhập File Từ Máy Tính
+          </label>
+          <input type="file" id="desktopImportJsonFile" accept=".json" style="display: none;">
+        </div>
       </div>
     </div>
   </div>

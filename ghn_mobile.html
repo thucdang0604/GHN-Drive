@@ -6,6 +6,10 @@
   <title>Bảng Giao Hàng GHN - Tối Ưu Mobile</title>
   <!-- Thư viện quét mã QR / Barcode đa nền tảng (QR & Code 128 GHN) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Thư viện sinh mã QR offline 100% -->
+  <script src="js/qrcode.min.js"></script>
+  <!-- Module đồng bộ mã QR offline -->
+  <script src="js/qr-sync.js"></script>
   <!-- Thư viện Bản đồ Leaflet (CDN online giúp file chạy độc lập 100% khi deploy) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -2790,6 +2794,292 @@
       cursor: pointer;
       margin-left: 6px;
     }
+
+    /* ==========================================================
+       MODAL ĐỒNG BỘ MÃ QR OFFLINE 100%
+       ========================================================== */
+    .btn-header.sync {
+      background: #2563eb;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    }
+
+    .sync-modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .sync-modal {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 420px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalSlideUp {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .sync-modal-header {
+      background: var(--brand-navy);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sync-modal-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-modal-title h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .sync-close-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+
+    .sync-close-btn:hover {
+      color: #fff;
+    }
+
+    .sync-modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sync-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: var(--radius-md);
+    }
+
+    .sync-tab-btn {
+      border: none;
+      background: none;
+      padding: 8px 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #64748b;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .sync-tab-btn.active {
+      background: #ffffff;
+      color: var(--brand-navy);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .sync-type-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sync-type-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      background: #f8fafc;
+      transition: all 0.15s;
+    }
+
+    .sync-type-card.active {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .sync-type-card input {
+      margin-top: 3px;
+    }
+
+    .sync-type-info strong {
+      display: block;
+      font-size: 13px;
+      color: #0f172a;
+    }
+
+    .sync-type-info span {
+      display: block;
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .qr-display-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px;
+      background: #f8fafc;
+      border: 1px dashed var(--border-color);
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    .qr-canvas-box {
+      width: 240px;
+      height: 240px;
+      background: #ffffff;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .qr-canvas-box img, .qr-canvas-box canvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .qr-paging-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 8px 0;
+    }
+
+    .btn-qr-nav {
+      background: #0f172a;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+
+    .btn-qr-nav:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    .qr-page-text {
+      font-size: 12px;
+      font-weight: 800;
+      color: #2563eb;
+    }
+
+    .qr-tip-text {
+      font-size: 11.5px;
+      color: #475569;
+      line-height: 1.4;
+      margin-top: 4px;
+    }
+
+    .sync-file-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btn-sync-file {
+      flex: 1;
+      background: #f1f5f9;
+      border: 1px solid var(--border-color);
+      color: #334155;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .btn-sync-file:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-sync-file.file-import {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sync-import-instruction {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      font-size: 12.5px;
+      color: #334155;
+      line-height: 1.5;
+    }
+
+    .step-badge {
+      display: inline-block;
+      background: var(--brand-navy);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      margin-bottom: 4px;
+    }
+
+    .btn-launch-scanner {
+      width: 100%;
+      margin-top: 14px;
+      background: #10b981;
+      color: #fff;
+      border: none;
+      font-size: 13.5px;
+      font-weight: 800;
+      padding: 11px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(16, 185, 129, 0.35);
+      transition: all 0.15s;
+    }
+
+    .btn-launch-scanner:active {
+      transform: scale(0.98);
+      background: #059669;
+    }
   </style>
 </head>
 <body>
@@ -2803,6 +3093,9 @@
     <div class="header-actions">
       <button id="btnOpenTripSheetHeader" class="btn-header trip" title="Đồng bộ đơn theo Mã Chuyến từ Google Sheet">
         ⚡ Mã Chuyến
+      </button>
+      <button id="btnOpenQrSyncModal" class="btn-header sync" title="Đồng bộ dữ liệu sang thiết bị khác (Mã QR Offline)">
+        📲 Đồng Bộ QR
       </button>
       <button id="btnCleanData" class="btn-header clean" title="Dọn dẹp các đơn đã GTC/GTB">
         🗑 Dọn Cũ
@@ -3331,6 +3624,85 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         <input type="file" id="qrFileInput" accept="image/*" capture="environment" style="display: none;">
         <input type="file" id="qrGalleryInput" accept="image/*" style="display: none;">
         <div id="qrHiddenContainer" style="display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP 4: ĐỒNG BỘ DỮ LIỆU QR (100% OFFLINE) -->
+  <div id="qrSyncModal" class="sync-modal-backdrop" style="display: none;">
+    <div class="sync-modal">
+      <div class="sync-modal-header">
+        <div class="sync-modal-title">
+          <span>📲</span>
+          <h3>Đồng Bộ Thiết Bị (100% Offline)</h3>
+        </div>
+        <button type="button" id="btnCloseQrSync" class="sync-close-btn">&times;</button>
+      </div>
+
+      <div class="sync-modal-body">
+        <!-- Chế độ Đồng bộ: Tạo mã QR (Máy A) hoặc Nhập dữ liệu (Máy B) -->
+        <div class="sync-tabs">
+          <button type="button" class="sync-tab-btn active" id="tabExportQR">Tạo Mã QR (Máy A)</button>
+          <button type="button" class="sync-tab-btn" id="tabImportQR">Quét & Nhận (Máy B)</button>
+        </div>
+
+        <!-- Panel 1: Tạo mã QR để máy khác quét -->
+        <div id="panelExportQR" class="sync-panel active">
+          <!-- Chọn loại dữ liệu muốn đồng bộ -->
+          <div class="sync-type-selector">
+            <label class="sync-type-card active" id="optPatchMode">
+              <input type="radio" name="syncType" value="patch" checked>
+              <div class="sync-type-info">
+                <strong>⚡ Chỉ Tọa độ & Gom nhóm</strong>
+                <span>(Khuyên dùng: Siêu nhẹ, 1 mã quét nhanh)</span>
+              </div>
+            </label>
+            <label class="sync-type-card" id="optFullMode">
+              <input type="radio" name="syncType" value="full">
+              <div class="sync-type-info">
+                <strong>📦 Toàn bộ danh sách đơn</strong>
+                <span>(Dành cho máy B chưa có đơn nào)</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Khung hiển thị Mã QR -->
+          <div class="qr-display-card">
+            <div id="qrSyncCanvasContainer" class="qr-canvas-box"></div>
+            <div id="qrPagingControl" class="qr-paging-bar" style="display: none;">
+              <button type="button" id="btnPrevQRPage" class="btn-qr-nav">&lt; Phần trước</button>
+              <span id="qrPageIndicator" class="qr-page-text">Phần 1/1</span>
+              <button type="button" id="btnNextQRPage" class="btn-qr-nav">Phần sau &gt;</button>
+            </div>
+            <p id="qrSyncGuideText" class="qr-tip-text">
+              Dùng <strong>Thiết bị B</strong> mở tính năng Quét QR trong app và hướng camera vào mã này.
+            </p>
+          </div>
+
+          <!-- Tùy chọn dự phòng: Tải file hoặc Nhập file JSON -->
+          <div class="sync-file-actions">
+            <button type="button" id="btnDownloadJsonFile" class="btn-sync-file">
+              💾 Tải File Sao Lưu (.json)
+            </button>
+            <label for="importJsonFileInput" class="btn-sync-file file-import">
+              📁 Nhập File Từ Máy
+            </label>
+            <input type="file" id="importJsonFileInput" accept=".json" style="display: none;">
+          </div>
+        </div>
+
+        <!-- Panel 2: Hướng dẫn quét và nhận dữ liệu -->
+        <div id="panelImportQR" class="sync-panel" style="display: none;">
+          <div class="sync-import-instruction">
+            <div class="step-badge">Bước 1</div>
+            <p>Trên <strong>Thiết bị A</strong> (máy đã gom nhóm và kéo định vị), bấm nút <strong>"📲 Đồng Bộ QR"</strong> trên thanh tiêu đề và chọn dữ liệu cần gửi.</p>
+            <div class="step-badge" style="margin-top: 10px;">Bước 2</div>
+            <p>Trên <strong>Thiết bị B</strong> này, bấm nút bên dưới để mở camera quét mã QR hiển thị trên màn hình Thiết bị A.</p>
+            <button type="button" id="btnLaunchScannerFromSync" class="btn-launch-scanner">
+              📷 Mở Camera Quét Mã Thiết Bị A
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -7842,8 +8214,240 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         }).catch(function(e) { console.warn(e); });
       }
 
+      // ==========================================================
+      // QUẢN LÝ ĐỒNG BỘ MÃ QR OFFLINE 100%
+      // ==========================================================
+      var syncQRPages = [];
+      var currentSyncQRPageIndex = 0;
+      var currentSyncMode = 'patch'; // 'patch' | 'full'
+      var syncMultiPartCache = { type: null, pTotal: 1, parts: {} };
+
+      function showQrSyncModal() {
+        var modal = document.getElementById('qrSyncModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        generateAndRenderSyncQR();
+      }
+
+      function hideQrSyncModal() {
+        var modal = document.getElementById('qrSyncModal');
+        if (modal) modal.style.display = 'none';
+      }
+
+      function renderQRCanvas(text) {
+        var container = document.getElementById('qrSyncCanvasContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        if (typeof QRCode === 'undefined') {
+          container.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:20px; text-align:center;">⚠️ Chưa tải được thư viện QRCode (js/qrcode.min.js). Vui lòng thử lại!</div>';
+          return;
+        }
+        try {
+          new QRCode(container, {
+            text: text,
+            width: 220,
+            height: 220,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        } catch(e) {
+          console.error('Lỗi tạo mã QR:', e);
+          container.innerHTML = '<div style="color:#ef4444; font-size:11.5px; padding:15px; text-align:center;">Dữ liệu quá dài. Hãy chuyển sang chế độ "Chỉ Tọa độ & Gom nhóm" hoặc Tải File JSON!</div>';
+        }
+      }
+
+      function generateAndRenderSyncQR() {
+        if (typeof QRSync === 'undefined') {
+          console.warn('Module QRSync chưa sẵn sàng');
+          return;
+        }
+        if (currentSyncMode === 'patch') {
+          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 35);
+        } else {
+          syncQRPages = QRSync.generateFullQRs(orders, groups, 8);
+        }
+        currentSyncQRPageIndex = 0;
+        displayCurrentQRPage();
+      }
+
+      function displayCurrentQRPage() {
+        if (!syncQRPages || syncQRPages.length === 0) return;
+        var text = syncQRPages[currentSyncQRPageIndex];
+        renderQRCanvas(text);
+        updateQrPagingUI();
+      }
+
+      function updateQrPagingUI() {
+        var pagingBox = document.getElementById('qrPagingControl');
+        var indicator = document.getElementById('qrPageIndicator');
+        var btnPrev = document.getElementById('btnPrevQRPage');
+        var btnNext = document.getElementById('btnNextQRPage');
+        var guide = document.getElementById('qrSyncGuideText');
+
+        if (!pagingBox) return;
+
+        if (syncQRPages.length > 1) {
+          pagingBox.style.display = 'flex';
+          indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length;
+          btnPrev.disabled = currentSyncQRPageIndex === 0;
+          btnNext.disabled = currentSyncQRPageIndex === syncQRPages.length - 1;
+          if (guide) {
+            guide.innerHTML = '⚡ Gói dữ liệu gồm <strong>' + syncQRPages.length + ' phần</strong>. Dùng Thiết bị B quét lần lượt từng phần.';
+          }
+        } else {
+          pagingBox.style.display = 'none';
+          if (guide) {
+            guide.innerHTML = 'Dùng <strong>Thiết bị B</strong> mở Camera quét mã trong app để nạp ngay dữ liệu (100% Offline).';
+          }
+        }
+      }
+
+      function downloadBackupJson() {
+        if (typeof QRSync === 'undefined') return;
+        var jsonStr = QRSync.exportToFileData(orders, groups, verifiedGeocache);
+        var blob = new Blob([jsonStr], { type: 'application/json' });
+        var now = new Date();
+        var dateStr = now.getFullYear() + ('0' + (now.getMonth() + 1)).slice(-2) + ('0' + now.getDate()).slice(-2) + '_' + ('0' + now.getHours()).slice(-2) + ('0' + now.getMinutes()).slice(-2);
+        var fileName = 'GHN_Backup_' + dateStr + '.json';
+
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        showToast('💾 Đã tải file sao lưu: ' + fileName);
+      }
+
+      function importBackupJson(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            var data = JSON.parse(e.target.result);
+            if (!data || (!data.orders && !data.groups)) {
+              alert('File không đúng định dạng sao lưu GHN!');
+              return;
+            }
+            if (Array.isArray(data.orders)) orders = data.orders;
+            if (Array.isArray(data.groups)) groups = data.groups;
+            if (data.verifiedGeocache) {
+              verifiedGeocache = Object.assign(verifiedGeocache || {}, data.verifiedGeocache);
+              saveVerifiedGeocache();
+            }
+            ensureGroupIntegrity();
+            saveData();
+            render();
+            if (mobileMap) initOrUpdateMap();
+            hideQrSyncModal();
+            showToast('🎉 Đã nạp thành công ' + orders.length + ' đơn và ' + groups.length + ' nhóm từ file!');
+          } catch(err) {
+            alert('Lỗi đọc file JSON: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function handleSyncQRScanned(decodedText) {
+        var payload = QRSync.parseQR(decodedText);
+        if (!payload) {
+          showToast('❌ Mã đồng bộ không hợp lệ hoặc bị lỗi!');
+          return;
+        }
+
+        playBeep();
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+        var pIndex = payload.pIndex || 1;
+        var pTotal = payload.pTotal || 1;
+
+        if (pTotal > 1) {
+          if (!syncMultiPartCache.type || syncMultiPartCache.type !== payload.t) {
+            syncMultiPartCache = { type: payload.t, pTotal: pTotal, parts: {} };
+          }
+          syncMultiPartCache.parts[pIndex] = payload;
+          var receivedCount = Object.keys(syncMultiPartCache.parts).length;
+
+          if (receivedCount < pTotal) {
+            showToast('🟢 Đã nhận phần ' + pIndex + '/' + pTotal + '! Hướng camera vào phần còn lại.');
+            var statusTip = document.getElementById('scannerStatusMsg');
+            if (statusTip) {
+              statusTip.textContent = '🟢 Đã quét ' + receivedCount + '/' + pTotal + ' phần. Hướng camera vào phần tiếp theo!';
+              statusTip.style.color = '#10b981';
+            }
+            return;
+          }
+
+          // Đã đủ các phần
+          closeScanner();
+          if (payload.t === 'patch') {
+            var allPatches = [];
+            var allGroups = [];
+            for (var pi = 1; pi <= pTotal; pi++) {
+              var part = syncMultiPartCache.parts[pi];
+              if (part) {
+                if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
+                if (part.p && part.p.length) allPatches = allPatches.concat(part.p);
+              }
+            }
+            applySyncedPatch({ g: allGroups, p: allPatches });
+          } else if (payload.t === 'full') {
+            var allOrders = [];
+            var allGroups = [];
+            for (var pi = 1; pi <= pTotal; pi++) {
+              var part = syncMultiPartCache.parts[pi];
+              if (part) {
+                if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
+                if (part.o && part.o.length) allOrders = allOrders.concat(part.o);
+              }
+            }
+            applySyncedFull({ g: allGroups, o: allOrders });
+          }
+          syncMultiPartCache = { type: null, pTotal: 1, parts: {} };
+          return;
+        }
+
+        // 1 phần duy nhất
+        closeScanner();
+        if (payload.t === 'patch') {
+          applySyncedPatch(payload);
+        } else if (payload.t === 'full') {
+          applySyncedFull(payload);
+        }
+      }
+
+      function applySyncedPatch(payload) {
+        var result = QRSync.applyPatch(payload, orders, groups);
+        orders = result.orders;
+        groups = result.groups;
+        saveData();
+        render();
+        if (mobileMap) initOrUpdateMap();
+        showToast('🎉 Đã đồng bộ tọa độ & nhóm cho ' + result.matchedCount + ' đơn!');
+      }
+
+      function applySyncedFull(payload) {
+        var result = QRSync.applyFull(payload, orders, groups, false);
+        orders = result.orders;
+        groups = result.groups;
+        ensureGroupIntegrity();
+        saveData();
+        render();
+        if (mobileMap) initOrUpdateMap();
+        showToast('🎉 Đã nạp thành công ' + result.importedCount + ' đơn và ' + groups.length + ' nhóm!');
+      }
+
       function onScanSuccess(decodedText) {
         if (!decodedText) return;
+
+        // KIỂM TRA MÃ ĐỒNG BỘ QR OFFLINE
+        if (typeof QRSync !== 'undefined' && QRSync.isSyncQR(decodedText)) {
+          handleSyncQRScanned(decodedText);
+          return;
+        }
+
         var code = extractTrackingCodeFromScan(decodedText);
         if (!code) return;
 
@@ -8142,6 +8746,98 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             showToast('Đã dọn dẹp ' + finished.length + ' đơn đã xử lý!');
           }
         });
+
+        // Sự kiện Đồng Bộ QR 100% Offline
+        var btnOpenQrSync = document.getElementById('btnOpenQrSyncModal');
+        if (btnOpenQrSync) {
+          btnOpenQrSync.addEventListener('click', function() {
+            showQrSyncModal();
+          });
+        }
+
+        var btnCloseQrSync = document.getElementById('btnCloseQrSync');
+        if (btnCloseQrSync) {
+          btnCloseQrSync.addEventListener('click', function() {
+            hideQrSyncModal();
+          });
+        }
+
+        var tabExportQR = document.getElementById('tabExportQR');
+        var tabImportQR = document.getElementById('tabImportQR');
+        var panelExport = document.getElementById('panelExportQR');
+        var panelImport = document.getElementById('panelImportQR');
+
+        if (tabExportQR && tabImportQR) {
+          tabExportQR.addEventListener('click', function() {
+            tabExportQR.classList.add('active');
+            tabImportQR.classList.remove('active');
+            if (panelExport) panelExport.style.display = 'block';
+            if (panelImport) panelImport.style.display = 'none';
+            generateAndRenderSyncQR();
+          });
+
+          tabImportQR.addEventListener('click', function() {
+            tabImportQR.classList.add('active');
+            tabExportQR.classList.remove('active');
+            if (panelExport) panelExport.style.display = 'none';
+            if (panelImport) panelImport.style.display = 'block';
+          });
+        }
+
+        var syncTypeInputs = document.querySelectorAll('input[name="syncType"]');
+        syncTypeInputs.forEach(function(radio) {
+          radio.addEventListener('change', function() {
+            currentSyncMode = this.value;
+            document.querySelectorAll('.sync-type-card').forEach(function(c) { c.classList.remove('active'); });
+            var parentCard = radio.closest('.sync-type-card');
+            if (parentCard) parentCard.classList.add('active');
+            generateAndRenderSyncQR();
+          });
+        });
+
+        var btnPrevQR = document.getElementById('btnPrevQRPage');
+        var btnNextQR = document.getElementById('btnNextQRPage');
+        if (btnPrevQR) {
+          btnPrevQR.addEventListener('click', function() {
+            if (currentSyncQRPageIndex > 0) {
+              currentSyncQRPageIndex--;
+              displayCurrentQRPage();
+            }
+          });
+        }
+        if (btnNextQR) {
+          btnNextQR.addEventListener('click', function() {
+            if (currentSyncQRPageIndex < syncQRPages.length - 1) {
+              currentSyncQRPageIndex++;
+              displayCurrentQRPage();
+            }
+          });
+        }
+
+        var btnDownloadJson = document.getElementById('btnDownloadJsonFile');
+        if (btnDownloadJson) {
+          btnDownloadJson.addEventListener('click', function() {
+            downloadBackupJson();
+          });
+        }
+
+        var importJsonInput = document.getElementById('importJsonFileInput');
+        if (importJsonInput) {
+          importJsonInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+              importBackupJson(this.files[0]);
+              this.value = '';
+            }
+          });
+        }
+
+        var btnLaunchScanner = document.getElementById('btnLaunchScannerFromSync');
+        if (btnLaunchScanner) {
+          btnLaunchScanner.addEventListener('click', function() {
+            hideQrSyncModal();
+            openScanner();
+          });
+        }
       });
 
       function escapeHtml(str) {
