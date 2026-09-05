@@ -752,7 +752,7 @@ function setupDesktopQrScanner() {
 }
 
 /**
- * Xử lý Modal Xuất Mã QR Đồng Bộ Sang Mobile (100% Offline)
+ * Xử lý Modal Xuất Mã QR Đồng Bộ Sang Mobile (100% Offline & P2P Siêu Tốc)
  */
 function setupDesktopQrSync() {
   const modal = document.getElementById('desktopQrSyncModal');
@@ -771,8 +771,19 @@ function setupDesktopQrSync() {
   const btnDownloadJson = document.getElementById('btnDesktopDownloadJson');
   const importJsonInput = document.getElementById('desktopImportJsonFile');
 
+  // Các phần tử phương thức P2P
+  const btnDesktopMethodP2P = document.getElementById('btnDesktopMethodP2P');
+  const btnDesktopMethodQR = document.getElementById('btnDesktopMethodQR');
+  const desktopP2PHostBox = document.getElementById('desktopP2PHostBox');
+  const desktopQrLegacyBox = document.getElementById('desktopQrLegacyBox');
+  const desktopP2PCanvasContainer = document.getElementById('desktopP2PCanvasContainer');
+  const desktopP2PHostPinValue = document.getElementById('desktopP2PHostPinValue');
+  const desktopP2PHostStatusText = document.getElementById('desktopP2PHostStatusText');
+
   if (!modal || !btnOpen) return;
 
+  let currentDesktopSyncMethod = 'p2p'; // 'p2p' | 'qr'
+  let desktopP2PHost = null;
   let desktopSyncQRPages = [];
   let currentDesktopQRPageIndex = 0;
   let currentDesktopSyncMode = 'patch';
@@ -782,6 +793,85 @@ function setupDesktopQrSync() {
 
   const speedBox = document.getElementById('desktopQrSpeedSelectorBox');
   const pillsBox = document.getElementById('desktopQrPartPillsContainer');
+
+  function updateDesktopSyncMethodUI() {
+    if (currentDesktopSyncMethod === 'p2p') {
+      if (btnDesktopMethodP2P) btnDesktopMethodP2P.classList.add('active');
+      if (btnDesktopMethodQR) btnDesktopMethodQR.classList.remove('active');
+      if (desktopP2PHostBox) desktopP2PHostBox.style.display = 'flex';
+      if (desktopQrLegacyBox) desktopQrLegacyBox.style.display = 'none';
+      stopDesktopQRAutoPlay();
+      startDesktopP2PHost();
+    } else {
+      if (btnDesktopMethodQR) btnDesktopMethodQR.classList.add('active');
+      if (btnDesktopMethodP2P) btnDesktopMethodP2P.classList.remove('active');
+      if (desktopP2PHostBox) desktopP2PHostBox.style.display = 'none';
+      if (desktopQrLegacyBox) desktopQrLegacyBox.style.display = 'flex';
+      stopDesktopP2PHost();
+      generateDesktopQR();
+    }
+  }
+
+  function stopDesktopP2PHost() {
+    if (desktopP2PHost) {
+      try { desktopP2PHost.destroy(); } catch(e) {}
+      desktopP2PHost = null;
+    }
+  }
+
+  function startDesktopP2PHost() {
+    stopDesktopP2PHost();
+    const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+    if (!p2pSync) {
+      if (desktopP2PHostStatusText) desktopP2PHostStatusText.innerHTML = '⚠️ Module P2P chưa sẵn sàng!';
+      return;
+    }
+
+    if (desktopP2PHostStatusText) {
+      desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot"></span> ⏳ Đang mở phòng chờ Thiết Bị B...';
+    }
+
+    desktopP2PHost = p2pSync.createHost({
+      onReady: (roomInfo) => {
+        if (desktopP2PHostPinValue) desktopP2PHostPinValue.textContent = roomInfo.pin;
+        if (desktopP2PHostStatusText) {
+          desktopP2PHostStatusText.innerHTML = `<span class="pulse-dot"></span> ⏳ Đang mở phòng chờ (PIN: ${roomInfo.pin})... Quét mã hoặc gõ PIN!`;
+        }
+        if (desktopP2PCanvasContainer) {
+          p2pSync.renderP2PQR(desktopP2PCanvasContainer, roomInfo.qrToken, { cellSize: 5, margin: 2 });
+        }
+      },
+      onConnecting: () => {
+        if (desktopP2PHostStatusText) {
+          desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot" style="background:#f59e0b;"></span> ⚡ Điện thoại đang kết nối...';
+        }
+      },
+      onConnected: () => {
+        if (desktopP2PHostStatusText) {
+          desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot" style="background:#10b981;"></span> 🚀 Đã kết nối! Đang bắn dữ liệu...';
+        }
+        // Gửi dữ liệu ngay lập tức
+        let payload;
+        if (currentDesktopSyncMode === 'patch') {
+          payload = p2pSync.buildPatchPayload(currentOrders, currentGroups, null);
+        } else {
+          payload = p2pSync.buildFullPayload(currentOrders, currentGroups, null);
+        }
+        desktopP2PHost.send(payload);
+      },
+      onSent: () => {
+        if (desktopP2PHostStatusText) {
+          desktopP2PHostStatusText.innerHTML = '<span style="color:#10b981; font-weight:700;">✅ ĐÃ GỬI XONG DỮ LIỆU SANG ĐIỆN THOẠI! (0.05s)</span>';
+        }
+        showToast('⚡ Bắn dữ liệu P2P sang Điện thoại thành công!', 'success');
+      },
+      onError: (err) => {
+        if (desktopP2PHostStatusText) {
+          desktopP2PHostStatusText.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Lỗi P2P: ${err.message || err}</span>`;
+        }
+      }
+    });
+  }
 
   function setDesktopQRAutoPlaySpeed(speedMs) {
     DESKTOP_QR_INTERVAL = speedMs;
@@ -964,15 +1054,30 @@ function setupDesktopQrSync() {
     }
   }
 
+  // Chuyển đổi phương thức P2P / QR
+  if (btnDesktopMethodP2P) {
+    btnDesktopMethodP2P.addEventListener('click', () => {
+      currentDesktopSyncMethod = 'p2p';
+      updateDesktopSyncMethodUI();
+    });
+  }
+  if (btnDesktopMethodQR) {
+    btnDesktopMethodQR.addEventListener('click', () => {
+      currentDesktopSyncMethod = 'qr';
+      updateDesktopSyncMethodUI();
+    });
+  }
+
   btnOpen.addEventListener('click', () => {
     modal.style.display = 'flex';
-    generateDesktopQR();
+    updateDesktopSyncMethodUI();
   });
 
   if (btnClose) {
     btnClose.addEventListener('click', () => {
       modal.style.display = 'none';
       stopDesktopQRAutoPlay();
+      stopDesktopP2PHost();
     });
   }
 
@@ -980,6 +1085,7 @@ function setupDesktopQrSync() {
     if (e.target === modal) {
       modal.style.display = 'none';
       stopDesktopQRAutoPlay();
+      stopDesktopP2PHost();
     }
   });
 
@@ -997,7 +1103,11 @@ function setupDesktopQrSync() {
         optPatchBox.style.borderColor = 'var(--border-color)';
         optPatchBox.style.background = '#f8fafc';
       }
-      generateDesktopQR();
+      if (currentDesktopSyncMethod === 'p2p') {
+        startDesktopP2PHost();
+      } else {
+        generateDesktopQR();
+      }
     });
   });
 
