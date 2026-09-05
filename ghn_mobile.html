@@ -8360,11 +8360,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           console.warn('Module QRSync chưa sẵn sàng');
           return;
         }
-        // 20 đơn/mã cho patch, 7 đơn/mã cho full: Giúp module to rõ, camera quét tức thì trong 0.2s!
+        // Cân bằng tối ưu: 8 đơn/mã cho patch, 3 đơn/mã cho full: Giữ module 65x65 thưa to, quét siêu nhạy (<0.1s)!
         if (currentSyncMode === 'patch') {
-          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 20);
+          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 8);
         } else {
-          syncQRPages = QRSync.generateFullQRs(orders, groups, 7);
+          syncQRPages = QRSync.generateFullQRs(orders, groups, 3);
         }
         currentSyncQRPageIndex = 0;
         displayCurrentQRPage();
@@ -8467,9 +8467,6 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           return;
         }
 
-        playBeep();
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-
         var pIndex = payload.pIndex || 1;
         var pTotal = payload.pTotal || 1;
 
@@ -8478,20 +8475,30 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (!syncMultiPartCache.sid || syncMultiPartCache.sid !== sid || syncMultiPartCache.type !== payload.t) {
             syncMultiPartCache = { sid: sid, type: payload.t, pTotal: pTotal, parts: {} };
           }
+          var isNewPart = !syncMultiPartCache.parts[pIndex];
           syncMultiPartCache.parts[pIndex] = payload;
           var receivedCount = Object.keys(syncMultiPartCache.parts).length;
 
+          if (isNewPart) {
+            playBeep();
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+          }
+
           if (receivedCount < pTotal) {
-            showToast('🟢 Đã nhận phần ' + pIndex + '/' + pTotal + '! Hãy chuyển sang phần tiếp theo trên máy kia.');
-            var statusTip = document.getElementById('scannerStatusMsg');
-            if (statusTip) {
-              statusTip.textContent = '🟢 Đã quét ' + receivedCount + '/' + pTotal + ' phần! Hướng camera vào phần tiếp theo.';
-              statusTip.style.color = '#10b981';
+            if (isNewPart) {
+              showToast('🟢 Đã nhận phần ' + pIndex + '/' + pTotal + '! Hãy chuyển sang phần tiếp theo trên máy kia.');
+              var statusTip = document.getElementById('scannerStatusMsg');
+              if (statusTip) {
+                statusTip.textContent = '🟢 Đã quét ' + receivedCount + '/' + pTotal + ' phần! Hướng camera vào phần tiếp theo.';
+                statusTip.style.color = '#10b981';
+              }
             }
             return;
           }
 
           // Đã đủ các phần
+          playBeep();
+          if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
           closeScanner();
           if (payload.t === 'patch') {
             var allPatches = [];

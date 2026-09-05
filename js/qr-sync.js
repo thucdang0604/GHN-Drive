@@ -238,15 +238,14 @@
 
     /**
      * Tạo danh sách các chuỗi mã QR theo chế độ PATCH (chỉ nhóm & tọa độ kéo ghim)
-     * Mặc định 20 đơn/mã để giữ mật độ điểm thưa, to, camera điện thoại quét tức thì (<0.2 giây).
+     * Cân bằng thông minh: Tối đa 8 đơn và 2 nhóm mỗi phần để QR luôn thưa, to (65x65 modules), camera quét tức thì (<0.1s).
      * @param {Array} orders - Danh sách đơn hàng hiện tại
      * @param {Array} groups - Danh sách các nhóm địa chỉ
      * @param {Object} geocache - Cache tọa độ đã lưu (tùy chọn)
-     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 20 đơn/mã)
+     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 8 đơn/mã)
      * @returns {Array<string>} - Mảng các chuỗi mã QR sẵn sàng render
      */
     generatePatchQRs: function(orders, groups, geocache, maxItemsPerQR) {
-      maxItemsPerQR = maxItemsPerQR || 20;
       var sid = Date.now().toString(36);
       var LZ = getLZ();
 
@@ -272,19 +271,30 @@
         patches.push([idKey, grpIdx, lat, lng]);
       }
 
-      var totalParts = Math.max(1, Math.ceil(patches.length / maxItemsPerQR));
+      // Cân bằng thông minh: Tối đa 8 đơn và 2 nhóm mỗi phần để QR luôn thưa, to (65x65 modules), quét tức thì (<0.1s)
+      var targetItems = (typeof maxItemsPerQR === 'number' && maxItemsPerQR > 0 && maxItemsPerQR <= 8) ? maxItemsPerQR : 8;
+      var numParts = 1;
+      if (patches.length > targetItems || cleanGroups.length > 2) {
+        var partsByOrders = Math.ceil(patches.length / targetItems);
+        var partsByGroups = Math.ceil(cleanGroups.length / 2);
+        numParts = Math.max(partsByOrders, partsByGroups, 1);
+      }
+
+      var itemsPerPart = Math.ceil(patches.length / numParts);
+      var groupsPerPart = Math.ceil(cleanGroups.length / numParts);
       var result = [];
 
-      for (var p = 0; p < totalParts; p++) {
-        var slice = patches.slice(p * maxItemsPerQR, (p + 1) * maxItemsPerQR);
+      for (var p = 0; p < numParts; p++) {
+        var pSlice = patches.slice(p * itemsPerPart, (p + 1) * itemsPerPart);
+        var gSlice = cleanGroups.slice(p * groupsPerPart, (p + 1) * groupsPerPart);
         var partPayload = {
           v: 2,
           sid: sid,
           t: 'patch',
           pIndex: p + 1,
-          pTotal: totalParts,
-          g: p === 0 ? cleanGroups : [],
-          p: slice
+          pTotal: numParts,
+          g: gSlice,
+          p: pSlice
         };
         var jsonStr = JSON.stringify(partPayload);
         if (LZ && LZ.compressToEncodedURIComponent) {
@@ -298,14 +308,13 @@
 
     /**
      * Tạo danh sách các chuỗi mã QR theo chế độ FULL (toàn bộ đơn hàng)
-     * Mặc định 7 đơn/mã để giữ mật độ QR thấp, giúp camera máy B giải mã ngay không cần căn chỉnh.
+     * Cân bằng thông minh 3 đơn/mã và tối đa 1 nhóm/mã để mã QR luôn thanh thoát, dễ quét.
      * @param {Array} orders - Danh sách đơn hàng
      * @param {Array} groups - Danh sách nhóm
-     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 7 đơn/mã)
+     * @param {number} maxItemsPerQR - Số lượng đơn mỗi mã QR (mặc định 3 đơn/mã)
      * @returns {Array<string>} - Mảng chuỗi mã QR
      */
     generateFullQRs: function(orders, groups, maxItemsPerQR) {
-      maxItemsPerQR = maxItemsPerQR || 7;
       var sid = Date.now().toString(36);
       var LZ = getLZ();
 
@@ -338,19 +347,29 @@
         ];
       });
 
-      var totalParts = Math.max(1, Math.ceil(compactOrders.length / maxItemsPerQR));
+      var targetItems = (typeof maxItemsPerQR === 'number' && maxItemsPerQR > 0 && maxItemsPerQR <= 3) ? maxItemsPerQR : 3;
+      var numParts = 1;
+      if (compactOrders.length > targetItems || cleanGroups.length > 1) {
+        var partsByOrders = Math.ceil(compactOrders.length / targetItems);
+        var partsByGroups = Math.ceil(cleanGroups.length / 1);
+        numParts = Math.max(partsByOrders, partsByGroups, 1);
+      }
+
+      var itemsPerPart = Math.ceil(compactOrders.length / numParts);
+      var groupsPerPart = Math.ceil(cleanGroups.length / numParts);
       var result = [];
 
-      for (var p = 0; p < totalParts; p++) {
-        var slice = compactOrders.slice(p * maxItemsPerQR, (p + 1) * maxItemsPerQR);
+      for (var p = 0; p < numParts; p++) {
+        var oSlice = compactOrders.slice(p * itemsPerPart, (p + 1) * itemsPerPart);
+        var gSlice = cleanGroups.slice(p * groupsPerPart, (p + 1) * groupsPerPart);
         var partPayload = {
           v: 2,
           sid: sid,
           t: 'full',
           pIndex: p + 1,
-          pTotal: totalParts,
-          g: p === 0 ? cleanGroups : [],
-          o: slice
+          pTotal: numParts,
+          g: gSlice,
+          o: oSlice
         };
         var jsonStr = JSON.stringify(partPayload);
         if (LZ && LZ.compressToEncodedURIComponent) {

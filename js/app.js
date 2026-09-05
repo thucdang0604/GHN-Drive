@@ -576,11 +576,14 @@ function setupDesktopQrScanner() {
     }
   });
 
+  let desktopSyncMultiPartCache = { sid: null, type: null, pTotal: 1, parts: {} };
+
   const closeDesktopScanner = () => {
     modal.classList.remove('show');
     if (desktopHtml5QrCode && desktopHtml5QrCode.isScanning) {
       desktopHtml5QrCode.stop().catch(() => {});
     }
+    desktopSyncMultiPartCache = { sid: null, type: null, pTotal: 1, parts: {} };
   };
 
   if (btnClose) btnClose.addEventListener('click', closeDesktopScanner);
@@ -615,6 +618,69 @@ function setupDesktopQrScanner() {
     if (qrsync && qrsync.isSyncQR(decodedText)) {
       const payload = qrsync.parseQR(decodedText);
       if (payload) {
+        const pIndex = payload.pIndex || 1;
+        const pTotal = payload.pTotal || 1;
+        const sid = payload.sid || 'batch';
+
+        if (pTotal > 1) {
+          if (!desktopSyncMultiPartCache.sid || desktopSyncMultiPartCache.sid !== sid || desktopSyncMultiPartCache.type !== payload.t) {
+            desktopSyncMultiPartCache = { sid: sid, type: payload.t, pTotal: pTotal, parts: {} };
+          }
+          const isNewPart = !desktopSyncMultiPartCache.parts[pIndex];
+          desktopSyncMultiPartCache.parts[pIndex] = payload;
+          const receivedCount = Object.keys(desktopSyncMultiPartCache.parts).length;
+
+          if (receivedCount < pTotal) {
+            if (isNewPart) {
+              showToast(`🟢 Đã nhận phần ${pIndex}/${pTotal}! Hãy chuyển sang phần tiếp theo trên thiết bị gửi.`, 'info');
+              statusMsg.innerHTML = `🟢 Đã quét <strong>${receivedCount}/${pTotal} phần</strong>! Hướng camera vào phần tiếp theo.`;
+            }
+            return;
+          }
+
+          // Đã đủ các phần
+          closeDesktopScanner();
+          if (payload.t === 'patch') {
+            let allPatches = [];
+            let allGroups = [];
+            for (let pi = 1; pi <= pTotal; pi++) {
+              const part = desktopSyncMultiPartCache.parts[pi];
+              if (part) {
+                if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
+                if (part.p && part.p.length) allPatches = allPatches.concat(part.p);
+              }
+            }
+            const res = qrsync.applyPatch({ v: payload.v || 2, g: allGroups, p: allPatches }, currentOrders, currentGroups);
+            currentOrders = res.orders;
+            currentGroups = res.groups;
+            StorageService.saveOrders(currentOrders);
+            StorageService.saveGroups(currentGroups);
+            renderApp();
+            showToast(`🎉 Đã đồng bộ tọa độ & nhóm cho ${res.matchedCount} đơn!`, 'success');
+          } else if (payload.t === 'full') {
+            let allOrders = [];
+            let allGroups = [];
+            for (let pi = 1; pi <= pTotal; pi++) {
+              const part = desktopSyncMultiPartCache.parts[pi];
+              if (part) {
+                if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
+                if (part.o && part.o.length) allOrders = allOrders.concat(part.o);
+              }
+            }
+            const res = qrsync.applyFull({ v: payload.v || 2, g: allGroups, o: allOrders }, currentOrders, currentGroups, false);
+            currentOrders = res.orders;
+            currentGroups = res.groups;
+            ensureGroupIntegrity();
+            StorageService.saveOrders(currentOrders);
+            StorageService.saveGroups(currentGroups);
+            renderApp();
+            showToast(`🎉 Đã nạp thành công ${res.importedCount} đơn từ mã QR!`, 'success');
+          }
+          desktopSyncMultiPartCache = { sid: null, type: null, pTotal: 1, parts: {} };
+          return;
+        }
+
+        // 1 phần duy nhất
         closeDesktopScanner();
         if (payload.t === 'patch') {
           const res = qrsync.applyPatch(payload, currentOrders, currentGroups);
@@ -763,9 +829,9 @@ function setupDesktopQrSync() {
     }
 
     if (currentDesktopSyncMode === 'patch') {
-      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 20);
+      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 8);
     } else {
-      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 7);
+      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 3);
     }
     currentDesktopQRPageIndex = 0;
     displayCurrentDesktopQR();
