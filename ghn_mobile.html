@@ -8206,36 +8206,21 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         if (typeof Html5Qrcode !== 'undefined') {
           if (!html5QrCodeScanner) {
-            html5QrCodeScanner = new Html5Qrcode("qrReaderContainer", {
-              formatsToSupport: (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39
-              ] : undefined,
-              verbose: false
-            });
+            html5QrCodeScanner = new Html5Qrcode("qrReaderContainer");
           }
 
-          var cameraConstraints = {
-            facingMode: "environment",
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-          };
-
           var config = {
-            fps: 20,
+            fps: 15,
             qrbox: function(viewfinderWidth, viewfinderHeight) {
               var minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-              var size = Math.max(260, Math.floor(minEdge * 0.86));
+              var size = Math.floor(minEdge * 0.85);
               return { width: size, height: size };
             },
-            experimentalFeatures: {
-              useBarCodeDetectorIfSupported: false
-            }
+            aspectRatio: 1.0
           };
 
           html5QrCodeScanner.start(
-            cameraConstraints,
+            { facingMode: "environment" },
             config,
             onScanSuccess,
             function() {}
@@ -8249,11 +8234,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             } catch(e) {}
           }).catch(function(err) {
             console.warn('Lỗi bật live camera:', err);
-            // Nếu lỗi bảo mật hoặc không mở được camera -> Hiển thị hộp chụp ảnh nhanh
-            liveBox.style.display = 'none';
-            fallbackRow.style.display = 'none';
-            insecureBox.style.display = 'block';
-            statusTip.style.display = 'none';
+            statusTip.innerHTML = '⚠️ Không thể mở camera: ' + (err.message || err) + '<br><small style="color:#64748b;">Bạn có thể bấm <strong>📷 Chụp bằng máy ảnh</strong> bên dưới để quét ngay.</small>';
+            statusTip.style.color = '#ef4444';
+            statusTip.style.display = 'block';
+            fallbackRow.style.display = 'flex';
           });
         } else {
           statusTip.textContent = 'Chưa tải được thư viện quét mã. Vui lòng kiểm tra kết nối mạng!';

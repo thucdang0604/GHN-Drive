@@ -555,15 +555,14 @@ function setupDesktopQrScanner() {
       }
 
       desktopHtml5QrCode.start(
-        { facingMode: "environment", width: { min: 640, ideal: 1280, max: 1920 }, height: { min: 480, ideal: 720, max: 1080 } },
+        { facingMode: "environment" },
         {
-          fps: 20,
+          fps: 15,
           qrbox: (w, h) => {
             const minEdge = Math.min(w, h);
-            const size = Math.max(260, Math.floor(minEdge * 0.86));
+            const size = Math.floor(minEdge * 0.85);
             return { width: size, height: size };
-          },
-          experimentalFeatures: { useBarCodeDetectorIfSupported: false }
+          }
         },
         onDesktopScanSuccess,
         () => {}
