@@ -7898,8 +7898,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         // Lặp qua từng nhóm
         groups.forEach(function(group) {
           var groupOrders = list.filter(function(o) { return o.groupId === group.id; });
-          if (groupOrders.length === 0 && group.id === 'group_ungrouped' && groups.length > 1) {
-            return; // Ẩn nhóm chưa phân loại nếu rỗng
+          if (groupOrders.length === 0) {
+            return; // Ẩn nhóm rỗng không có đơn nào
           }
 
           var gTotalCod = groupOrders.reduce(function(acc, cur) { return acc + (cur.codAmount || 0); }, 0);
@@ -8108,7 +8108,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         groups.forEach(function(group) {
           var groupOrders = list.filter(function(o) { return o.groupId === group.id; });
-          if (groupOrders.length === 0 && group.id === 'group_ungrouped' && groups.length > 1) return;
+          if (groupOrders.length === 0) return;
 
           var section = document.createElement('div');
           section.className = 'group-card-section';

@@ -110,6 +110,10 @@ function ensureGroupIntegrity() {
     currentGroups.unshift({ id: 'group_ungrouped', name: 'Chưa phân nhóm', isCollapsed: false });
   }
 
+  // Dọn dẹp các nhóm không còn bất kỳ đơn nào trong currentOrders (ngoại trừ group_ungrouped)
+  const usedGroupIds = new Set(currentOrders.map(o => o.groupId).filter(Boolean));
+  currentGroups = currentGroups.filter(g => g.id === 'group_ungrouped' || usedGroupIds.has(g.id));
+
   const groupIds = new Set(currentGroups.map(g => g.id));
   let modified = false;
 
@@ -123,6 +127,7 @@ function ensureGroupIntegrity() {
   if (modified) {
     StorageService.saveOrders(currentOrders);
   }
+  StorageService.saveGroups(currentGroups);
 }
 
 /**
@@ -455,9 +460,6 @@ function sortOrdersByStreetAndHouseNumber() {
   });
 
   const sortedSubOrders = [];
-  const newGroups = [
-    { id: 'group_ungrouped', name: 'Chưa phân nhóm', isCollapsed: false }
-  ];
 
   streetOrder.forEach(stKey => {
     const grpObj = streetMap[stKey];
@@ -468,31 +470,38 @@ function sortOrdersByStreetAndHouseNumber() {
       return a.origIdx - b.origIdx;
     });
 
-    const gId = 'grp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-    newGroups.push({
-      id: gId,
-      name: grpObj.clusterGroup,
-      isCollapsed: false
-    });
+    // Tìm nhóm đã tồn tại trong currentGroups hoặc tạo mới
+    let targetGroup = currentGroups.find(g => 
+      g.id !== 'group_ungrouped' && 
+      g.name.trim().toLowerCase() === grpObj.clusterGroup.trim().toLowerCase()
+    );
+
+    if (!targetGroup) {
+      const gId = 'grp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      targetGroup = {
+        id: gId,
+        name: grpObj.clusterGroup,
+        isCollapsed: false
+      };
+      currentGroups.push(targetGroup);
+    }
 
     grpObj.items.forEach(it => {
-      it.order.groupId = gId;
+      it.order.groupId = targetGroup.id;
       sortedSubOrders.push(it.order);
     });
   });
 
   if (activeTripFilter === 'all') {
     currentOrders = sortedSubOrders;
-    currentGroups = newGroups;
   } else {
     const otherOrders = currentOrders.filter(o => (o.tripCode || 'Chưa có mã chuyến') !== activeTripFilter);
     currentOrders = [...otherOrders, ...sortedSubOrders];
-    newGroups.forEach(ng => {
-      if (ng.id !== 'group_ungrouped' && !currentGroups.some(g => g.name === ng.name)) {
-        currentGroups.push(ng);
-      }
-    });
   }
+
+  // Dọn dẹp các nhóm không còn bất kỳ đơn hàng nào trong toàn bộ currentOrders
+  const usedGroupIds = new Set(currentOrders.map(o => o.groupId).filter(Boolean));
+  currentGroups = currentGroups.filter(g => g.id === 'group_ungrouped' || usedGroupIds.has(g.id));
 
   StorageService.saveOrders(currentOrders);
   StorageService.saveGroups(currentGroups);
@@ -518,49 +527,36 @@ function healCurrentOrdersGPS() {
 }
 
 function autoGroupAllOrders() {
-  if (currentOrders.length === 0) {
+  const targetOrders = getActiveTripOrders();
+  if (targetOrders.length === 0) {
     showToast('Chưa có đơn hàng nào để gom nhóm!', 'info');
     return;
   }
 
-  const clusterMap = {};
-  const newGroups = [
-    { id: 'group_ungrouped', name: 'Chưa phân nhóm', isCollapsed: false }
-  ];
-
-  currentOrders.forEach(o => {
+  targetOrders.forEach(o => {
     const cName = extractClusterName(o.address);
     if (cName === 'Chưa phân nhóm') {
       o.groupId = 'group_ungrouped';
       return;
     }
 
-    const key = removeVietnameseTones(cName);
-    if (!clusterMap[key]) {
+    let existing = currentGroups.find(g => g.id !== 'group_ungrouped' && g.name.trim().toLowerCase() === cName.trim().toLowerCase());
+    if (!existing) {
       const gId = 'grp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-      clusterMap[key] = { id: gId, name: cName, count: 1 };
-    } else {
-      clusterMap[key].count++;
-      if (countVietnameseAccents(cName) > countVietnameseAccents(clusterMap[key].name)) {
-        clusterMap[key].name = cName;
-      }
+      existing = { id: gId, name: cName, isCollapsed: false };
+      currentGroups.push(existing);
     }
-    o.groupId = clusterMap[key].id;
+    o.groupId = existing.id;
   });
 
-  for (const k in clusterMap) {
-    newGroups.push({
-      id: clusterMap[k].id,
-      name: clusterMap[k].name,
-      isCollapsed: false
-    });
-  }
+  // Dọn dẹp nhóm không còn bất kỳ đơn nào trong toàn bộ currentOrders
+  const usedGroupIds = new Set(currentOrders.map(o => o.groupId).filter(Boolean));
+  currentGroups = currentGroups.filter(g => g.id === 'group_ungrouped' || usedGroupIds.has(g.id));
 
-  currentGroups = newGroups;
   StorageService.saveGroups(currentGroups);
   StorageService.saveOrders(currentOrders);
   renderApp();
-  showToast(`Đã tự động gom thành ${currentGroups.length - 1} tuyến đường/tòa nhà!`, 'success');
+  showToast(`Đã tự động gom nhóm địa chỉ cho chuyến hiện tại!`, 'success');
 }
 
 function createNewGroup() {
@@ -1736,7 +1732,7 @@ function renderOrderList() {
   // Render từng nhóm
   currentGroups.forEach(group => {
     const ordersInGroup = filtered.filter(o => (o.groupId || 'group_ungrouped') === group.id);
-    if (ordersInGroup.length === 0 && group.id === 'group_ungrouped' && currentGroups.length > 1) {
+    if (ordersInGroup.length === 0) {
       return;
     }
 
