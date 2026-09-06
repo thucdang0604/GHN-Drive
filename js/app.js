@@ -15,6 +15,7 @@ import {
   normalizeAddress, 
   fetchOrdersByTrip, 
   extractClusterName,
+  extractStreetAndHouseNumber,
   removeVietnameseTones,
   countVietnameseAccents,
   parseAndNormalizeAddress,
@@ -26,6 +27,7 @@ import {
 let currentOrders = [];
 let currentGroups = [];
 let activeFilter = 'all'; // 'all' | 'pending' | 'gtc' | 'gtb'
+let activeTripFilter = 'all'; // Lọc theo mã chuyến
 let searchQuery = '';
 let draggedOrderId = null;
 let allCollapsed = false;
@@ -41,6 +43,8 @@ let isDesktopPolylineVisible = true;
 let desktopMapTileMode = 'osm';
 let desktopActiveTileLayer = null;
 let selectedDesktopOrderId = null;
+let targetUpdateOrder = null;
+let currentDesktopSyncTrip = 'all';
 
 // DOM Elements
 const ordersListEl = document.getElementById('ordersList');
@@ -247,6 +251,15 @@ function setupEventListeners() {
 
   // Modal Đồng bộ QR Offline sang Mobile
   setupDesktopQrSync();
+
+  // Bộ lọc theo Mã Chuyến
+  setupDesktopTripFilter();
+
+  // Modal Sửa vị trí định vị
+  setupDesktopUpdateLocationModal();
+
+  // Modal Danh sách đơn thiếu GPS
+  setupDesktopUnmappedModal();
 }
 
 /**
@@ -342,8 +355,10 @@ function setupTripModal() {
           const mode = document.querySelector('input[name="desktopTripMode"]:checked').value;
           if (mode === 'replace') {
             currentOrders = result.orders;
+            activeTripFilter = result.tripCode;
           } else {
             currentOrders = [...currentOrders, ...result.orders];
+            activeTripFilter = result.tripCode;
           }
 
           StorageService.saveOrders(currentOrders);
@@ -375,6 +390,10 @@ function setupTripModal() {
  * Xử lý Thanh Công Cụ Gom Nhóm
  */
 function setupGroupToolbar() {
+  const btnSortStreet = document.getElementById('btnDesktopSortStreet');
+  if (btnSortStreet) {
+    btnSortStreet.addEventListener('click', sortOrdersByStreetAndHouseNumber);
+  }
   if (btnDesktopAutoGroup) {
     btnDesktopAutoGroup.addEventListener('click', autoGroupAllOrders);
   }
@@ -387,6 +406,98 @@ function setupGroupToolbar() {
   if (btnDesktopCollapseAll) {
     btnDesktopCollapseAll.addEventListener('click', toggleAllCollapse);
   }
+}
+
+/**
+ * Tự động sắp xếp lộ trình theo Tuyến đường & Số nhà liên tục
+ */
+function sortOrdersByStreetAndHouseNumber() {
+  const targetOrders = getActiveTripOrders();
+  if (targetOrders.length <= 1) {
+    showToast('Chưa có đủ đơn để sắp xếp lộ trình!', 'info');
+    return;
+  }
+
+  const analyzed = targetOrders.map((o, idx) => {
+    const info = extractStreetAndHouseNumber(o.address);
+    return {
+      order: o,
+      origIdx: idx,
+      street: info.street,
+      clusterGroup: info.clusterGroup,
+      houseNumber: info.houseNumber,
+      houseNumVal: info.houseNumVal,
+      shortStreet: info.shortStreet
+    };
+  });
+
+  const streetMap = {};
+  const streetOrder = [];
+
+  analyzed.forEach(item => {
+    const st = item.street;
+    if (!streetMap[st]) {
+      streetMap[st] = {
+        street: st,
+        clusterGroup: item.clusterGroup,
+        items: [],
+        firstIdx: item.origIdx
+      };
+      streetOrder.push(st);
+    }
+    streetMap[st].items.push(item);
+  });
+
+  streetOrder.sort((a, b) => {
+    if (a === 'Chưa rõ đường') return 1;
+    if (b === 'Chưa rõ đường') return -1;
+    return streetMap[a].firstIdx - streetMap[b].firstIdx;
+  });
+
+  const sortedSubOrders = [];
+  const newGroups = [
+    { id: 'group_ungrouped', name: 'Chưa phân nhóm', isCollapsed: false }
+  ];
+
+  streetOrder.forEach(stKey => {
+    const grpObj = streetMap[stKey];
+    grpObj.items.sort((a, b) => {
+      if (a.houseNumVal !== b.houseNumVal) {
+        return a.houseNumVal - b.houseNumVal;
+      }
+      return a.origIdx - b.origIdx;
+    });
+
+    const gId = 'grp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+    newGroups.push({
+      id: gId,
+      name: grpObj.clusterGroup,
+      isCollapsed: false
+    });
+
+    grpObj.items.forEach(it => {
+      it.order.groupId = gId;
+      sortedSubOrders.push(it.order);
+    });
+  });
+
+  if (activeTripFilter === 'all') {
+    currentOrders = sortedSubOrders;
+    currentGroups = newGroups;
+  } else {
+    const otherOrders = currentOrders.filter(o => (o.tripCode || 'Chưa có mã chuyến') !== activeTripFilter);
+    currentOrders = [...otherOrders, ...sortedSubOrders];
+    newGroups.forEach(ng => {
+      if (ng.id !== 'group_ungrouped' && !currentGroups.some(g => g.name === ng.name)) {
+        currentGroups.push(ng);
+      }
+    });
+  }
+
+  StorageService.saveOrders(currentOrders);
+  StorageService.saveGroups(currentGroups);
+  renderApp();
+  showToast(`⚡ Đã sắp xếp lộ trình tuần tự theo ${streetOrder.length} tuyến đường & số nhà liên tục!`, 'success');
 }
 
 function healCurrentOrdersGPS() {
@@ -768,6 +879,15 @@ function setupDesktopQrSync() {
   const desktopP2PHostPinValue = document.getElementById('desktopP2PHostPinValue');
   const desktopP2PHostStatusText = document.getElementById('desktopP2PHostStatusText');
 
+  const syncTripSelect = document.getElementById('desktopSyncTripSelect');
+  const tabExport = document.getElementById('tabDesktopExportP2P');
+  const tabImport = document.getElementById('tabDesktopImportP2P');
+  const hostPanel = document.getElementById('desktopP2PHostPanel');
+  const clientPanel = document.getElementById('desktopP2PClientPanel');
+  const btnConnectPin = document.getElementById('desktopBtnConnectP2PPin');
+  const inputPin = document.getElementById('desktopInputP2PPin');
+  const clientStatus = document.getElementById('desktopP2PClientStatusMsg');
+
   if (!modal || !btnOpen) return;
 
   let desktopP2PHost = null;
@@ -789,14 +909,14 @@ function setupDesktopQrSync() {
     }
 
     if (desktopP2PHostStatusText) {
-      desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot"></span> ⏳ Đang mở phòng chờ Thiết Bị B...';
+      desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot"></span> ⏳ Đang mở phòng chờ Shipper...';
     }
 
     desktopP2PHost = p2pSync.createHost({
       onReady: (roomInfo) => {
         if (desktopP2PHostPinValue) desktopP2PHostPinValue.textContent = roomInfo.pin;
         if (desktopP2PHostStatusText) {
-          desktopP2PHostStatusText.innerHTML = `<span class="pulse-dot"></span> ⏳ Phòng chờ: <strong>PIN ${roomInfo.pin}</strong>. Đang đợi Điện Thoại...`;
+          desktopP2PHostStatusText.innerHTML = `<span class="pulse-dot"></span> ⏳ Phòng chờ: <strong>PIN ${roomInfo.pin}</strong>. Đang đợi Shipper...`;
         }
         if (desktopP2PCanvasContainer) {
           p2pSync.renderP2PQR(desktopP2PCanvasContainer, roomInfo.qrToken, { cellSize: 5, margin: 2 });
@@ -804,27 +924,34 @@ function setupDesktopQrSync() {
       },
       onConnecting: () => {
         if (desktopP2PHostStatusText) {
-          desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot" style="background:#f59e0b;"></span> ⚡ Điện thoại đang kết nối...';
+          desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot" style="background:#f59e0b;"></span> ⚡ Shipper đang kết nối...';
         }
       },
       onConnected: () => {
         if (desktopP2PHostStatusText) {
-          desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot" style="background:#10b981;"></span> 🚀 Đã kết nối! Đang bắn dữ liệu...';
+          desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot" style="background:#10b981;"></span> 🚀 Đã kết nối! Đang bắn dữ liệu chuyến...';
         }
-        // Gửi dữ liệu ngay lập tức
+        // Gửi dữ liệu theo chuyến đã chọn
+        let ordersToSend = currentOrders;
+        if (currentDesktopSyncTrip !== 'all') {
+          ordersToSend = currentOrders.filter(o => (o.tripCode || 'Chưa có mã chuyến') === currentDesktopSyncTrip);
+        }
+        const groupIds = new Set(ordersToSend.map(o => o.groupId).filter(Boolean));
+        const groupsToSend = currentGroups.filter(g => groupIds.has(g.id));
+
         let payload;
         if (currentDesktopSyncMode === 'patch') {
-          payload = p2pSync.buildPatchPayload(currentOrders, currentGroups, null);
+          payload = p2pSync.buildPatchPayload(ordersToSend, groupsToSend, null);
         } else {
-          payload = p2pSync.buildFullPayload(currentOrders, currentGroups, null);
+          payload = p2pSync.buildFullPayload(ordersToSend, groupsToSend, null);
         }
         desktopP2PHost.send(payload);
       },
       onSent: () => {
         if (desktopP2PHostStatusText) {
-          desktopP2PHostStatusText.innerHTML = '<span style="color:#10b981; font-weight:700;">✅ ĐÃ GỬI XONG DỮ LIỆU SANG ĐIỆN THOẠI! (0.05s)</span>';
+          desktopP2PHostStatusText.innerHTML = '<span style="color:#10b981; font-weight:700;">✅ ĐÃ GỬI XONG DỮ LIỆU CHUYẾN CHO SHIPPER! (0.05s)</span>';
         }
-        showToast('⚡ Bắn dữ liệu P2P sang Điện thoại thành công!', 'success');
+        showToast('⚡ Bắn dữ liệu chuyến sang Điện thoại thành công!', 'success');
       },
       onError: (err) => {
         if (desktopP2PHostStatusText) {
@@ -834,9 +961,104 @@ function setupDesktopQrSync() {
     });
   }
 
+  // Chọn chuyến cần xuất
+  if (syncTripSelect) {
+    syncTripSelect.addEventListener('change', (e) => {
+      currentDesktopSyncTrip = e.target.value;
+      updateSyncTripSummary();
+      startDesktopP2PHost();
+    });
+  }
+
+  // Chuyển tab Xuất (Gửi) / Nhận
+  if (tabExport && tabImport) {
+    tabExport.addEventListener('click', () => {
+      tabExport.classList.add('active');
+      tabExport.style.background = '#eff6ff';
+      tabExport.style.color = '#1d4ed8';
+      tabExport.style.borderColor = '#3b82f6';
+      tabImport.classList.remove('active');
+      tabImport.style.background = '';
+      tabImport.style.color = '#64748b';
+      tabImport.style.borderColor = '';
+      if (hostPanel) hostPanel.style.display = 'flex';
+      if (clientPanel) clientPanel.style.display = 'none';
+      startDesktopP2PHost();
+    });
+
+    tabImport.addEventListener('click', () => {
+      tabImport.classList.add('active');
+      tabImport.style.background = '#eff6ff';
+      tabImport.style.color = '#1d4ed8';
+      tabImport.style.borderColor = '#3b82f6';
+      tabExport.classList.remove('active');
+      tabExport.style.background = '';
+      tabExport.style.color = '#64748b';
+      tabExport.style.borderColor = '';
+      if (hostPanel) hostPanel.style.display = 'none';
+      if (clientPanel) clientPanel.style.display = 'flex';
+      stopDesktopP2PHost();
+      if (inputPin) inputPin.focus();
+    });
+  }
+
+  // Xử lý Nhận dữ liệu từ điện thoại bằng mã PIN
+  if (btnConnectPin && inputPin) {
+    btnConnectPin.addEventListener('click', () => {
+      const pin = inputPin.value.trim();
+      if (!pin || pin.length < 6) {
+        showToast('Vui lòng nhập đủ 6 chữ số PIN từ điện thoại!', 'error');
+        return;
+      }
+      const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+      if (!p2pSync) return;
+
+      if (clientStatus) {
+        clientStatus.innerHTML = `<span class="pulse-dot"></span> ⏳ Đang kết nối tới điện thoại qua mã PIN <strong>${pin}</strong>...`;
+      }
+      btnConnectPin.disabled = true;
+
+      p2pSync.connectToHost(pin, {
+        onConnecting: () => {
+          if (clientStatus) clientStatus.innerHTML = `<span class="pulse-dot"></span> ⏳ Đang bắt tay kết nối P2P...`;
+        },
+        onConnected: () => {
+          if (clientStatus) clientStatus.innerHTML = `<span class="pulse-dot" style="background:#10b981;"></span> 🚀 Đã kết nối! Đang tải dữ liệu...`;
+        },
+        onData: (data) => {
+          btnConnectPin.disabled = false;
+          if (!data || !data.payload) return;
+          const p = data.payload;
+          if (p.t === 'patch') {
+            const res = p2pSync.applyPatch(p, currentOrders, currentGroups);
+            currentOrders = res.orders;
+            currentGroups = res.groups;
+            showToast(`🎉 Đã cập nhật trạng thái/tọa độ cho ${res.matchedCount} đơn!`, 'success');
+          } else if (p.t === 'full') {
+            const res = p2pSync.applyFull(p, currentOrders, currentGroups, false);
+            currentOrders = res.orders;
+            currentGroups = res.groups;
+            showToast(`🎉 Đã nạp thành công ${res.importedCount} đơn từ điện thoại!`, 'success');
+          }
+          ensureGroupIntegrity();
+          StorageService.saveOrders(currentOrders);
+          StorageService.saveGroups(currentGroups);
+          renderApp();
+          if (clientStatus) clientStatus.innerHTML = `<span style="color:#10b981; font-weight:700;">✅ ĐÃ NHẬN DỮ LIỆU TỪ ĐIỆN THOẠI THÀNH CÔNG!</span>`;
+          setTimeout(() => { modal.style.display = 'none'; }, 1500);
+        },
+        onError: (err) => {
+          btnConnectPin.disabled = false;
+          if (clientStatus) clientStatus.innerHTML = `<span style="color:#ef4444; font-weight:700;">❌ Lỗi: ${err.message || err}</span>`;
+        }
+      });
+    });
+  }
+
   btnOpen.addEventListener('click', () => {
     modal.style.display = 'flex';
-    startDesktopP2PHost();
+    updateSyncTripSummary();
+    if (tabExport) tabExport.click();
   });
 
   if (btnClose) {
@@ -924,21 +1146,102 @@ function setupDesktopQrSync() {
 }
 
 /**
+ * Quản lý bộ lọc Mã Chuyến trên Desktop
+ */
+function setupDesktopTripFilter() {
+  const tripFilterEl = document.getElementById('desktopTripFilter');
+  if (tripFilterEl) {
+    tripFilterEl.addEventListener('change', (e) => {
+      activeTripFilter = e.target.value;
+      renderApp();
+      const label = e.target.options[e.target.selectedIndex].text;
+      showToast(`Đã lọc: ${label}`, 'info');
+    });
+  }
+}
+
+function updateDesktopTripFilterOptions() {
+  const tripFilterEl = document.getElementById('desktopTripFilter');
+  const syncTripSelectEl = document.getElementById('desktopSyncTripSelect');
+  
+  const tripCounts = {};
+  currentOrders.forEach(o => {
+    const tc = o.tripCode || 'Chưa có mã chuyến';
+    tripCounts[tc] = (tripCounts[tc] || 0) + 1;
+  });
+
+  const tripKeys = Object.keys(tripCounts).sort();
+
+  if (tripFilterEl) {
+    const currentVal = tripFilterEl.value || activeTripFilter;
+    let html = `<option value="all">📦 Tất cả chuyến (${currentOrders.length} đơn)</option>`;
+    tripKeys.forEach(k => {
+      html += `<option value="${escapeHtml(k)}">⚡ Chuyến ${escapeHtml(k)} (${tripCounts[k]} đơn)</option>`;
+    });
+    tripFilterEl.innerHTML = html;
+    if (tripKeys.includes(currentVal) || currentVal === 'all') {
+      tripFilterEl.value = currentVal;
+      activeTripFilter = currentVal;
+    } else {
+      tripFilterEl.value = 'all';
+      activeTripFilter = 'all';
+    }
+  }
+
+  if (syncTripSelectEl) {
+    const currentSyncVal = syncTripSelectEl.value || currentDesktopSyncTrip;
+    let html = `<option value="all">📦 Toàn bộ đơn hàng (${currentOrders.length} đơn)</option>`;
+    tripKeys.forEach(k => {
+      html += `<option value="${escapeHtml(k)}">⚡ Chuyến ${escapeHtml(k)} (${tripCounts[k]} đơn)</option>`;
+    });
+    syncTripSelectEl.innerHTML = html;
+    if (tripKeys.includes(currentSyncVal) || currentSyncVal === 'all') {
+      syncTripSelectEl.value = currentSyncVal;
+      currentDesktopSyncTrip = currentSyncVal;
+    } else {
+      syncTripSelectEl.value = 'all';
+      currentDesktopSyncTrip = 'all';
+    }
+    updateSyncTripSummary();
+  }
+}
+
+function updateSyncTripSummary() {
+  const summaryEl = document.getElementById('desktopSyncTripSummary');
+  if (!summaryEl) return;
+  if (currentDesktopSyncTrip === 'all') {
+    summaryEl.textContent = `Đang chọn xuất: Toàn bộ ${currentOrders.length} đơn hàng`;
+  } else {
+    const count = currentOrders.filter(o => (o.tripCode || 'Chưa có mã chuyến') === currentDesktopSyncTrip).length;
+    summaryEl.textContent = `Đang chọn xuất: ${count} đơn của chuyến ${currentDesktopSyncTrip}`;
+  }
+}
+
+function getActiveTripOrders() {
+  if (activeTripFilter === 'all') {
+    return currentOrders;
+  }
+  return currentOrders.filter(o => (o.tripCode || 'Chưa có mã chuyến') === activeTripFilter);
+}
+
+/**
  * Render toàn bộ giao diện (Thống kê + Danh sách + Bản đồ)
  */
 function renderApp() {
+  updateDesktopTripFilterOptions();
   renderStats();
   renderOrderList();
   renderDesktopMap();
 }
 
 function renderStats() {
-  const total = currentOrders.length;
-  const pending = currentOrders.filter(o => o.status === 'pending').length;
-  const gtc = currentOrders.filter(o => o.status === 'gtc').length;
-  const gtb = currentOrders.filter(o => o.status === 'gtb').length;
-  const totalCod = currentOrders.reduce((sum, o) => sum + (o.codAmount || 0), 0);
-  const validGps = currentOrders.filter(o => isValidCoordinate(o.lat, o.lng)).length;
+  const activeOrders = getActiveTripOrders();
+  const total = activeOrders.length;
+  const pending = activeOrders.filter(o => o.status === 'pending').length;
+  const gtc = activeOrders.filter(o => o.status === 'gtc').length;
+  const gtb = activeOrders.filter(o => o.status === 'gtb').length;
+  const totalCod = activeOrders.reduce((sum, o) => sum + (o.codAmount || 0), 0);
+  const validGps = activeOrders.filter(o => isValidCoordinate(o.lat, o.lng)).length;
 
   if (statTotal) statTotal.textContent = total;
   if (statPending) statPending.textContent = pending;
@@ -1213,12 +1516,21 @@ function renderDesktopMap() {
     if (!desktopMap) return;
   }
 
+  const activeOrders = getActiveTripOrders();
   const mapped = [];
-  currentOrders.forEach((item, idx) => {
+  activeOrders.forEach((item, idx) => {
     if (isValidCoordinate(item.lat, item.lng)) {
       mapped.push({ item, stt: idx + 1, lat: Number(item.lat), lng: Number(item.lng) });
     }
   });
+
+  const unmapped = activeOrders.filter(item => !isValidCoordinate(item.lat, item.lng));
+  const unmappedChip = document.getElementById('dMapUnmappedChip');
+  const unmappedCountEl = document.getElementById('dMapUnmappedCount');
+  if (unmappedChip && unmappedCountEl) {
+    unmappedCountEl.textContent = unmapped.length;
+    unmappedChip.style.display = unmapped.length > 0 ? 'inline-flex' : 'none';
+  }
 
   const dPoints = document.getElementById('dMapPoints');
   const dPending = document.getElementById('dMapPending');
@@ -1273,7 +1585,10 @@ function renderDesktopMap() {
               </div>
             `).join('')}
           </div>
-          <div style="margin-top: 8px; text-align: center;">
+          <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px; text-align: center;">
+            <button type="button" class="btn-desktop-edit-loc" style="width: 100%; font-size: 11.5px; padding: 5px 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; cursor: pointer; font-weight: 700;" onclick="window.openDesktopUpdateLocModalById('${cluster.orders[0].item.id}', ${cluster.primaryStt})">
+              📍 Sửa vị trí cho cụm ${cluster.count} đơn
+            </button>
             <a href="https://www.google.com/maps/dir/?api=1&destination=${cluster.lat},${cluster.lng}" target="_blank" style="background: #f0fdf4; color: #15803d; padding: 5px 10px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11.5px; display: inline-block;">
               🧭 Chỉ đường đến tòa nhà này
             </a>
@@ -1297,10 +1612,13 @@ function renderDesktopMap() {
             Thu COD: <strong style="color: #f26522;">${formatCurrency(o.item.codAmount)}</strong>
             ${o.item.gtbThu ? `<br>GTB thu: <strong style="color: #dc2626;">${formatCurrency(o.item.gtbThu)}</strong>` : ''}
           </div>
-          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
             ${o.item.phone ? `<a href="tel:${o.item.phone}" style="background: #e0f2fe; color: #0369a1; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">📞 Gọi ${o.item.phone}</a>` : ''}
             <a href="${gmapsUrl}" target="_blank" style="background: #f0fdf4; color: #15803d; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">🧭 Dẫn đường</a>
           </div>
+          <button type="button" class="btn-desktop-edit-loc" style="width: 100%; font-size: 11.5px; padding: 5px 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; cursor: pointer; font-weight: 700;" onclick="window.openDesktopUpdateLocModalById('${o.item.id}', ${o.stt})">
+            📍 Sửa vị trí / Chọn trên bản đồ
+          </button>
         </div>
       `;
     }
@@ -1310,8 +1628,28 @@ function renderDesktopMap() {
       desktopMapMarkers[cluster.id].setIcon(icon);
       desktopMapMarkers[cluster.id].setPopupContent(popupContent);
     } else {
-      const marker = L.marker(pos, { icon });
+      const marker = L.marker(pos, { icon, draggable: true });
       marker.bindPopup(popupContent, { maxWidth: 320 });
+
+      // Khi điều phối viên kéo ghim trên bản đồ để sửa tọa độ:
+      marker.on('dragend', (e) => {
+        const newLatLng = e.target.getLatLng();
+        const nLat = Number(newLatLng.lat.toFixed(6));
+        const nLng = Number(newLatLng.lng.toFixed(6));
+
+        // Cập nhật cho tất cả đơn thuộc cụm này
+        cluster.orders.forEach(o => {
+          o.item.lat = nLat;
+          o.item.lng = nLng;
+          o.item.isGpsHealed = true;
+          o.item.isGpsOutlier = false;
+        });
+
+        StorageService.saveOrders(currentOrders);
+        showToast(`📍 Đã dời ${cluster.count > 1 ? cluster.count + ' đơn' : 'đơn #' + cluster.primaryStt} đến [${nLat}, ${nLng}]`, 'success');
+        renderApp();
+      });
+
       marker.addTo(desktopMap);
       desktopMapMarkers[cluster.id] = marker;
     }
@@ -1371,7 +1709,9 @@ function jumpToDesktopMapOrder(orderId) {
 function renderOrderList() {
   ordersListEl.innerHTML = '';
 
-  let filtered = currentOrders.filter(order => {
+  const activeOrders = getActiveTripOrders();
+
+  let filtered = activeOrders.filter(order => {
     if (activeFilter !== 'all' && order.status !== activeFilter) return false;
     if (searchQuery) {
       const g = currentGroups.find(item => item.id === order.groupId);
@@ -1458,9 +1798,8 @@ function renderOrderList() {
       itemsContainer.className = 'group-items-container';
 
       ordersInGroup.forEach(order => {
-        const originalIndex = currentOrders.findIndex(o => o.id === order.id);
-        const routeNumber = originalIndex + 1;
-        const cardEl = createOrderCard(order, routeNumber, originalIndex, currentOrders.length, group.name);
+        const routeNumber = activeOrders.findIndex(o => o.id === order.id) + 1;
+        const cardEl = createOrderCard(order, routeNumber, activeOrders, group.name);
         itemsContainer.appendChild(cardEl);
       });
 
@@ -1474,7 +1813,7 @@ function renderOrderList() {
 /**
  * Tạo phần tử Card cho một đơn hàng
  */
-function createOrderCard(order, routeNumber, originalIndex, totalOrders, groupName) {
+function createOrderCard(order, routeNumber, activeOrders, groupName) {
   const card = document.createElement('div');
   card.className = `order-card status-${order.status}`;
   card.setAttribute('data-id', order.id);
@@ -1514,12 +1853,12 @@ function createOrderCard(order, routeNumber, originalIndex, totalOrders, groupNa
       </div>
       <span class="route-badge" title="Thứ tự giao hàng">#${routeNumber}</span>
       <div class="move-buttons">
-        <button class="btn-move btn-move-up" title="Di chuyển lên" ${originalIndex === 0 ? 'disabled' : ''}>
+        <button class="btn-move btn-move-up" title="Di chuyển lên">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="18 15 12 9 6 15"></polyline>
           </svg>
         </button>
-        <button class="btn-move btn-move-down" title="Di chuyển xuống" ${originalIndex === totalOrders - 1 ? 'disabled' : ''}>
+        <button class="btn-move btn-move-down" title="Di chuyển xuống">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
@@ -1577,6 +1916,9 @@ function createOrderCard(order, routeNumber, originalIndex, totalOrders, groupNa
               🗺️ Bản đồ
             </button>
           ` : ''}
+          <button type="button" class="btn-desktop-edit-loc" data-order-id="${order.id}" title="Chỉnh sửa hoặc ghim lại vị trí GPS chính xác">
+            📍 Sửa vị trí
+          </button>
           ${order.address || hasGps ? `
             <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="maps-link" title="Dẫn đường Google Maps">
               🧭 Chỉ đường ↗
@@ -1689,29 +2031,55 @@ function createOrderCard(order, routeNumber, originalIndex, totalOrders, groupNa
     });
   }
 
-  // Nút di chuyển lên/xuống
+  // Sửa vị trí GPS
+  const btnEditLoc = card.querySelector('.btn-desktop-edit-loc');
+  if (btnEditLoc) {
+    btnEditLoc.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDesktopUpdateLocModal(order, routeNumber);
+    });
+  }
+
+  // Nút di chuyển lên/xuống (đồng bộ theo thứ tự trong chuyến activeOrders)
+  const tripIdx = activeOrders.findIndex(o => o.id === order.id);
   const btnUp = card.querySelector('.btn-move-up');
   const btnDown = card.querySelector('.btn-move-down');
 
-  btnUp.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (originalIndex > 0) {
-      const [movedItem] = currentOrders.splice(originalIndex, 1);
-      currentOrders.splice(originalIndex - 1, 0, movedItem);
-      StorageService.reorderOrders(currentOrders);
-      renderOrderList();
-    }
-  });
+  if (btnUp) {
+    btnUp.disabled = (tripIdx <= 0);
+    btnUp.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (tripIdx > 0) {
+        const prevOrder = activeOrders[tripIdx - 1];
+        const curIdx = currentOrders.findIndex(o => o.id === order.id);
+        const prevIdx = currentOrders.findIndex(o => o.id === prevOrder.id);
+        if (curIdx !== -1 && prevIdx !== -1) {
+          const [movedItem] = currentOrders.splice(curIdx, 1);
+          currentOrders.splice(prevIdx, 0, movedItem);
+          StorageService.reorderOrders(currentOrders);
+          renderApp();
+        }
+      }
+    });
+  }
 
-  btnDown.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (originalIndex < totalOrders - 1) {
-      const [movedItem] = currentOrders.splice(originalIndex, 1);
-      currentOrders.splice(originalIndex + 1, 0, movedItem);
-      StorageService.reorderOrders(currentOrders);
-      renderOrderList();
-    }
-  });
+  if (btnDown) {
+    btnDown.disabled = (tripIdx >= activeOrders.length - 1);
+    btnDown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (tripIdx < activeOrders.length - 1) {
+        const nextOrder = activeOrders[tripIdx + 1];
+        const curIdx = currentOrders.findIndex(o => o.id === order.id);
+        const nextIdx = currentOrders.findIndex(o => o.id === nextOrder.id);
+        if (curIdx !== -1 && nextIdx !== -1) {
+          const [movedItem] = currentOrders.splice(curIdx, 1);
+          currentOrders.splice(nextIdx, 0, movedItem);
+          StorageService.reorderOrders(currentOrders);
+          renderApp();
+        }
+      }
+    });
+  }
 
   // Kéo thả sắp xếp (Drag & Drop)
   setupDragAndDrop(card, order.id);
@@ -1790,4 +2158,508 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ==========================================================
+// CẬP NHẬT VỊ TRÍ ĐỊNH VỊ CHO DESKTOP
+// ==========================================================
+
+function parseCoordsInput(str) {
+  if (!str) return null;
+  const m1 = str.match(/(1[0-9]\.\d{3,9})\s*[,;\s]\s*(10[2-9]\.\d{3,9})/);
+  if (m1) {
+    return { lat: parseFloat(m1[1]), lng: parseFloat(m1[2]) };
+  }
+  const m2 = str.match(/@([0-9]+\.[0-9]+),([0-9]+\.[0-9]+)/);
+  if (m2 && isValidCoordinate(m2[1], m2[2])) {
+    return { lat: parseFloat(m2[1]), lng: parseFloat(m2[2]) };
+  }
+  const m3 = str.match(/q=([0-9]+\.[0-9]+),([0-9]+\.[0-9]+)/);
+  if (m3 && isValidCoordinate(m3[1], m3[2])) {
+    return { lat: parseFloat(m3[1]), lng: parseFloat(m3[2]) };
+  }
+  return null;
+}
+
+function findSimilarAddressOrders(targetOrder, allOrders) {
+  if (!targetOrder || !targetOrder.address) return [];
+
+  function cleanText(str) {
+    if (!str) return '';
+    return str.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .replace(/[.,\-\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  const targetClean = cleanText(targetOrder.address);
+  const targetTokens = targetClean.split(' ').filter(w => 
+    w.length > 1 && !['tp', 'hcm', 'thanh', 'pho', 'quan', 'phuong', 'duong', 'so', 'nha', 'toa', 'tang', 'phong', 'viet', 'nam'].includes(w)
+  );
+  const targetNumbers = targetClean.match(/\b\d+\b/g) || [];
+
+  const candidates = [];
+  const landmarks = ['centec', 'vincom', 'diamond', 'landmark', 'bitexco', 'saigon', 'times', 'cantavil', 'masteri', 'vinhomes', 'pearl', 'riverpark', 'sunwah', 'lim', 'mplaza', 'me linh'];
+
+  for (let i = 0; i < allOrders.length; i++) {
+    const o = allOrders[i];
+    if (o.id === targetOrder.id) continue;
+    if (!isValidCoordinate(o.lat, o.lng)) continue;
+    if (!o.address) continue;
+
+    const otherClean = cleanText(o.address);
+    const otherTokens = otherClean.split(' ').filter(w => 
+      w.length > 1 && !['tp', 'hcm', 'thanh', 'pho', 'quan', 'phuong', 'duong', 'so', 'nha', 'toa', 'tang', 'phong', 'viet', 'nam'].includes(w)
+    );
+    const otherNumbers = otherClean.match(/\b\d+\b/g) || [];
+
+    if (otherTokens.length === 0) continue;
+
+    let commonTokens = 0;
+    for (let t = 0; t < targetTokens.length; t++) {
+      if (otherTokens.includes(targetTokens[t])) commonTokens++;
+    }
+
+    const dice = (2 * commonTokens) / (targetTokens.length + otherTokens.length);
+    let score = dice * 55;
+
+    let hasSameNumber = false;
+    for (let n = 0; n < targetNumbers.length; n++) {
+      if (otherNumbers.includes(targetNumbers[n])) {
+        hasSameNumber = true;
+        break;
+      }
+    }
+    if (hasSameNumber) score += 25;
+
+    for (let l = 0; l < landmarks.length; l++) {
+      const lm = landmarks[l];
+      if (targetClean.includes(lm) && otherClean.includes(lm)) {
+        score += 35;
+        break;
+      }
+    }
+
+    const finalPct = Math.min(Math.round(score), 99);
+    if (finalPct >= 35) {
+      const origIdx = allOrders.indexOf(o);
+      candidates.push({
+        order: o,
+        stt: origIdx !== -1 ? (origIdx + 1) : '',
+        score: finalPct
+      });
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates.slice(0, 5);
+}
+
+function openDesktopUpdateLocModal(order, stt) {
+  targetUpdateOrder = order;
+  const modal = document.getElementById('updateLocationModal');
+  if (!modal) return;
+
+  const activeOrders = getActiveTripOrders();
+  const routeNum = stt || (activeOrders.findIndex(o => o.id === order.id) + 1) || 1;
+
+  const sttEl = document.getElementById('updTargetStt');
+  const nameEl = document.getElementById('updTargetName');
+  const trkEl = document.getElementById('updTargetTrk');
+  const addrEl = document.getElementById('updTargetAddr');
+  const gpsTextEl = document.getElementById('updTargetGpsText');
+  const manualInput = document.getElementById('updManualInput');
+
+  if (sttEl) sttEl.textContent = '#' + routeNum;
+  if (nameEl) nameEl.textContent = order.customerName || 'Khách lẻ';
+  if (trkEl) trkEl.textContent = order.trackingCode || '';
+  if (addrEl) addrEl.textContent = order.address || 'Chưa có địa chỉ';
+
+  const hasGps = isValidCoordinate(order.lat, order.lng);
+  if (gpsTextEl) {
+    gpsTextEl.textContent = hasGps 
+      ? `${Number(order.lat).toFixed(6)}, ${Number(order.lng).toFixed(6)}`
+      : 'Chưa có GPS';
+  }
+
+  if (manualInput) {
+    manualInput.value = hasGps ? `${order.lat}, ${order.lng}` : '';
+  }
+
+  // Reset OSM result box
+  const osmBox = document.getElementById('updOsmResultBox');
+  if (osmBox) osmBox.style.display = 'none';
+
+  // Kiểm tra đơn cùng địa chỉ
+  const info = extractStreetAndHouseNumber(order.address);
+  const sameAddrOrders = currentOrders.filter(o => {
+    if (o.id === order.id || !o.address) return false;
+    const sameRaw = o.address.trim().toLowerCase() === (order.address || '').trim().toLowerCase();
+    if (sameRaw) return true;
+    if (info.street && info.houseNumber && info.street !== 'Chưa rõ đường') {
+      const otherInfo = extractStreetAndHouseNumber(o.address);
+      return otherInfo.street === info.street && otherInfo.houseNumber === info.houseNumber;
+    }
+    return false;
+  });
+
+  const sameSection = document.getElementById('updSameAddrSection');
+  const sameCountEl = document.getElementById('updSameAddrCount');
+  const btnSyncSame = document.getElementById('btnUpdSyncSameAddr');
+
+  if (sameSection && sameCountEl) {
+    if (sameAddrOrders.length > 0) {
+      sameCountEl.textContent = `${sameAddrOrders.length + 1} đơn`;
+      sameSection.style.display = 'block';
+      if (btnSyncSame) {
+        btnSyncSame.onclick = () => {
+          if (!isValidCoordinate(order.lat, order.lng)) {
+            showToast('Đơn này chưa có tọa độ hợp lệ để đồng bộ!', 'error');
+            return;
+          }
+          sameAddrOrders.forEach(o => {
+            o.lat = order.lat;
+            o.lng = order.lng;
+            o.isGpsHealed = true;
+            o.isGpsOutlier = false;
+          });
+          StorageService.saveOrders(currentOrders);
+          renderApp();
+          modal.style.display = 'none';
+          showToast(`⚡ Đã đồng bộ tọa độ cho tất cả ${sameAddrOrders.length + 1} đơn cùng địa chỉ!`, 'success');
+        };
+      }
+    } else {
+      sameSection.style.display = 'none';
+    }
+  }
+
+  // Gợi ý địa chỉ tương tự
+  const suggestions = findSimilarAddressOrders(order, currentOrders);
+  const sugList = document.getElementById('updSuggestionsList');
+  const sugBadge = document.getElementById('updSuggestCount');
+
+  if (sugBadge) sugBadge.textContent = `${suggestions.length} gợi ý`;
+  if (sugList) {
+    sugList.innerHTML = '';
+    if (suggestions.length === 0) {
+      sugList.innerHTML = '<div style="font-size: 11.5px; color: #94a3b8; text-align: center; padding: 12px; background: #f8fafc; border-radius: 6px;">Không tìm thấy đơn nào khác có địa chỉ tương tự</div>';
+    } else {
+      suggestions.forEach(sug => {
+        const card = document.createElement('div');
+        card.className = 'upd-suggest-card';
+        card.innerHTML = `
+          <div class="upd-suggest-info">
+            <div class="upd-suggest-title">
+              <span>#${sug.stt} ${escapeHtml(sug.order.customerName || 'Khách lẻ')}</span>
+              <span class="upd-suggest-score">${sug.score}% khớp</span>
+            </div>
+            <div class="upd-suggest-addr" title="${escapeHtml(sug.order.address)}">📍 ${escapeHtml(sug.order.address)}</div>
+          </div>
+          <div class="upd-suggest-actions">
+            <button type="button" class="btn-preview-suggest" title="Xem vị trí trên bản đồ">🔍 Xem Map</button>
+            <button type="button" class="btn-apply-suggest" title="Áp dụng tọa độ này">✓ Áp dụng</button>
+          </div>
+        `;
+
+        card.querySelector('.btn-preview-suggest').addEventListener('click', (e) => {
+          e.stopPropagation();
+          modal.style.display = 'none';
+          switchDesktopView('map');
+          if (desktopMap) {
+            desktopMap.flyTo([Number(sug.order.lat), Number(sug.order.lng)], 17, { duration: 1.2 });
+            showToast(`Đang xem vị trí gợi ý từ đơn #${sug.stt}`, 'info');
+          }
+        });
+
+        card.querySelector('.btn-apply-suggest').addEventListener('click', (e) => {
+          e.stopPropagation();
+          order.lat = Number(sug.order.lat);
+          order.lng = Number(sug.order.lng);
+          order.isGpsHealed = true;
+          order.isGpsOutlier = false;
+          StorageService.saveOrders(currentOrders);
+          renderApp();
+          modal.style.display = 'none';
+          showToast(`✓ Đã áp dụng tọa độ từ đơn #${sug.stt}!`, 'success');
+        });
+
+        sugList.appendChild(card);
+      });
+    }
+  }
+
+  modal.style.display = 'flex';
+}
+
+window.openDesktopUpdateLocModalById = function(orderId, stt) {
+  const order = currentOrders.find(o => o.id === orderId);
+  if (order) {
+    openDesktopUpdateLocModal(order, stt);
+  }
+};
+
+function setupDesktopUpdateLocationModal() {
+  const modal = document.getElementById('updateLocationModal');
+  const btnClose = document.getElementById('btnCloseUpdateLocModal');
+
+  if (btnClose && modal) {
+    btnClose.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
+
+  if (modal) {
+    window.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  }
+
+  // Chấm điểm trên bản đồ
+  const btnPickMap = document.getElementById('btnUpdPickMap');
+  if (btnPickMap) {
+    btnPickMap.addEventListener('click', () => {
+      if (!targetUpdateOrder) return;
+      const pickingOrder = targetUpdateOrder;
+      const stt = getActiveTripOrders().findIndex(o => o.id === pickingOrder.id) + 1;
+      if (modal) modal.style.display = 'none';
+      switchDesktopView('map');
+      showToast(`🎯 Chế độ chấm điểm: Hãy bấm 1 điểm trên bản đồ để ghim vị trí cho đơn #${stt}!`, 'info');
+
+      if (desktopMap) {
+        desktopMap.once('click', (e) => {
+          const lat = Number(e.latlng.lat.toFixed(6));
+          const lng = Number(e.latlng.lng.toFixed(6));
+          pickingOrder.lat = lat;
+          pickingOrder.lng = lng;
+          pickingOrder.isGpsHealed = true;
+          pickingOrder.isGpsOutlier = false;
+          StorageService.saveOrders(currentOrders);
+          renderApp();
+          showToast(`✓ Đã ghim thành công tọa độ [${lat}, ${lng}] cho đơn #${stt}!`, 'success');
+        });
+      }
+    });
+  }
+
+  // Mượn tọa độ trung vị tuyến đường
+  const btnStreetMedian = document.getElementById('btnUpdStreetMedian');
+  if (btnStreetMedian) {
+    btnStreetMedian.addEventListener('click', () => {
+      if (!targetUpdateOrder) return;
+      const info = extractStreetAndHouseNumber(targetUpdateOrder.address);
+      const streetOrders = currentOrders.filter(o => {
+        return o.id !== targetUpdateOrder.id && isValidCoordinate(o.lat, o.lng) && extractStreetAndHouseNumber(o.address).street === info.street;
+      });
+
+      if (streetOrders.length === 0) {
+        showToast(`Không có đơn nào khác cùng đường "${info.street}" có tọa độ!`, 'info');
+        return;
+      }
+
+      streetOrders.sort((a, b) => Number(a.lat) - Number(b.lat));
+      const mid = Math.floor(streetOrders.length / 2);
+      const medLat = Number(streetOrders[mid].lat);
+      const medLng = Number(streetOrders[mid].lng);
+
+      targetUpdateOrder.lat = medLat;
+      targetUpdateOrder.lng = medLng;
+      targetUpdateOrder.isGpsHealed = true;
+      targetUpdateOrder.isGpsOutlier = false;
+      StorageService.saveOrders(currentOrders);
+      renderApp();
+      if (modal) modal.style.display = 'none';
+      showToast(`✓ Đã áp dụng tọa độ trung vị đường "${info.street}" (${streetOrders.length} đơn)`, 'success');
+    });
+  }
+
+  // Tra cứu OpenStreetMap
+  const btnOsm = document.getElementById('btnUpdOsmSearch');
+  const osmBox = document.getElementById('updOsmResultBox');
+  const osmStatus = document.getElementById('updOsmStatusText');
+  const btnApplyOsm = document.getElementById('btnApplyOsmResult');
+  let tempOsmCoords = null;
+
+  if (btnOsm) {
+    btnOsm.addEventListener('click', () => {
+      if (!targetUpdateOrder || !targetUpdateOrder.address) return;
+      if (osmBox) osmBox.style.display = 'block';
+      if (osmStatus) osmStatus.textContent = '⏳ Đang tra cứu OpenStreetMap...';
+      if (btnApplyOsm) btnApplyOsm.style.display = 'none';
+
+      const cleanAddr = targetUpdateOrder.address.replace(/[<>]/g, '').trim();
+      const queryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanAddr)}&countrycodes=vn&limit=1`;
+
+      fetch(queryUrl, { headers: { 'Accept': 'application/json' } })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.length > 0 && data[0].lat && data[0].lon) {
+            const lat = parseFloat(data[0].lat);
+            const lng = parseFloat(data[0].lon);
+            tempOsmCoords = { lat, lng, displayName: data[0].display_name };
+            if (osmStatus) osmStatus.innerHTML = `✓ Tìm thấy: <strong>${lat.toFixed(6)}, ${lng.toFixed(6)}</strong> (${escapeHtml(data[0].display_name.slice(0, 45))}...)`;
+            if (btnApplyOsm) btnApplyOsm.style.display = 'inline-block';
+          } else {
+            const info = extractStreetAndHouseNumber(cleanAddr);
+            const fbQuery = `Đường ${info.street}, TP. Hồ Chí Minh`;
+            return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fbQuery)}&countrycodes=vn&limit=1`)
+              .then(r => r.json())
+              .then(d2 => {
+                if (d2 && d2.length > 0 && d2[0].lat && d2[0].lon) {
+                  const lat2 = parseFloat(d2[0].lat);
+                  const lng2 = parseFloat(d2[0].lon);
+                  tempOsmCoords = { lat: lat2, lng: lng2, displayName: d2[0].display_name };
+                  if (osmStatus) osmStatus.innerHTML = `✓ Tìm thấy theo tuyến đường: <strong>${lat2.toFixed(6)}, ${lng2.toFixed(6)}</strong>`;
+                  if (btnApplyOsm) btnApplyOsm.style.display = 'inline-block';
+                } else {
+                  if (osmStatus) osmStatus.textContent = '❌ Không tìm thấy tọa độ phù hợp trên OpenStreetMap';
+                  if (btnApplyOsm) btnApplyOsm.style.display = 'none';
+                }
+              });
+          }
+        })
+        .catch(err => {
+          if (osmStatus) osmStatus.textContent = `❌ Lỗi kết nối OSM: ${err.message || 'Không thể tra cứu'}`;
+          if (btnApplyOsm) btnApplyOsm.style.display = 'none';
+        });
+    });
+  }
+
+  if (btnApplyOsm) {
+    btnApplyOsm.addEventListener('click', () => {
+      if (tempOsmCoords && targetUpdateOrder) {
+        targetUpdateOrder.lat = tempOsmCoords.lat;
+        targetUpdateOrder.lng = tempOsmCoords.lng;
+        targetUpdateOrder.isGpsHealed = true;
+        targetUpdateOrder.isGpsOutlier = false;
+        StorageService.saveOrders(currentOrders);
+        renderApp();
+        if (modal) modal.style.display = 'none';
+        showToast('✓ Đã cập nhật tọa độ từ OpenStreetMap!', 'success');
+      }
+    });
+  }
+
+  // Lấy GPS máy tính
+  const btnMyGps = document.getElementById('btnUpdMyGps');
+  if (btnMyGps) {
+    btnMyGps.addEventListener('click', () => {
+      if (!targetUpdateOrder) return;
+      if (!navigator.geolocation) {
+        showToast('Trình duyệt không hỗ trợ GPS', 'error');
+        return;
+      }
+      showToast('Đang lấy vị trí GPS hiện tại...', 'info');
+      navigator.geolocation.getCurrentPosition(pos => {
+        targetUpdateOrder.lat = pos.coords.latitude;
+        targetUpdateOrder.lng = pos.coords.longitude;
+        targetUpdateOrder.isGpsHealed = true;
+        targetUpdateOrder.isGpsOutlier = false;
+        StorageService.saveOrders(currentOrders);
+        renderApp();
+        if (modal) modal.style.display = 'none';
+        showToast('✓ Đã cập nhật theo vị trí GPS máy tính!', 'success');
+      }, err => {
+        showToast(`Lỗi GPS: ${err.message || 'Không thể xác định vị trí'}`, 'error');
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    });
+  }
+
+  // Lưu tọa độ thủ công hoặc dán link Google Maps
+  const btnSaveManual = document.getElementById('btnUpdSaveManual');
+  const manualInput = document.getElementById('updManualInput');
+  if (btnSaveManual && manualInput) {
+    btnSaveManual.addEventListener('click', () => {
+      if (!targetUpdateOrder) return;
+      const raw = manualInput.value.trim();
+      if (!raw) {
+        showToast('Vui lòng nhập tọa độ hoặc dán link Google Maps!', 'error');
+        return;
+      }
+      const parsed = parseCoordsInput(raw);
+      if (parsed) {
+        targetUpdateOrder.lat = parsed.lat;
+        targetUpdateOrder.lng = parsed.lng;
+        targetUpdateOrder.isGpsHealed = true;
+        targetUpdateOrder.isGpsOutlier = false;
+        StorageService.saveOrders(currentOrders);
+        renderApp();
+        if (modal) modal.style.display = 'none';
+        showToast(`✓ Đã lưu tọa độ [${parsed.lat}, ${parsed.lng}]!`, 'success');
+      } else {
+        showToast('Không nhận diện được tọa độ hợp lệ (cần dạng lat, lng)!', 'error');
+      }
+    });
+  }
+}
+
+// ==========================================================
+// MODAL DANH SÁCH ĐƠN CHƯA CÓ GPS
+// ==========================================================
+function setupDesktopUnmappedModal() {
+  const modal = document.getElementById('unmappedModal');
+  const btnClose = document.getElementById('btnCloseUnmappedModal');
+  const unmappedChip = document.getElementById('dMapUnmappedChip');
+  const listEl = document.getElementById('unmappedOrdersList');
+
+  function openModal() {
+    if (!modal || !listEl) return;
+    const activeOrders = getActiveTripOrders();
+    const unmapped = activeOrders.filter(o => !isValidCoordinate(o.lat, o.lng));
+
+    listEl.innerHTML = '';
+    if (unmapped.length === 0) {
+      listEl.innerHTML = '<div style="font-size: 13px; color: #166534; background: #f0fdf4; padding: 12px; border-radius: 8px; text-align: center; font-weight: 600;">🎉 Tuyệt vời! Tất cả đơn trong chuyến đều đã có tọa độ GPS.</div>';
+    } else {
+      unmapped.forEach(o => {
+        const routeNum = activeOrders.findIndex(item => item.id === o.id) + 1;
+        const row = document.createElement('div');
+        row.style.cssText = 'background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;';
+        row.innerHTML = `
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 2px;">
+              <span style="background: #001f3f; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px;">#${routeNum}</span>
+              <strong style="font-size: 13px; color: #0f172a;">${escapeHtml(o.customerName || 'Khách lẻ')}</strong>
+              <code style="font-size: 11px; color: #2563eb;">${escapeHtml(o.trackingCode || '')}</code>
+            </div>
+            <div style="font-size: 12px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📍 ${escapeHtml(o.address || 'Chưa có địa chỉ')}</div>
+          </div>
+          <button type="button" class="btn-quick-fix-loc" style="background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+            📍 Định vị ngay
+          </button>
+        `;
+
+        row.querySelector('.btn-quick-fix-loc').addEventListener('click', () => {
+          modal.style.display = 'none';
+          openDesktopUpdateLocModal(o, routeNum);
+        });
+
+        listEl.appendChild(row);
+      });
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  if (unmappedChip) {
+    unmappedChip.addEventListener('click', openModal);
+  }
+
+  if (btnClose && modal) {
+    btnClose.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
+
+  if (modal) {
+    window.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  }
 }

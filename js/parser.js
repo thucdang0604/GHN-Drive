@@ -588,6 +588,68 @@ export function extractClusterName(address, ward, district) {
   return 'Chưa phân nhóm';
 }
 
+export function extractStreetAndHouseNumber(addr) {
+  if (!addr) {
+    return { street: 'Chưa rõ đường', clusterGroup: 'Chưa phân nhóm', houseNumber: '', houseNumVal: 999999, shortStreet: '' };
+  }
+
+  const streetRaw = extractClusterName(addr);
+  const street = streetRaw.replace(/^Đường\s+/i, '').trim();
+
+  // Tạo tên đường viết tắt gọn gàng (ví dụ Nguyễn Thị Minh Khai -> NTMK, Pasteur -> Pasteur)
+  const words = street.split(/\s+/).filter(Boolean);
+  const shortStreet = words.length > 2 
+    ? words.map(w => w.charAt(0).toUpperCase()).join('')
+    : street;
+
+  let s = String(addr).trim();
+  s = s.replace(/(?:\+?84|0|\(\+?84\)|\(0\d{1,4}\))[\s.-]*\d(?:[\s.-]*\d){4,10}\b/g, ' ');
+  s = s.replace(/\([^)]*\)/g, ' ');
+  s = s.replace(/^(?:địa\s*chỉ\s*(?:giao|nhận)?|đ\/c|address)\s*:\s*/i, '');
+  s = s.replace(/(?:tầng|lầu|phòng|p\.|căn\s*hộ|block|lô)\s*[\d\w-]+\s*,?\s*/gi, '');
+  s = s.replace(/(\d+)([a-zA-ZÀ-Ỹà-ỹ]{2,})/g, '$1 $2');
+
+  const streetEsc = street.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let houseNumber = '';
+
+  // Trường hợp tên đường lặp trước số nhà: "Võ Văn Tần 221/27"
+  const regRepeat = new RegExp('^\\s*(?:đường|phố)?\\s*' + streetEsc + '\\s+([\\d/]+[a-zA-Z]*(?:\\s*bis)?)(?:\\D|$)', 'i');
+  const mRepeat = s.match(regRepeat);
+  if (mRepeat) {
+    houseNumber = mRepeat[1].trim();
+  } else {
+    // Trường hợp số nhà nằm ngay trước tên đường: "Lầu 6, TSA Building, 30 Nguyễn Thị Diệu"
+    const regBefore = new RegExp('(?:^|[,\\s])([\\d/]+[a-zA-Z]*(?:\\s*bis)?)\\s*(?:đường|phố)?\\s*' + streetEsc, 'i');
+    const mBefore = s.match(regBefore);
+    if (mBefore) {
+      houseNumber = mBefore[1].trim();
+    } else {
+      // Cắt tiền tố "Số", "Số nhà"
+      const sClean = s.replace(/^(?:đc|đ\/c|địa\s*chỉ)?\s*(?:số|nhà|số\s*nhà|sô)\s*[:\s]*/i, '');
+      const mNumHead = sClean.match(/^([\d]+[a-zA-Z]*(?:\s*bis)?(?:[\/\-][\d]+[a-zA-Z]*(?:\s*bis)?)*(?:\s*[\/\-]\s*[\d]+[a-zA-Z]*)*)/i);
+      if (mNumHead) {
+        houseNumber = mNumHead[1].trim();
+      } else {
+        const mNumMid = s.match(/(?:số|nhà|số\s*nhà)\s*[:\s]*([\d/]+[a-zA-Z]*(?:\s*bis)?)/i);
+        if (mNumMid) {
+          houseNumber = mNumMid[1].trim();
+        }
+      }
+    }
+  }
+
+  const firstDigits = houseNumber.match(/\d+/);
+  const houseNumVal = firstDigits ? parseInt(firstDigits[0], 10) : 999999;
+
+  return {
+    street: street,
+    clusterGroup: streetRaw,
+    houseNumber: houseNumber,
+    houseNumVal: houseNumVal,
+    shortStreet: shortStreet
+  };
+}
+
 export function capitalizeWords(str) {
   if (!str) return '';
   return str.toLowerCase().split(/\s+/).map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ');

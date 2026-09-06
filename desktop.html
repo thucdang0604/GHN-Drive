@@ -270,6 +270,13 @@ giá tiền: 0 VNĐ."
             </button>
           </div>
 
+          <div class="trip-filter-wrapper">
+            <span style="font-size: 12px; font-weight: 700; color: #64748b; white-space: nowrap;">⚡ Chuyến:</span>
+            <select id="desktopTripFilter" class="desktop-trip-select" title="Lọc hiển thị theo từng chuyến của nhân viên">
+              <option value="all">📦 Tất cả chuyến (Tổng hợp)</option>
+            </select>
+          </div>
+
           <div class="filter-pills">
             <button class="filter-pill active" data-filter="all">Tất cả</button>
             <button class="filter-pill" data-filter="pending">Chờ giao</button>
@@ -290,6 +297,7 @@ giá tiền: 0 VNĐ."
 
         <!-- Thanh gom nhóm tuyến đường & toà nhà -->
         <div class="desktop-group-bar" id="desktopGroupBar">
+          <button id="btnDesktopSortStreet" class="btn-group-pill sort-street" style="background: #10b981; color: #fff; border-color: #059669; font-weight: 700;" title="Sắp xếp lộ trình tuần tự theo từng đường & số nhà tăng dần">⚡ Xếp Tuyến & Số Nhà</button>
           <button id="btnDesktopAutoGroup" class="btn-group-pill auto">⚡ Tự động gom tuyến</button>
           <button id="btnDesktopHealGps" class="btn-group-pill heal" title="Tự động phát hiện và nắn sửa tọa độ bị lệch hoặc thiếu">🧭 Nắn sửa tọa độ</button>
           <button id="btnDesktopNewGroup" class="btn-group-pill add">➕ Thêm nhóm mới</button>
@@ -303,7 +311,9 @@ giá tiền: 0 VNĐ."
               <span class="d-map-chip"><strong>📍 <span id="dMapPoints">0</span></strong> điểm có GPS</span>
               <span class="d-map-chip pending"><strong>⏳ <span id="dMapPending">0</span></strong> chờ giao</span>
               <span class="d-map-chip gtc"><strong>✓ <span id="dMapGtc">0</span></strong> đã xong</span>
+              <span id="dMapUnmappedChip" class="d-map-chip" style="background: #fef2f2; color: #b91c1c; border-color: #fecaca; cursor: pointer; display: none;" title="Bấm để xem danh sách các đơn chưa có tọa độ GPS">⚠️ <strong><span id="dMapUnmappedCount">0</span></strong> thiếu GPS</span>
             </div>
+            <div class="d-map-hint">💡 <em>Kéo thả ghim trên map để nắn tọa độ tức thì</em></div>
             <div class="desktop-map-actions">
               <button id="btnDesktopMapLocate" class="btn-d-map" title="Vị trí của bạn (GPS)">🎯 Định vị tôi</button>
               <button id="btnDesktopMapPolyline" class="btn-d-map active" title="Bật/Tắt đường nối lộ trình">〰️ Lộ trình</button>
@@ -404,67 +414,213 @@ giá tiền: 0 VNĐ."
 
   <!-- Modal Đồng Bộ QR Sang Mobile (Desktop) -->
   <div id="desktopQrSyncModal" class="modal-backdrop" style="display: none;">
-    <div class="modal-box" style="max-width: 480px;">
+    <div class="modal-box" style="max-width: 500px;">
       <div class="modal-header" style="justify-content: space-between;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <div style="background: #eff6ff; color: #2563eb; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
             📲
           </div>
           <div>
-            <h3 style="margin: 0; font-size: 1.1rem; color: var(--brand-navy);">Đồng Bộ Sang Điện Thoại (P2P / Mã PIN)</h3>
-            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Gõ mã PIN 6 số hoặc quét mã QR trên điện thoại để nhận đơn</p>
+            <h3 style="margin: 0; font-size: 1.1rem; color: var(--brand-navy);">Đồng Bộ Dữ Liệu Thiết Bị (P2P / PIN)</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Xuất đơn theo từng mã chuyến cho Shipper hoặc nhận dữ liệu</p>
           </div>
         </div>
         <button id="btnCloseDesktopQrSyncModal" class="btn-icon" style="font-size: 1.4rem; background: none; border: none; cursor: pointer; color: #94a3b8;">✕</button>
       </div>
 
       <div class="modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
-        <!-- Lựa chọn chế độ dữ liệu -->
-        <div style="display: flex; gap: 10px;">
-          <label style="flex: 1; border: 1.5px solid #2563eb; background: #eff6ff; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;" id="desktopOptPatchBox">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="radio" name="desktopSyncMode" value="patch" checked>
-              <strong style="font-size: 12.5px; color: #1e3a8a;">⚡ Chỉ Tọa độ & Nhóm</strong>
-            </div>
-            <span style="font-size: 11px; color: #475569; padding-left: 20px;">Siêu nhẹ (Điện thoại đã có đơn)</span>
-          </label>
-
-          <label style="flex: 1; border: 1.5px solid var(--border-color); background: #f8fafc; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;" id="desktopOptFullBox">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="radio" name="desktopSyncMode" value="full">
-              <strong style="font-size: 12.5px; color: #0f172a;">📦 Toàn bộ đơn hàng</strong>
-            </div>
-            <span style="font-size: 11px; color: #64748b; padding-left: 20px;">Chuyển hết (Điện thoại chưa có đơn)</span>
-          </label>
-        </div>
-
-        <!-- Khung hiển thị P2P Gửi Desktop -->
-        <div id="desktopP2PHostBox" style="display: flex; flex-direction: column; align-items: center; background: #f8fafc; border: 1px dashed var(--border-color); border-radius: 10px; padding: 16px;">
-          <div class="p2p-pin-box" style="width: 100%; max-width: 280px; margin-bottom: 12px;">
-            <div style="font-size: 11px; color: #64748b; font-weight: 700;">MÃ PIN KẾT NỐI (GÕ TRÊN ĐIỆN THOẠI):</div>
-            <div id="desktopP2PHostPinValue" class="p2p-pin-value" style="font-size: 26px; letter-spacing: 4px;">------</div>
-          </div>
-
-          <div id="desktopP2PCanvasContainer" style="width: 220px; height: 220px; background: #fff; padding: 10px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center;"></div>
-
-          <div id="desktopP2PHostStatusText" class="p2p-status-pill" style="margin-top: 10px;">
-            <span class="pulse-dot"></span> ⏳ Đang mở phòng chờ Điện Thoại quét...
-          </div>
-          <p style="font-size: 12px; color: #475569; text-align: center; margin-top: 10px; line-height: 1.4;">
-            Mở app GHN trên <strong>Điện thoại</strong>, vào mục Đồng Bộ và gõ mã PIN (hoặc quét mã QR) để bắn dữ liệu qua sóng trong 0.05s!
-          </p>
-        </div>
-
-        <!-- Các tùy chọn file sao lưu dự phòng -->
-        <div style="display: flex; gap: 10px; justify-content: center;">
-          <button type="button" id="btnDesktopDownloadJson" class="btn btn-secondary" style="font-size: 12px; display: flex; align-items: center; gap: 6px;">
-            💾 Tải File Sao Lưu (.json)
+        <!-- Tab chuyển đổi Gửi (Xuất cho Shipper) / Nhận (Từ điện thoại) -->
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="tabDesktopExportP2P" class="btn btn-secondary active" style="flex: 1; font-weight: 700; background: #eff6ff; color: #1d4ed8; border-color: #3b82f6;">
+            📤 Xuất Đơn Cho Shipper
           </button>
-          <label for="desktopImportJsonFile" class="btn btn-secondary" style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-            📁 Nhập File Từ Máy Tính
-          </label>
-          <input type="file" id="desktopImportJsonFile" accept=".json" style="display: none;">
+          <button type="button" id="tabDesktopImportP2P" class="btn btn-secondary" style="flex: 1; font-weight: 700; color: #64748b;">
+            📥 Nhận Đơn Từ Điện Thoại
+          </button>
         </div>
+
+        <!-- PANEL 1: XUẤT CHO SHIPPER (HOST) -->
+        <div id="desktopP2PHostPanel" style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- 🎯 BỘ CHỌN MÃ CHUYẾN CẦN XUẤT -->
+          <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-size: 12px; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px;">
+              <span>🎯</span> XUẤT ĐƠN CHO SHIPPER THEO MÃ CHUYẾN:
+            </label>
+            <select id="desktopSyncTripSelect" style="width: 100%; padding: 7px 10px; border-radius: 6px; border: 1.5px solid #16a34a; font-weight: 700; color: #0f172a; background: #fff;">
+              <option value="all">📦 Toàn bộ đơn hàng (Tất cả chuyến)</option>
+            </select>
+            <div id="desktopSyncTripSummary" style="font-size: 11px; color: #15803d; font-weight: 600;">
+              Đang chọn xuất: Toàn bộ đơn hàng
+            </div>
+          </div>
+
+          <!-- Lựa chọn chế độ dữ liệu -->
+          <div style="display: flex; gap: 10px;">
+            <label style="flex: 1; border: 1.5px solid #2563eb; background: #eff6ff; padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 3px;" id="desktopOptPatchBox">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <input type="radio" name="desktopSyncMode" value="patch" checked>
+                <strong style="font-size: 12px; color: #1e3a8a;">⚡ Chỉ Tọa độ & Nhóm</strong>
+              </div>
+              <span style="font-size: 10.5px; color: #475569; padding-left: 20px;">Siêu nhẹ (Đã có đơn trên máy)</span>
+            </label>
+
+            <label style="flex: 1; border: 1.5px solid var(--border-color); background: #f8fafc; padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 3px;" id="desktopOptFullBox">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <input type="radio" name="desktopSyncMode" value="full">
+                <strong style="font-size: 12px; color: #0f172a;">📦 Toàn bộ đơn chuyến này</strong>
+              </div>
+              <span style="font-size: 10.5px; color: #64748b; padding-left: 20px;">Chuyển hết (Điện thoại chưa có)</span>
+            </label>
+          </div>
+
+          <!-- Khung hiển thị P2P Gửi Desktop -->
+          <div id="desktopP2PHostBox" style="display: flex; flex-direction: column; align-items: center; background: #f8fafc; border: 1px dashed var(--border-color); border-radius: 10px; padding: 14px;">
+            <div class="p2p-pin-box" style="width: 100%; max-width: 280px; margin-bottom: 10px;">
+              <div style="font-size: 11px; color: #64748b; font-weight: 700;">MÃ PIN KẾT NỐI (GÕ TRÊN ĐIỆN THOẠI):</div>
+              <div id="desktopP2PHostPinValue" class="p2p-pin-value" style="font-size: 26px; letter-spacing: 4px;">------</div>
+            </div>
+
+            <div id="desktopP2PCanvasContainer" style="width: 200px; height: 200px; background: #fff; padding: 8px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center;"></div>
+
+            <div id="desktopP2PHostStatusText" class="p2p-status-pill" style="margin-top: 10px;">
+              <span class="pulse-dot"></span> ⏳ Đang mở phòng chờ Shipper quét...
+            </div>
+            <p style="font-size: 11.5px; color: #475569; text-align: center; margin-top: 8px; line-height: 1.4;">
+              Shipper mở app trên <strong>Điện thoại</strong>, vào mục Đồng Bộ và gõ mã PIN (hoặc quét mã QR) để nhận chuyến trong 0.05s!
+            </p>
+          </div>
+
+          <!-- Các tùy chọn file sao lưu dự phòng -->
+          <div style="display: flex; gap: 10px; justify-content: center;">
+            <button type="button" id="btnDesktopDownloadJson" class="btn btn-secondary" style="font-size: 11.5px; display: flex; align-items: center; gap: 6px;">
+              💾 Tải File Sao Lưu (.json)
+            </button>
+            <label for="desktopImportJsonFile" class="btn btn-secondary" style="font-size: 11.5px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              📁 Nhập File Từ Máy Tính
+            </label>
+            <input type="file" id="desktopImportJsonFile" accept=".json" style="display: none;">
+          </div>
+        </div>
+
+        <!-- PANEL 2: NHẬN TỪ ĐIỆN THOẠI (CLIENT) -->
+        <div id="desktopP2PClientPanel" style="display: none; flex-direction: column; gap: 12px; align-items: center; padding: 10px 0;">
+          <div style="width: 100%; max-width: 340px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: center;">
+            <div style="font-size: 12px; font-weight: 800; color: #1e3a8a; margin-bottom: 8px;">NHẬP 6 SỐ PIN TỪ ĐIỆN THOẠI:</div>
+            <div style="display: flex; gap: 8px;">
+              <input type="number" id="desktopInputP2PPin" placeholder="6 số PIN..." maxlength="6" style="flex: 1; padding: 10px 12px; border: 1.5px solid #3b82f6; border-radius: 8px; font-size: 18px; font-weight: 800; text-align: center; letter-spacing: 4px; font-family: monospace; background: #ffffff;">
+              <button type="button" id="desktopBtnConnectP2PPin" style="background: #2563eb; color: #ffffff; border: none; border-radius: 8px; padding: 0 16px; font-size: 13.5px; font-weight: 800; cursor: pointer;">
+                Nhận Ngay
+              </button>
+            </div>
+            <p style="font-size: 11px; color: #64748b; margin-top: 8px; line-height: 1.4;">
+              Dùng khi Shipper đã cập nhật trạng thái GTC/GTB hoặc sửa tọa độ trên điện thoại và muốn bắn ngược về máy tính.
+            </p>
+          </div>
+          <div id="desktopP2PClientStatusMsg" style="font-size: 12px; color: #64748b; font-weight: 600; text-align: center; min-height: 24px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CẬP NHẬT VỊ TRÍ ĐỊNH VỊ CHO DESKTOP -->
+  <div id="updateLocationModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-box" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <span>📍</span> Cập Nhật Vị Trí Định Vị
+        </h3>
+        <button id="btnCloseUpdateLocModal" class="btn-icon" style="font-size: 1.3rem; background: none; border: none; cursor: pointer; color: #94a3b8;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 14px 18px; max-height: 75vh; overflow-y: auto;">
+        <!-- Thông tin đơn hàng đang chọn -->
+        <div class="upd-target-card">
+          <div class="upd-target-row">
+            <span class="upd-target-stt" id="updTargetStt">#1</span>
+            <strong class="upd-target-name" id="updTargetName">Khách hàng</strong>
+            <span class="upd-target-trk" id="updTargetTrk">VNGH...</span>
+          </div>
+          <div class="upd-target-addr" id="updTargetAddr">Địa chỉ...</div>
+          <div class="upd-target-gps">
+            <span>Tọa độ hiện tại: </span>
+            <strong id="updTargetGpsText">Chưa có GPS</strong>
+          </div>
+        </div>
+
+        <!-- Section: Đồng bộ hàng loạt nếu có đơn cùng địa chỉ -->
+        <div class="upd-section" id="updSameAddrSection" style="display: none;">
+          <div class="upd-section-header">
+            <span>⚡ Đơn cùng địa chỉ / tòa nhà</span>
+            <span class="upd-suggest-badge" id="updSameAddrCount">0 đơn</span>
+          </div>
+          <button type="button" class="btn-upd-tool sync-all" id="btnUpdSyncSameAddr" style="width: 100%; justify-content: center;">
+            ⚡ Đồng bộ tọa độ cho tất cả các đơn cùng địa chỉ này
+          </button>
+        </div>
+
+        <!-- Section 1: Gợi ý theo địa chỉ gần giống -->
+        <div class="upd-section">
+          <div class="upd-section-header">
+            <span>✨ Gợi ý từ các đơn cùng tòa nhà / tuyến đường</span>
+            <span class="upd-suggest-badge" id="updSuggestCount">0 gợi ý</span>
+          </div>
+          <div class="upd-suggestions-list" id="updSuggestionsList"></div>
+        </div>
+
+        <!-- Section 2: Công cụ ghim thực tế & Sửa nhanh -->
+        <div class="upd-section">
+          <div class="upd-section-header">
+            <span>🎯 Thao tác ghim vị trí & Sửa nhanh</span>
+          </div>
+          <div class="upd-tools-grid">
+            <button type="button" class="btn-upd-tool map" id="btnUpdPickMap">
+              🗺️ Chấm điểm trên bản đồ
+            </button>
+            <button type="button" class="btn-upd-tool street-median" id="btnUpdStreetMedian">
+              🛣️ Mượn tọa độ tuyến đường
+            </button>
+            <button type="button" class="btn-upd-tool osm" id="btnUpdOsmSearch">
+              🌐 Tra cứu OpenStreetMap
+            </button>
+            <button type="button" class="btn-upd-tool gps" id="btnUpdMyGps">
+              🎯 Lấy GPS máy tính
+            </button>
+          </div>
+          <div id="updOsmResultBox" style="display: none; margin-top: 8px; padding: 8px 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; font-size: 11.5px;">
+            <div id="updOsmStatusText" style="color: #166534; font-weight: 600; margin-bottom: 6px;"></div>
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              <button type="button" id="btnApplyOsmResult" class="btn-quick-fix-loc" style="background: #16a34a; display: none;">✓ Áp dụng tọa độ này</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Nhập tọa độ hoặc dán link Google Maps -->
+        <div class="upd-section">
+          <div class="upd-section-header">
+            <span>📝 Nhập tọa độ (lat, lng) hoặc link Google Maps</span>
+          </div>
+          <div class="upd-manual-box">
+            <input type="text" id="updManualInput" class="upd-input" placeholder="VD: 10.779774, 106.693156 hoặc link map">
+            <button type="button" id="btnUpdSaveManual" class="btn-upd-save">Lưu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DANH SÁCH ĐƠN CHƯA CÓ GPS -->
+  <div id="unmappedModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px; color: #b91c1c;">
+          <span>⚠️</span> Các Đơn Chưa Có Tọa Độ GPS
+        </h3>
+        <button id="btnCloseUnmappedModal" class="btn-icon" style="font-size: 1.3rem; background: none; border: none; cursor: pointer; color: #94a3b8;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 14px 18px; max-height: 70vh; overflow-y: auto;">
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+          Những đơn hàng này chưa có tọa độ GPS để ghim lên bản đồ. Điều phối viên có thể bấm <strong>"Định vị ngay"</strong> để ghim hoặc tra cứu vị trí:
+        </p>
+        <div id="unmappedOrdersList" style="display: flex; flex-direction: column; gap: 8px;"></div>
       </div>
     </div>
   </div>
