@@ -268,22 +268,58 @@ function setupEventListeners() {
 }
 
 /**
- * Xử lý Modal Dọn dẹp đơn cũ
+ * Xử lý Modal Dọn dẹp & Quản lý đơn hàng (Xóa toàn bộ, xóa theo chuyến, hoặc xóa đơn đã xử lý)
  */
 function setupCleanModal() {
-  if (!btnOpenCleanModal) return;
+  if (!btnOpenCleanModal || !cleanModal) return;
+
+  const cleanTripSelect = document.getElementById('cleanTripSelect');
+  const cleanPendingCount = document.getElementById('cleanPendingCount');
+  const cleanFinishedCount = document.getElementById('cleanFinishedCount');
+  const cleanAllTotalCount = document.getElementById('cleanAllTotalCount');
 
   btnOpenCleanModal.addEventListener('click', () => {
-    const finishedCount = currentOrders.filter(o => o.status === 'gtc' || o.status === 'gtb').length;
-    if (finishedCount === 0) {
-      showToast('Không có đơn nào đã xử lý (GTC hoặc GTB) để dọn dẹp!', 'info');
+    if (currentOrders.length === 0) {
+      showToast('Danh sách đơn đang trống, không có dữ liệu để dọn dẹp!', 'info');
       return;
     }
 
-    const descEl = document.getElementById('cleanModalDesc');
-    if (descEl) {
-      descEl.textContent = `Bạn có ${finishedCount} đơn hàng đã hoàn tất (GTC hoặc GTB). Bạn có chắc muốn dọn dẹp để bắt đầu ca giao mới không?`;
+    const totalOrders = currentOrders.length;
+    const finishedCount = currentOrders.filter(o => o.status === 'gtc' || o.status === 'gtb').length;
+    const pendingCount = currentOrders.filter(o => o.status === 'pending').length;
+
+    if (cleanAllTotalCount) cleanAllTotalCount.textContent = totalOrders;
+    if (cleanFinishedCount) cleanFinishedCount.textContent = finishedCount;
+    if (cleanPendingCount) cleanPendingCount.textContent = pendingCount;
+
+    // Danh sách mã chuyến
+    const tripCounts = {};
+    currentOrders.forEach(o => {
+      const tc = o.tripCode || 'Chưa có mã chuyến';
+      tripCounts[tc] = (tripCounts[tc] || 0) + 1;
+    });
+
+    const tripKeys = Object.keys(tripCounts).sort();
+    if (cleanTripSelect) {
+      let tripOptionsHtml = '';
+      tripKeys.forEach(k => {
+        tripOptionsHtml += `<option value="${escapeHtml(k)}">Chuyến ${escapeHtml(k)} (${tripCounts[k]} đơn)</option>`;
+      });
+      cleanTripSelect.innerHTML = tripOptionsHtml;
+
+      // Ưu tiên chọn chuyến đang lọc nếu có
+      if (activeTripFilter !== 'all' && tripKeys.includes(activeTripFilter)) {
+        cleanTripSelect.value = activeTripFilter;
+        const rTrip = document.querySelector('input[name="cleanMode"][value="trip"]');
+        if (rTrip) rTrip.checked = true;
+      } else {
+        const rDefault = finishedCount > 0 
+          ? document.querySelector('input[name="cleanMode"][value="finished"]')
+          : document.querySelector('input[name="cleanMode"][value="all"]');
+        if (rDefault) rDefault.checked = true;
+      }
     }
+
     cleanModal.classList.add('show');
   });
 
@@ -295,10 +331,55 @@ function setupCleanModal() {
 
   if (btnConfirmClean) {
     btnConfirmClean.addEventListener('click', () => {
-      currentOrders = StorageService.cleanProcessedOrders();
-      cleanModal.classList.remove('show');
-      renderApp();
-      showToast('Đã dọn dẹp sạch các đơn đã hoàn tất!', 'success');
+      const modeRadio = document.querySelector('input[name="cleanMode"]:checked');
+      const selectedMode = modeRadio ? modeRadio.value : 'finished';
+
+      if (selectedMode === 'all') {
+        const total = currentOrders.length;
+        if (confirm(`⚠️ CẢNH BÁO QUAN TRỌNG:\nBạn có chắc chắn muốn XÓA SẠCH TOÀN BỘ ${total} đơn hàng trong hệ thống?\nHành động này không thể hoàn tác!`)) {
+          currentOrders = [];
+          currentGroups = [{ id: 'group_ungrouped', name: 'Chưa phân nhóm', isCollapsed: false }];
+          StorageService.saveOrders(currentOrders);
+          StorageService.saveGroups(currentGroups);
+          cleanModal.classList.remove('show');
+          activeTripFilter = 'all';
+          renderApp();
+          showToast(`🔥 Đã xóa sạch toàn bộ ${total} đơn hàng trong hệ thống!`, 'success');
+        }
+      } else if (selectedMode === 'trip') {
+        if (!cleanTripSelect || !cleanTripSelect.value) {
+          showToast('Vui lòng chọn mã chuyến cần xóa!', 'error');
+          return;
+        }
+        const tripToDelete = cleanTripSelect.value;
+        const countToDelete = currentOrders.filter(o => (o.tripCode || 'Chưa có mã chuyến') === tripToDelete).length;
+        if (confirm(`Bạn có chắc muốn xóa toàn bộ ${countToDelete} đơn hàng của chuyến "${tripToDelete}" không?\nCác đơn của các chuyến khác sẽ được giữ nguyên.`)) {
+          currentOrders = currentOrders.filter(o => (o.tripCode || 'Chưa có mã chuyến') !== tripToDelete);
+          StorageService.saveOrders(currentOrders);
+          ensureGroupIntegrity();
+          cleanModal.classList.remove('show');
+          if (activeTripFilter === tripToDelete) {
+            activeTripFilter = 'all';
+          }
+          renderApp();
+          showToast(`⚡ Đã xóa toàn bộ ${countToDelete} đơn của chuyến ${tripToDelete}!`, 'success');
+        }
+      } else if (selectedMode === 'finished') {
+        const finishedCount = currentOrders.filter(o => o.status === 'gtc' || o.status === 'gtb').length;
+        if (finishedCount === 0) {
+          showToast('Không có đơn nào đã xử lý (GTC hoặc GTB) để dọn dẹp!', 'info');
+          return;
+        }
+        const pendingCount = currentOrders.filter(o => o.status === 'pending').length;
+        if (confirm(`Dọn dẹp ${finishedCount} đơn hàng đã hoàn tất (GTC/GTB)?\n${pendingCount} đơn chờ giao vẫn sẽ được giữ lại.`)) {
+          currentOrders = currentOrders.filter(o => o.status === 'pending');
+          StorageService.saveOrders(currentOrders);
+          ensureGroupIntegrity();
+          cleanModal.classList.remove('show');
+          renderApp();
+          showToast(`✓ Đã dọn dẹp ${finishedCount} đơn hàng đã giao xong!`, 'success');
+        }
+      }
     });
   }
 

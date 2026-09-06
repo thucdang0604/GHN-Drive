@@ -63,15 +63,15 @@
           📲 Đồng Bộ Sang Điện Thoại
         </button>
 
-        <!-- Nút dọn dẹp data cũ đã xử lý -->
-        <button id="btnOpenCleanModal" class="btn btn-clean" title="Xóa các đơn đã giao thành công hoặc thất bại để làm ca mới">
+        <!-- Nút dọn dẹp và quản lý data đơn -->
+        <button id="btnOpenCleanModal" class="btn btn-clean" title="Xóa toàn bộ đơn, xóa theo chuyến hoặc dọn dẹp đơn đã giao xong">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 6h18"></path>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             <line x1="10" y1="11" x2="10" y2="17"></line>
             <line x1="14" y1="11" x2="14" y2="17"></line>
           </svg>
-          Dọn dẹp đơn đã xử lý
+          🗑️ Dọn dẹp / Xóa đơn
         </button>
       </div>
     </div>
@@ -342,27 +342,56 @@ giá tiền: 0 VNĐ."
     </div>
   </main>
 
-  <!-- Modal xác nhận dọn dẹp dữ liệu cũ -->
+  <!-- Modal xác nhận dọn dẹp dữ liệu -->
   <div id="cleanModal" class="modal-backdrop">
-    <div class="modal-box">
+    <div class="modal-box" style="max-width: 490px;">
       <div class="modal-header">
         <div class="modal-icon-warn">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-            <line x1="12" y1="9" x2="12" y2="13"></line>
-            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
         </div>
-        <h3>Xác nhận dọn dẹp đơn cũ</h3>
+        <h3>Dọn Dẹp & Xóa Đơn Hàng</h3>
       </div>
-      <div class="modal-body">
-        <p id="cleanModalDesc">
-          Bạn có chắc chắn muốn dọn dẹp tất cả các đơn hàng đã xử lý xong (GTC hoặc GTB) không? Dữ liệu này sẽ được xóa khỏi danh sách ca giao hiện tại.
+      <div class="modal-body" style="padding: 14px 18px;">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Chọn hình thức dọn dẹp dữ liệu phù hợp với nhu cầu điều phối:
         </p>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Option 1: Xóa theo chuyến -->
+          <label class="clean-option-card" style="display: flex; gap: 12px; padding: 12px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: #fff;">
+            <input type="radio" name="cleanMode" value="trip" style="margin-top: 3px;">
+            <div style="flex: 1;">
+              <strong style="color: #0f172a; font-size: 13.5px; display: block; margin-bottom: 3px;">⚡ Xóa theo từng mã chuyến</strong>
+              <span style="font-size: 12px; color: #64748b; line-height: 1.4; display: block; margin-bottom: 8px;">Chỉ xóa toàn bộ đơn thuộc chuyến được chọn, giữ lại các chuyến khác.</span>
+              <select id="cleanTripSelect" class="form-select" style="width: 100%; font-size: 12.5px; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1;"></select>
+            </div>
+          </label>
+
+          <!-- Option 2: Dọn dẹp đơn đã xử lý (GTC/GTB) -->
+          <label class="clean-option-card" style="display: flex; gap: 12px; padding: 12px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: #fff;">
+            <input type="radio" name="cleanMode" value="finished" style="margin-top: 3px;">
+            <div style="flex: 1;">
+              <strong style="color: #0f172a; font-size: 13.5px; display: block; margin-bottom: 3px;">✓ Chỉ xóa đơn đã hoàn tất (GTC & GTB)</strong>
+              <span style="font-size: 12px; color: #64748b; line-height: 1.4; display: block;">Giữ lại các đơn đang chờ giao (<span id="cleanPendingCount">0</span> đơn). Xóa <strong id="cleanFinishedCount" style="color: #ea580c;">0</strong> đơn đã xử lý.</span>
+            </div>
+          </label>
+
+          <!-- Option 3: Xóa sạch toàn bộ -->
+          <label class="clean-option-card" style="display: flex; gap: 12px; padding: 12px 14px; border: 1.5px solid #fee2e2; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: #fff5f5;">
+            <input type="radio" name="cleanMode" value="all" style="margin-top: 3px;">
+            <div style="flex: 1;">
+              <strong style="color: #dc2626; font-size: 13.5px; display: block; margin-bottom: 3px;">🔥 Xóa sạch toàn bộ tất cả đơn hàng</strong>
+              <span style="font-size: 12px; color: #991b1b; line-height: 1.4; display: block;">Làm trống toàn bộ hệ thống (<strong id="cleanAllTotalCount">0</strong> đơn). Dùng khi kết thúc ca làm việc hoặc muốn nạp mới từ đầu.</span>
+            </div>
+          </label>
+        </div>
       </div>
-      <div class="modal-actions">
-        <button id="btnCancelClean" class="btn btn-secondary">Hủy bỏ</button>
-        <button id="btnConfirmClean" class="btn btn-clean">Đồng ý dọn dẹp</button>
+      <div class="modal-actions" style="padding: 12px 18px 16px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #f1f5f9;">
+        <button id="btnCancelClean" class="btn btn-secondary">Đóng</button>
+        <button id="btnConfirmClean" class="btn btn-clean" style="background: #dc2626; border-color: #b91c1c; color: #fff;">Xác nhận xóa</button>
       </div>
     </div>
   </div>

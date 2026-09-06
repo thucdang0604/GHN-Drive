@@ -8984,19 +8984,39 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             });
         });
 
-        // Dọn dẹp đơn cũ đã xử lý (GTC hoặc GTB)
+        // Dọn dẹp đơn cũ (GTC/GTB hoặc Xóa toàn bộ)
         var btnClean = document.getElementById('btnCleanData');
         btnClean.addEventListener('click', function() {
-          var finished = orders.filter(function(o) { return o.status === 'gtc' || o.status === 'gtb'; });
-          if (finished.length === 0) {
-            alert('Không có đơn hàng nào đã xử lý (GTC hoặc GTB) để dọn dẹp!');
+          if (orders.length === 0) {
+            showToast('Danh sách đơn đang trống, không có gì để dọn dẹp!');
             return;
           }
-          if (confirm('Dọn dẹp ' + finished.length + ' đơn đã giao xong (GTC hoặc GTB)? Các đơn chờ giao sẽ được giữ nguyên.')) {
+          var finished = orders.filter(function(o) { return o.status === 'gtc' || o.status === 'gtb'; });
+          if (finished.length === 0) {
+            if (confirm('Bạn có chắc muốn XÓA SẠCH TOÀN BỘ ' + orders.length + ' đơn hàng hiện tại để bắt đầu ca mới?')) {
+              orders = [];
+              groups = [{ id: 'group_ungrouped', name: 'Chưa phân nhóm', isCollapsed: false }];
+              saveData();
+              render();
+              showToast('🔥 Đã xóa sạch toàn bộ đơn hàng!');
+            }
+            return;
+          }
+
+          var deleteCompletedOnly = confirm('Bấm OK: Chỉ dọn dẹp ' + finished.length + ' đơn đã hoàn tất (GTC/GTB)\nBấm Hủy: Chọn nếu bạn muốn xóa sạch toàn bộ ' + orders.length + ' đơn');
+          if (deleteCompletedOnly) {
             orders = orders.filter(function(o) { return o.status === 'pending'; });
             saveData();
             render();
-            showToast('Đã dọn dẹp ' + finished.length + ' đơn đã xử lý!');
+            showToast('✓ Đã dọn dẹp ' + finished.length + ' đơn đã giao xong!');
+          } else {
+            if (confirm('Xác nhận: XÓA SẠCH TOÀN BỘ ' + orders.length + ' đơn hàng trên máy?')) {
+              orders = [];
+              groups = [{ id: 'group_ungrouped', name: 'Chưa phân nhóm', isCollapsed: false }];
+              saveData();
+              render();
+              showToast('🔥 Đã xóa sạch toàn bộ đơn hàng!');
+            }
           }
         });
 
