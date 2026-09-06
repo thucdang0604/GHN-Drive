@@ -752,7 +752,7 @@ function setupDesktopQrScanner() {
 }
 
 /**
- * Xử lý Modal Xuất Mã QR Đồng Bộ Sang Mobile (100% Offline & P2P Siêu Tốc)
+ * Xử lý Modal Đồng Bộ Sang Mobile (P2P Siêu Tốc & Mã PIN)
  */
 function setupDesktopQrSync() {
   const modal = document.getElementById('desktopQrSyncModal');
@@ -761,56 +761,17 @@ function setupDesktopQrSync() {
   const optPatchBox = document.getElementById('desktopOptPatchBox');
   const optFullBox = document.getElementById('desktopOptFullBox');
   const syncModeRadios = document.querySelectorAll('input[name="desktopSyncMode"]');
-  const canvasContainer = document.getElementById('desktopQrCanvasContainer');
-  const pagingControl = document.getElementById('desktopQrPagingControl');
-  const pageIndicator = document.getElementById('desktopQrPageIndicator');
-  const btnPrev = document.getElementById('btnDesktopPrevQR');
-  const btnNext = document.getElementById('btnDesktopNextQR');
-  const btnToggleAutoPlay = document.getElementById('btnDesktopToggleAutoPlayQR');
-  const guideTip = document.getElementById('desktopQrGuideTip');
   const btnDownloadJson = document.getElementById('btnDesktopDownloadJson');
   const importJsonInput = document.getElementById('desktopImportJsonFile');
 
-  // Các phần tử phương thức P2P
-  const btnDesktopMethodP2P = document.getElementById('btnDesktopMethodP2P');
-  const btnDesktopMethodQR = document.getElementById('btnDesktopMethodQR');
-  const desktopP2PHostBox = document.getElementById('desktopP2PHostBox');
-  const desktopQrLegacyBox = document.getElementById('desktopQrLegacyBox');
   const desktopP2PCanvasContainer = document.getElementById('desktopP2PCanvasContainer');
   const desktopP2PHostPinValue = document.getElementById('desktopP2PHostPinValue');
   const desktopP2PHostStatusText = document.getElementById('desktopP2PHostStatusText');
 
   if (!modal || !btnOpen) return;
 
-  let currentDesktopSyncMethod = 'p2p'; // 'p2p' | 'qr'
   let desktopP2PHost = null;
-  let desktopSyncQRPages = [];
-  let currentDesktopQRPageIndex = 0;
   let currentDesktopSyncMode = 'patch';
-  let desktopQRAutoPlayTimer = null;
-  let isDesktopQRAutoPlay = true;
-  let DESKTOP_QR_INTERVAL = 800; // Mặc định 0.8s: Nhanh, mượt, bắt tức thì
-
-  const speedBox = document.getElementById('desktopQrSpeedSelectorBox');
-  const pillsBox = document.getElementById('desktopQrPartPillsContainer');
-
-  function updateDesktopSyncMethodUI() {
-    if (currentDesktopSyncMethod === 'p2p') {
-      if (btnDesktopMethodP2P) btnDesktopMethodP2P.classList.add('active');
-      if (btnDesktopMethodQR) btnDesktopMethodQR.classList.remove('active');
-      if (desktopP2PHostBox) desktopP2PHostBox.style.display = 'flex';
-      if (desktopQrLegacyBox) desktopQrLegacyBox.style.display = 'none';
-      stopDesktopQRAutoPlay();
-      startDesktopP2PHost();
-    } else {
-      if (btnDesktopMethodQR) btnDesktopMethodQR.classList.add('active');
-      if (btnDesktopMethodP2P) btnDesktopMethodP2P.classList.remove('active');
-      if (desktopP2PHostBox) desktopP2PHostBox.style.display = 'none';
-      if (desktopQrLegacyBox) desktopQrLegacyBox.style.display = 'flex';
-      stopDesktopP2PHost();
-      generateDesktopQR();
-    }
-  }
 
   function stopDesktopP2PHost() {
     if (desktopP2PHost) {
@@ -835,7 +796,7 @@ function setupDesktopQrSync() {
       onReady: (roomInfo) => {
         if (desktopP2PHostPinValue) desktopP2PHostPinValue.textContent = roomInfo.pin;
         if (desktopP2PHostStatusText) {
-          desktopP2PHostStatusText.innerHTML = `<span class="pulse-dot"></span> ⏳ Đang mở phòng chờ (PIN: ${roomInfo.pin})... Quét mã hoặc gõ PIN!`;
+          desktopP2PHostStatusText.innerHTML = `<span class="pulse-dot"></span> ⏳ Phòng chờ: <strong>PIN ${roomInfo.pin}</strong>. Đang đợi Điện Thoại...`;
         }
         if (desktopP2PCanvasContainer) {
           p2pSync.renderP2PQR(desktopP2PCanvasContainer, roomInfo.qrToken, { cellSize: 5, margin: 2 });
@@ -873,210 +834,14 @@ function setupDesktopQrSync() {
     });
   }
 
-  function setDesktopQRAutoPlaySpeed(speedMs) {
-    DESKTOP_QR_INTERVAL = speedMs;
-    const buttons = document.querySelectorAll('#desktopQrSpeedSelectorBox .btn-qr-speed');
-    buttons.forEach(btn => {
-      if (parseInt(btn.getAttribute('data-speed')) === speedMs) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
-    updateDesktopAutoPlayBtnUI();
-    if (isDesktopQRAutoPlay && desktopSyncQRPages && desktopSyncQRPages.length > 1) {
-      startDesktopQRAutoPlay();
-    }
-  }
-
-  function startDesktopQRAutoPlay() {
-    stopDesktopQRAutoPlay();
-    if (!desktopSyncQRPages || desktopSyncQRPages.length <= 1) return;
-    isDesktopQRAutoPlay = true;
-    updateDesktopAutoPlayBtnUI();
-    desktopQRAutoPlayTimer = setInterval(() => {
-      if (desktopSyncQRPages && desktopSyncQRPages.length > 1) {
-        currentDesktopQRPageIndex = (currentDesktopQRPageIndex + 1) % desktopSyncQRPages.length;
-        displayCurrentDesktopQR();
-      }
-    }, DESKTOP_QR_INTERVAL);
-  }
-
-  function stopDesktopQRAutoPlay() {
-    if (desktopQRAutoPlayTimer) {
-      clearInterval(desktopQRAutoPlayTimer);
-      desktopQRAutoPlayTimer = null;
-    }
-    isDesktopQRAutoPlay = false;
-    updateDesktopAutoPlayBtnUI();
-  }
-
-  function toggleDesktopQRAutoPlay() {
-    if (isDesktopQRAutoPlay) {
-      stopDesktopQRAutoPlay();
-    } else {
-      startDesktopQRAutoPlay();
-    }
-  }
-
-  function updateDesktopAutoPlayBtnUI() {
-    if (!btnToggleAutoPlay) return;
-    const secText = (DESKTOP_QR_INTERVAL / 1000).toFixed(1) + 's';
-    if (isDesktopQRAutoPlay) {
-      btnToggleAutoPlay.innerHTML = `⏸ Tự chuyển (${secText})`;
-      btnToggleAutoPlay.style.background = '#10b981';
-      btnToggleAutoPlay.style.borderColor = '#10b981';
-      btnToggleAutoPlay.title = 'Bấm để tạm dừng tự chuyển mã';
-    } else {
-      btnToggleAutoPlay.innerHTML = '▶ Tiếp tục chạy';
-      btnToggleAutoPlay.style.background = '#2563eb';
-      btnToggleAutoPlay.style.borderColor = '#2563eb';
-      btnToggleAutoPlay.title = 'Bấm để bật tự động chuyển mã vòng lặp';
-    }
-  }
-
-  function renderDesktopQRPills() {
-    if (!pillsBox) return;
-    if (!desktopSyncQRPages || desktopSyncQRPages.length <= 1) {
-      pillsBox.style.display = 'none';
-      pillsBox.innerHTML = '';
-      return;
-    }
-    pillsBox.style.display = 'flex';
-    pillsBox.innerHTML = '';
-    for (let i = 0; i < desktopSyncQRPages.length; i++) {
-      const pill = document.createElement('button');
-      pill.type = 'button';
-      pill.className = 'qr-pill' + (i === currentDesktopQRPageIndex ? ' active' : '');
-      pill.textContent = 'P' + (i + 1);
-      pill.setAttribute('data-idx', i);
-      pill.title = `Bấm để chuyển ngay sang Phần ${i + 1}`;
-      pill.addEventListener('click', function() {
-        currentDesktopQRPageIndex = parseInt(this.getAttribute('data-idx'));
-        displayCurrentDesktopQR();
-        if (isDesktopQRAutoPlay) startDesktopQRAutoPlay();
-      });
-      pillsBox.appendChild(pill);
-    }
-  }
-
-  function updateDesktopActivePillUI() {
-    const pills = document.querySelectorAll('#desktopQrPartPillsContainer .qr-pill');
-    pills.forEach(p => {
-      const idx = parseInt(p.getAttribute('data-idx'));
-      if (idx === currentDesktopQRPageIndex) {
-        p.classList.add('active');
-      } else {
-        p.classList.remove('active');
-      }
-    });
-  }
-
-  function renderDesktopQRCanvas(text) {
-    if (!canvasContainer) return;
-    const qrsync = window.QRSync || (typeof QRSync !== 'undefined' ? QRSync : null);
-    if (qrsync && qrsync.renderQR) {
-      qrsync.renderQR(canvasContainer, text, { cellSize: 5, margin: 3 });
-    } else if (typeof QRCode !== 'undefined') {
-      try {
-        canvasContainer.innerHTML = '';
-        new QRCode(canvasContainer, {
-          text: text,
-          width: 290,
-          height: 290,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: 'L'
-        });
-      } catch(e) {
-        console.error('Lỗi tạo mã QR trên Desktop:', e);
-        canvasContainer.innerHTML = `<div style="color:#ef4444; font-size:12px; padding:15px; text-align:center;">⚠️ Lỗi tạo mã: ${e.message || e}</div>`;
-      }
-    } else {
-      canvasContainer.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:20px; text-align:center;">⚠️ Chưa tải được thư viện QRCode (js/qrcode.min.js)!</div>';
-    }
-  }
-
-  function displayCurrentDesktopQR() {
-    if (!desktopSyncQRPages || desktopSyncQRPages.length === 0) {
-      if (canvasContainer) {
-        canvasContainer.innerHTML = '<div style="color:#64748b; font-size:12px; padding:20px; text-align:center;">Chưa có đơn hàng nào để tạo mã QR!</div>';
-      }
-      return;
-    }
-    const text = desktopSyncQRPages[currentDesktopQRPageIndex];
-    renderDesktopQRCanvas(text);
-
-    if (desktopSyncQRPages.length > 1) {
-      pagingControl.style.display = 'flex';
-      if (speedBox) speedBox.style.display = 'flex';
-      pageIndicator.textContent = `Phần ${currentDesktopQRPageIndex + 1} / ${desktopSyncQRPages.length}`;
-      btnPrev.disabled = false;
-      btnNext.disabled = false;
-      updateDesktopAutoPlayBtnUI();
-      renderDesktopQRPills();
-      updateDesktopActivePillUI();
-      const secText = (DESKTOP_QR_INTERVAL / 1000).toFixed(1) + 's';
-      if (guideTip) {
-        guideTip.innerHTML = isDesktopQRAutoPlay
-          ? `⚡ Đang <strong>tự động đổi mã sau ${secText}</strong> (${desktopSyncQRPages.length} phần). Chỉ cần giữ camera điện thoại để quét liên tục!`
-          : `Đã tạm dừng. Bấm số phần bên trên để xem ngay, hoặc bấm <strong>"Tiếp tục chạy"</strong>.`;
-      }
-    } else {
-      pagingControl.style.display = 'none';
-      if (speedBox) speedBox.style.display = 'none';
-      if (pillsBox) pillsBox.style.display = 'none';
-      stopDesktopQRAutoPlay();
-      if (guideTip) {
-        guideTip.innerHTML = `Mở app GHN trên <strong>Điện thoại</strong>, bấm <strong>📷 Quét mã</strong> và hướng camera vào mã QR trên màn hình.`;
-      }
-    }
-  }
-
-  function generateDesktopQR() {
-    const qrsync = window.QRSync || (typeof QRSync !== 'undefined' ? QRSync : null);
-    if (!qrsync) {
-      console.warn('QRSync module chưa sẵn sàng');
-      return;
-    }
-
-    if (currentDesktopSyncMode === 'patch') {
-      desktopSyncQRPages = qrsync.generatePatchQRs(currentOrders, currentGroups, null, 12);
-    } else {
-      desktopSyncQRPages = qrsync.generateFullQRs(currentOrders, currentGroups, 3);
-    }
-    currentDesktopQRPageIndex = 0;
-    displayCurrentDesktopQR();
-    if (desktopSyncQRPages.length > 1) {
-      startDesktopQRAutoPlay();
-    } else {
-      stopDesktopQRAutoPlay();
-    }
-  }
-
-  // Chuyển đổi phương thức P2P / QR
-  if (btnDesktopMethodP2P) {
-    btnDesktopMethodP2P.addEventListener('click', () => {
-      currentDesktopSyncMethod = 'p2p';
-      updateDesktopSyncMethodUI();
-    });
-  }
-  if (btnDesktopMethodQR) {
-    btnDesktopMethodQR.addEventListener('click', () => {
-      currentDesktopSyncMethod = 'qr';
-      updateDesktopSyncMethodUI();
-    });
-  }
-
   btnOpen.addEventListener('click', () => {
     modal.style.display = 'flex';
-    updateDesktopSyncMethodUI();
+    startDesktopP2PHost();
   });
 
   if (btnClose) {
     btnClose.addEventListener('click', () => {
       modal.style.display = 'none';
-      stopDesktopQRAutoPlay();
       stopDesktopP2PHost();
     });
   }
@@ -1084,7 +849,6 @@ function setupDesktopQrSync() {
   window.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.style.display = 'none';
-      stopDesktopQRAutoPlay();
       stopDesktopP2PHost();
     }
   });
@@ -1103,54 +867,15 @@ function setupDesktopQrSync() {
         optPatchBox.style.borderColor = 'var(--border-color)';
         optPatchBox.style.background = '#f8fafc';
       }
-      if (currentDesktopSyncMethod === 'p2p') {
-        startDesktopP2PHost();
-      } else {
-        generateDesktopQR();
-      }
-    });
-  });
-
-  if (btnPrev) {
-    btnPrev.addEventListener('click', () => {
-      if (desktopSyncQRPages && desktopSyncQRPages.length > 1) {
-        currentDesktopQRPageIndex = (currentDesktopQRPageIndex - 1 + desktopSyncQRPages.length) % desktopSyncQRPages.length;
-        displayCurrentDesktopQR();
-        if (isDesktopQRAutoPlay) startDesktopQRAutoPlay();
-      }
-    });
-  }
-
-  if (btnNext) {
-    btnNext.addEventListener('click', () => {
-      if (desktopSyncQRPages && desktopSyncQRPages.length > 1) {
-        currentDesktopQRPageIndex = (currentDesktopQRPageIndex + 1) % desktopSyncQRPages.length;
-        displayCurrentDesktopQR();
-        if (isDesktopQRAutoPlay) startDesktopQRAutoPlay();
-      }
-    });
-  }
-
-  if (btnToggleAutoPlay) {
-    btnToggleAutoPlay.addEventListener('click', () => {
-      toggleDesktopQRAutoPlay();
-      displayCurrentDesktopQR();
-    });
-  }
-
-  const speedButtons = document.querySelectorAll('#desktopQrSpeedSelectorBox .btn-qr-speed');
-  speedButtons.forEach(btn => {
-    btn.addEventListener('click', function() {
-      const sp = parseInt(this.getAttribute('data-speed'));
-      if (!isNaN(sp)) setDesktopQRAutoPlaySpeed(sp);
+      startDesktopP2PHost();
     });
   });
 
   if (btnDownloadJson) {
     btnDownloadJson.addEventListener('click', () => {
-      const qrsync = window.QRSync || (typeof QRSync !== 'undefined' ? QRSync : null);
-      if (!qrsync) return;
-      const jsonStr = qrsync.exportToFileData(currentOrders, currentGroups);
+      const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+      if (!p2pSync) return;
+      const jsonStr = p2pSync.exportToFileData(currentOrders, currentGroups, null);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const now = new Date();
       const dateStr = now.getFullYear() + ('0' + (now.getMonth() + 1)).slice(-2) + ('0' + now.getDate()).slice(-2) + '_' + ('0' + now.getHours()).slice(-2) + ('0' + now.getMinutes()).slice(-2);
@@ -1186,6 +911,7 @@ function setupDesktopQrSync() {
           StorageService.saveGroups(currentGroups);
           renderApp();
           modal.style.display = 'none';
+          stopDesktopP2PHost();
           showToast(`Đã nạp thành công ${currentOrders.length} đơn và ${currentGroups.length} nhóm!`, 'success');
         } catch(err) {
           showToast(`Lỗi đọc file JSON: ${err.message}`, 'error');

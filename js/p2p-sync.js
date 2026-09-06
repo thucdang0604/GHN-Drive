@@ -65,15 +65,37 @@
      * Hiển thị mã QR kết nối P2P (mã cực nhỏ thưa, quét ngay lập tức)
      */
     renderP2PQR: function(container, text, options) {
-      if (!container) return;
+      if (!container) return false;
       options = options || {};
       var cellSize = options.cellSize || 5;
-      var margin = options.margin || 2;
+      var margin = (options.margin !== undefined) ? options.margin : 2;
 
-      var qrsync = (typeof window !== 'undefined' && window.QRSync) || (typeof QRSync !== 'undefined' ? QRSync : null);
-      if (qrsync && qrsync.renderQR) {
-        qrsync.renderQR(container, text, { cellSize: cellSize, margin: margin });
-      } else if (typeof QRCode !== 'undefined') {
+      var qrEngine = (typeof qrcode !== 'undefined') ? qrcode : (typeof window !== 'undefined' ? window.qrcode : null);
+      if (qrEngine) {
+        try {
+          var qr = qrEngine(0, 'L');
+          qr.addData(text);
+          qr.make();
+          container.innerHTML = qr.createImgTag(cellSize, margin);
+          var img = container.querySelector('img');
+          if (img) {
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            img.style.width = '100%';
+            img.style.height = 'auto';
+            img.style.aspectRatio = '1 / 1';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
+            img.style.borderRadius = '6px';
+            img.style.imageRendering = 'pixelated';
+          }
+          return true;
+        } catch (err) {
+          console.warn('Lỗi vẽ QR bằng qrcode:', err);
+        }
+      }
+
+      if (typeof QRCode !== 'undefined') {
         try {
           container.innerHTML = '';
           new QRCode(container, {
@@ -84,11 +106,20 @@
             colorLight: "#ffffff",
             correctLevel: 'L'
           });
+          return true;
         } catch(e) {
           console.error('Lỗi render QR P2P:', e);
           container.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:15px; text-align:center;">Lỗi tạo mã: ' + (e.message || e) + '</div>';
+          return false;
         }
       }
+
+      container.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:15px; text-align:center;">⚠️ Chưa tải được thư viện QR (js/qrcode.min.js)!</div>';
+      return false;
+    },
+
+    renderQR: function(container, text, options) {
+      return this.renderP2PQR(container, text, options);
     },
 
     /**
@@ -370,8 +401,188 @@
         try { currentPeer.destroy(); } catch(e) {}
         currentPeer = null;
       }
+    },
+
+    /**
+     * Áp dụng gói PATCH (Tọa độ & Gom nhóm) vào danh sách đơn hàng
+     */
+    applyPatch: function(patchPayload, currentOrders, currentGroups) {
+      var updatedOrders = [].concat(currentOrders || []);
+      var updatedGroups = [].concat(currentGroups || []);
+
+      var groupIndexMap = {};
+      if (Array.isArray(patchPayload.g) && patchPayload.g.length > 0) {
+        patchPayload.g.forEach(function(item, idx) {
+          var gId = Array.isArray(item) ? item[0] : (item && item.id);
+          var gName = Array.isArray(item) ? item[1] : (item && item.name);
+          if (gId) {
+            groupIndexMap[idx] = gId;
+            groupIndexMap[gId] = gId;
+            var found = updatedGroups.find(function(g) { return g.id === gId; });
+            if (found) {
+              found.name = gName || found.name;
+            } else {
+              updatedGroups.push({ id: gId, name: gName || 'Nhóm mới', isCollapsed: false });
+            }
+          }
+        });
+      }
+
+      var matchedCount = 0;
+      if (Array.isArray(patchPayload.p)) {
+        patchPayload.p.forEach(function(item) {
+          var idKey = String(item[0]).trim();
+          var rawGrp = item[1];
+          var lat = item[2];
+          var lng = item[3];
+
+          var resolvedGrpId = 'group_ungrouped';
+          if (rawGrp !== '' && rawGrp != null) {
+            if (groupIndexMap[rawGrp]) {
+              resolvedGrpId = groupIndexMap[rawGrp];
+            } else if (typeof rawGrp === 'string' && rawGrp.indexOf('group_') === 0) {
+              resolvedGrpId = rawGrp;
+            }
+          }
+
+          var idKeyUpper = idKey.toUpperCase();
+          for (var i = 0; i < updatedOrders.length; i++) {
+            var ord = updatedOrders[i];
+            var ordTrack = String(ord.trackingCode || '').trim().toUpperCase();
+            var ordId = String(ord.id || '').trim();
+
+            if (ordTrack === idKeyUpper || ordId === idKey) {
+              if (rawGrp !== undefined && rawGrp !== null) {
+                ord.groupId = resolvedGrpId;
+              }
+              if (lat != null && lng != null) {
+                ord.lat = Number(lat);
+                ord.lng = Number(lng);
+              }
+              ord.updatedAt = new Date().toISOString();
+              matchedCount++;
+              break;
+            }
+          }
+        });
+      }
+
+      return {
+        orders: updatedOrders,
+        groups: updatedGroups,
+        matchedCount: matchedCount
+      };
+    },
+
+    /**
+     * Áp dụng gói FULL (Toàn bộ đơn hàng) vào danh sách đơn
+     */
+    applyFull: function(fullPayload, currentOrders, currentGroups, isAppend) {
+      var groups = [].concat(currentGroups || []);
+      var groupIndexMap = {};
+
+      if (Array.isArray(fullPayload.g) && fullPayload.g.length > 0) {
+        fullPayload.g.forEach(function(item, idx) {
+          var gId = Array.isArray(item) ? item[0] : (item && item.id);
+          var gName = Array.isArray(item) ? item[1] : (item && item.name);
+          if (gId) {
+            groupIndexMap[idx] = gId;
+            groupIndexMap[gId] = gId;
+            if (!groups.some(function(g) { return g.id === gId; })) {
+              groups.push({ id: gId, name: gName, isCollapsed: false });
+            }
+          }
+        });
+      }
+
+      var unpackedOrders = [];
+      if (Array.isArray(fullPayload.o)) {
+        unpackedOrders = fullPayload.o.map(function(item) {
+          if (Array.isArray(item)) {
+            var gVal = item[6];
+            var gId = (gVal !== '' && gVal != null && groupIndexMap[gVal]) ? groupIndexMap[gVal] : (typeof gVal === 'string' && gVal.indexOf('group_') === 0 ? gVal : 'group_ungrouped');
+            return {
+              id: 'ghn_' + (item[0] || Date.now()) + '_' + Math.random().toString(36).substr(2, 4),
+              trackingCode: item[0] || '',
+              customerName: item[1] || '',
+              phone: item[2] || '',
+              address: item[3] || '',
+              codAmount: Number(item[4]) || 0,
+              phaiThu: Number(item[4]) || 0,
+              gtbThu: 0,
+              status: item[5] || 'pending',
+              groupId: gId,
+              lat: (item[7] != null && item[7] !== '' && !isNaN(item[7])) ? Number(item[7]) : null,
+              lng: (item[8] != null && item[8] !== '' && !isNaN(item[8])) ? Number(item[8]) : null,
+              tripCode: item[9] || '',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+          } else {
+            return {
+              id: item.id || ('ghn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
+              trackingCode: item.c || '',
+              customerName: item.n || '',
+              phone: item.p || '',
+              address: item.a || '',
+              codAmount: Number(item.m) || 0,
+              phaiThu: Number(item.m) || 0,
+              gtbThu: 0,
+              status: item.s || 'pending',
+              groupId: item.g || 'group_ungrouped',
+              lat: (item.x != null && !isNaN(item.x)) ? Number(item.x) : null,
+              lng: (item.y != null && !isNaN(item.y)) ? Number(item.y) : null,
+              tripCode: item.t || '',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+          }
+        });
+      }
+
+      var finalOrders;
+      if (isAppend) {
+        finalOrders = [].concat(currentOrders || []);
+        unpackedOrders.forEach(function(newOrd) {
+          var existIdx = finalOrders.findIndex(function(o) {
+            return (newOrd.trackingCode && String(o.trackingCode || '').trim().toUpperCase() === String(newOrd.trackingCode).trim().toUpperCase()) || o.id === newOrd.id;
+          });
+          if (existIdx !== -1) {
+            finalOrders[existIdx] = Object.assign({}, finalOrders[existIdx], newOrd);
+          } else {
+            finalOrders.push(newOrd);
+          }
+        });
+      } else {
+        finalOrders = unpackedOrders;
+      }
+
+      return {
+        orders: finalOrders,
+        groups: groups,
+        importedCount: unpackedOrders.length
+      };
+    },
+
+    /**
+     * Xuất dữ liệu ra JSON để tải về máy
+     */
+    exportToFileData: function(orders, groups, verifiedGeocache) {
+      return JSON.stringify({
+        version: 1,
+        source: 'GHN_LOGISTICS_SYNC',
+        exportedAt: new Date().toISOString(),
+        groups: groups || [],
+        orders: orders || [],
+        verifiedGeocache: verifiedGeocache || {}
+      }, null, 2);
     }
   };
+
+  if (typeof window !== 'undefined') {
+    window.P2PSync = P2PSync;
+    window.QRSync = P2PSync; // Tương thích ngược
+  }
 
   return P2PSync;
 });

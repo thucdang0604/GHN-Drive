@@ -8,11 +8,7 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Thư viện sinh mã QR offline 100% -->
   <script src="js/qrcode.min.js"></script>
-  <!-- Thư viện nén dữ liệu LZString offline 100% -->
-  <script src="js/lz-string.min.js"></script>
-  <!-- Module đồng bộ mã QR offline -->
-  <script src="js/qr-sync.js"></script>
-  <!-- Thư viện truyền dữ liệu siêu tốc P2P WebRTC (AirDrop) -->
+  <!-- Thư viện truyền dữ liệu siêu tốc P2P WebRTC (AirDrop / Mã PIN) -->
   <script src="js/peerjs.min.js"></script>
   <script src="js/p2p-sync.js"></script>
   <!-- Thư viện Bản đồ Leaflet (CDN online giúp file chạy độc lập 100% khi deploy) -->
@@ -3273,8 +3269,8 @@
       <button id="btnOpenTripSheetHeader" class="btn-header trip" title="Đồng bộ đơn theo Mã Chuyến từ Google Sheet">
         ⚡ Mã Chuyến
       </button>
-      <button id="btnOpenQrSyncModal" class="btn-header sync" title="Đồng bộ dữ liệu sang thiết bị khác (Mã QR Offline)">
-        📲 Đồng Bộ QR
+      <button id="btnOpenQrSyncModal" class="btn-header sync" title="Đồng bộ dữ liệu sang thiết bị khác (P2P / Mã PIN)">
+        📲 Đồng Bộ
       </button>
       <button id="btnCleanData" class="btn-header clean" title="Dọn dẹp các đơn đã GTC/GTB">
         🗑 Dọn Cũ
@@ -3807,7 +3803,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
     </div>
   </div>
 
-  <!-- POPUP 4: ĐỒNG BỘ DỮ LIỆU SIÊU TỐC P2P & QR OFFLINE -->
+  <!-- POPUP 4: ĐỒNG BỘ DỮ LIỆU SIÊU TỐC P2P & MÃ PIN -->
   <div id="qrSyncModal" class="sync-modal-backdrop" style="display: none;">
     <div class="sync-modal">
       <div class="sync-modal-header">
@@ -3819,16 +3815,6 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       </div>
 
       <div class="sync-modal-body">
-        <!-- Chuyển đổi phương thức: P2P AirDrop vs QR Offline -->
-        <div class="sync-method-nav">
-          <button type="button" id="btnMethodP2P" class="btn-sync-method active">
-            <span>⚡</span> Bắn Siêu Tốc P2P (Mượt nhất)
-          </button>
-          <button type="button" id="btnMethodQR" class="btn-sync-method">
-            <span>📷</span> Quét QR (Offline)
-          </button>
-        </div>
-
         <!-- Chế độ Đồng bộ: Gửi (Máy A) hoặc Nhận (Máy B) -->
         <div class="sync-tabs">
           <button type="button" class="sync-tab-btn active" id="tabExportQR">Thiết Bị Gửi (Máy A)</button>
@@ -3857,50 +3843,18 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
           <!-- Khung hiển thị P2P Gửi -->
           <div id="p2pHostBox" class="qr-display-card" style="display: flex; flex-direction: column; align-items: center;">
-            <div id="p2pHostCanvasContainer" class="qr-canvas-box" style="width: 210px; height: 210px;" title="Quét mã này để kết nối"></div>
-            
-            <div class="p2p-pin-box" style="width: 100%; max-width: 270px;">
-              <div style="font-size: 11px; color: #64748b; font-weight: 700;">MÃ PIN KẾT NỐI (NHẬP TAY NẾU CẦN):</div>
-              <div id="p2pHostPinValue" class="p2p-pin-value">------</div>
+            <div class="p2p-pin-box" style="width: 100%; max-width: 280px; margin-bottom: 10px;">
+              <div style="font-size: 11px; color: #64748b; font-weight: 700;">MÃ PIN KẾT NỐI (GÕ TRÊN MÁY B):</div>
+              <div id="p2pHostPinValue" class="p2p-pin-value" style="letter-spacing: 4px; font-size: 26px;">------</div>
             </div>
 
-            <div id="p2pHostStatusText" class="p2p-status-pill">
+            <div id="p2pHostCanvasContainer" class="qr-canvas-box" style="width: 190px; height: 190px;" title="Quét mã này để kết nối"></div>
+            
+            <div id="p2pHostStatusText" class="p2p-status-pill" style="margin-top: 10px;">
               <span class="pulse-dot"></span> ⏳ Đang mở phòng chờ Thiết Bị B...
             </div>
             <p style="font-size: 11.5px; color: #64748b; margin-top: 8px; text-align: center; max-width: 300px;">
-              Trên <strong>Thiết Bị B</strong>: Mở app, chọn <strong>"Thiết Bị Nhận (Máy B)"</strong> và quét mã trên hoặc gõ mã PIN.
-            </p>
-          </div>
-
-          <!-- Khung hiển thị Mã QR Offline (Dự phòng) -->
-          <div id="qrLegacyBox" class="qr-display-card" style="display: none;">
-            <div id="qrSyncCanvasContainer" class="qr-canvas-box" title="Chạm vào mã để phóng to"></div>
-            <div id="qrPagingControl" class="qr-paging-bar" style="display: none;">
-              <button type="button" id="btnPrevQRPage" class="btn-qr-nav" title="Phần trước">&lt;</button>
-              <button type="button" id="btnToggleAutoPlayQR" class="btn-qr-nav" style="background: #10b981; font-weight: 700;" title="Bật/Tắt tự động chạy">
-                ⏸ Tự chuyển (0.8s)
-              </button>
-              <span id="qrPageIndicator" class="qr-page-text">Phần 1/1</span>
-              <button type="button" id="btnNextQRPage" class="btn-qr-nav" title="Phần sau">&gt;</button>
-            </div>
-
-            <!-- Tùy chọn tốc độ chuyển mã -->
-            <div id="qrSpeedSelectorBox" class="qr-speed-bar" style="display: none;">
-              <span style="font-size: 11px; color: #64748b; font-weight: 600;">Tốc độ:</span>
-              <button type="button" class="btn-qr-speed" data-speed="300">⚡ 0.3s</button>
-              <button type="button" class="btn-qr-speed" data-speed="500">⚡ 0.5s</button>
-              <button type="button" class="btn-qr-speed active" data-speed="800">🚀 0.8s</button>
-              <button type="button" class="btn-qr-speed" data-speed="1400">⏳ 1.4s</button>
-            </div>
-
-            <!-- Danh sách các nút chọn nhanh từng phần -->
-            <div id="qrPartPillsContainer" class="qr-part-pills" style="display: none;"></div>
-
-            <button type="button" id="btnOpenQrZoom" style="background: none; border: none; color: #2563eb; font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 4px 8px; margin: 2px 0 4px 0;">
-              🔍 Chạm vào mã để phóng to toàn màn hình
-            </button>
-            <p id="qrSyncGuideText" class="qr-tip-text">
-              Dùng <strong>Thiết bị B</strong> mở tính năng Quét QR trong app và hướng camera vào mã này.
+              Trên <strong>Thiết Bị B</strong>: Mở mục Đồng Bộ, chọn <strong>"Thiết Bị Nhận (Máy B)"</strong> và gõ mã PIN (hoặc quét mã QR).
             </p>
           </div>
 
@@ -3919,53 +3873,32 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         <!-- PANEL 2: NHẬN DỮ LIỆU (MÁY B) -->
         <div id="panelImportQR" class="sync-panel" style="display: none;">
           <!-- Khung Nhận P2P -->
-          <div id="p2pClientBox" style="display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 12px 6px;">
-            <button type="button" id="btnLaunchP2PScanner" class="btn-launch-scanner" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 800; padding: 13px;">
+          <div id="p2pClientBox" style="display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 14px 8px;">
+            <div style="width: 100%; max-width: 320px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px 12px; text-align: center;">
+              <div style="font-size: 11.5px; font-weight: 800; color: #1e3a8a; margin-bottom: 8px;">NHẬP 6 SỐ PIN TỪ MÁY GỬI:</div>
+              <div style="display: flex; gap: 8px;">
+                <input type="number" id="inputP2PPin" placeholder="6 số PIN..." maxlength="6" style="flex: 1; padding: 12px 14px; border: 1.5px solid #3b82f6; border-radius: 8px; font-size: 20px; font-weight: 800; text-align: center; letter-spacing: 4px; font-family: monospace; background: #ffffff;">
+                <button type="button" id="btnConnectP2PPin" style="background: #2563eb; color: #ffffff; border: none; border-radius: 8px; padding: 0 18px; font-size: 14px; font-weight: 800; cursor: pointer;">
+                  Nhận Ngay
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; width: 100%; max-width: 320px;">
+              <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+              <span style="font-size: 11px; color: #94a3b8; font-weight: 700;">HOẶC DÙNG CAMERA</span>
+              <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+            </div>
+
+            <button type="button" id="btnLaunchP2PScanner" class="btn-launch-scanner" style="width: 100%; max-width: 320px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13.5px; font-weight: 700; padding: 12px; background: #f1f5f9; color: #334155; border: 1.5px dashed #cbd5e1;">
               📷 Quét Mã Kết Nối Máy A (0.01s)
             </button>
 
-            <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
-              <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-              <span style="font-size: 11.5px; color: #94a3b8; font-weight: 700;">HOẶC NHẬP MÃ PIN</span>
-              <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-            </div>
-
-            <div style="display: flex; gap: 8px; width: 100%; max-width: 320px;">
-              <input type="number" id="inputP2PPin" placeholder="Gõ 6 số PIN..." maxlength="6" style="flex: 1; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-weight: 700; text-align: center; letter-spacing: 3px; font-family: monospace;">
-              <button type="button" id="btnConnectP2PPin" style="background: #2563eb; color: #ffffff; border: none; border-radius: 8px; padding: 0 16px; font-size: 13px; font-weight: 800; cursor: pointer;">
-                Nhận Ngay
-              </button>
-            </div>
-
-            <div id="p2pClientStatusMsg" style="font-size: 12px; color: #64748b; font-weight: 600; text-align: center; min-height: 24px;"></div>
-          </div>
-
-          <!-- Khung Nhận QR Offline (Dự phòng) -->
-          <div id="qrLegacyImportBox" class="sync-import-instruction" style="display: none;">
-            <div class="step-badge">Bước 1</div>
-            <p>Trên <strong>Thiết bị A</strong>, mở tab "Quét QR (Offline)" để hiện chuỗi mã QR.</p>
-            <div class="step-badge" style="margin-top: 10px;">Bước 2</div>
-            <p>Trên <strong>Thiết bị B</strong> này, bấm nút bên dưới để mở camera quét mã QR hiển thị trên màn hình Thiết bị A.</p>
-            <button type="button" id="btnLaunchScannerFromSync" class="btn-launch-scanner">
-              📷 Mở Camera Quét Mã QR Thiết Bị A
-            </button>
+            <div id="p2pClientStatusMsg" style="font-size: 12.5px; color: #64748b; font-weight: 600; text-align: center; min-height: 24px;"></div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- POPUP 5: PHÓNG TO MÃ QR FULLSCREEN (DỄ QUÉT) -->
-  <div id="qrZoomModal" class="qr-zoom-modal" style="display: none;">
-    <div class="qr-zoom-header">
-      <div style="font-weight: 800; font-size: 15px; color: #0f172a;">Phóng To Mã QR (Dễ Quét)</div>
-      <button type="button" id="btnCloseQrZoom" class="btn-card-close" style="font-size: 28px; color: #64748b;">&times;</button>
-    </div>
-    <div id="qrZoomCanvasContainer" class="qr-zoom-canvas"></div>
-    <div id="qrZoomPageIndicator" style="font-size: 13px; font-weight: 800; color: #2563eb; margin-top: 14px;">Phần 1/1</div>
-    <p style="font-size: 11.5px; color: #64748b; margin-top: 8px; text-align: center; max-width: 320px;">
-      💡 Hãy để Thiết Bị B cách màn hình khoảng 25-35cm để camera tự động lấy nét nhanh nhất.
-    </p>
   </div>
 
   <!-- Toast Thông báo ngắn -->
@@ -8501,52 +8434,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       // ==========================================================
-      // QUẢN LÝ ĐỒNG BỘ SIÊU TỐC P2P & QR OFFLINE 100%
+      // QUẢN LÝ ĐỒNG BỘ SIÊU TỐC P2P & MÃ PIN (WEBRTC DATACHANNEL)
       // ==========================================================
-      var currentSyncMethod = 'p2p'; // 'p2p' | 'qr'
       var p2pHostInstance = null;
       var p2pClientInstance = null;
-      var syncQRPages = [];
-      var currentSyncQRPageIndex = 0;
       var currentSyncMode = 'patch'; // 'patch' | 'full'
-      var syncMultiPartCache = { type: null, pTotal: 1, parts: {} };
-
-      function updateSyncMethodUI() {
-        var btnMethodP2P = document.getElementById('btnMethodP2P');
-        var btnMethodQR = document.getElementById('btnMethodQR');
-        var p2pHostBox = document.getElementById('p2pHostBox');
-        var qrLegacyBox = document.getElementById('qrLegacyBox');
-        var p2pClientBox = document.getElementById('p2pClientBox');
-        var qrLegacyImportBox = document.getElementById('qrLegacyImportBox');
-        var tabExportQR = document.getElementById('tabExportQR');
-        var isExportActive = tabExportQR && tabExportQR.classList.contains('active');
-
-        if (currentSyncMethod === 'p2p') {
-          if (btnMethodP2P) btnMethodP2P.classList.add('active');
-          if (btnMethodQR) btnMethodQR.classList.remove('active');
-          if (p2pHostBox) p2pHostBox.style.display = 'flex';
-          if (qrLegacyBox) qrLegacyBox.style.display = 'none';
-          if (p2pClientBox) p2pClientBox.style.display = 'flex';
-          if (qrLegacyImportBox) qrLegacyImportBox.style.display = 'none';
-          stopQRAutoPlay();
-          if (isExportActive) {
-            startP2PHost();
-          } else {
-            stopP2PHost();
-          }
-        } else {
-          if (btnMethodQR) btnMethodQR.classList.add('active');
-          if (btnMethodP2P) btnMethodP2P.classList.remove('active');
-          if (p2pHostBox) p2pHostBox.style.display = 'none';
-          if (qrLegacyBox) qrLegacyBox.style.display = 'flex';
-          if (p2pClientBox) p2pClientBox.style.display = 'none';
-          if (qrLegacyImportBox) qrLegacyImportBox.style.display = 'block';
-          stopP2PHost();
-          if (isExportActive) {
-            generateAndRenderSyncQR();
-          }
-        }
-      }
 
       function stopP2PHost() {
         if (p2pHostInstance) {
@@ -8561,13 +8453,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           try { p2pClientInstance.destroy(); } catch(e) {}
           p2pClientInstance = null;
         }
-        stopQRAutoPlay();
-        hideQrZoomModal();
       }
 
       function startP2PHost() {
         stopP2PHost();
-        if (typeof P2PSync === 'undefined') {
+        var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+        if (!p2p) {
           var statusText = document.getElementById('p2pHostStatusText');
           if (statusText) statusText.innerHTML = '⚠️ Module P2P chưa sẵn sàng!';
           return;
@@ -8581,14 +8472,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           statusTextEl.innerHTML = '<span class="pulse-dot"></span> ⏳ Đang mở phòng chờ Thiết Bị B...';
         }
 
-        p2pHostInstance = P2PSync.createHost({
+        p2pHostInstance = p2p.createHost({
           onReady: function(roomInfo) {
             if (pinValueEl) pinValueEl.textContent = roomInfo.pin;
             if (statusTextEl) {
-              statusTextEl.innerHTML = '<span class="pulse-dot"></span> ⏳ Đang mở phòng chờ (PIN: ' + roomInfo.pin + ')... Đưa mã cho Thiết Bị B quét!';
+              statusTextEl.innerHTML = '<span class="pulse-dot"></span> ⏳ Phòng chờ: <strong>PIN ' + roomInfo.pin + '</strong>. Đang đợi Máy B...';
             }
             if (canvasContainer) {
-              P2PSync.renderP2PQR(canvasContainer, roomInfo.qrToken, { cellSize: 5, margin: 2 });
+              p2p.renderP2PQR(canvasContainer, roomInfo.qrToken, { cellSize: 5, margin: 2 });
             }
           },
           onConnecting: function() {
@@ -8602,9 +8493,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             }
             var payload;
             if (currentSyncMode === 'patch') {
-              payload = P2PSync.buildPatchPayload(orders, groups, verifiedGeocache);
+              payload = p2p.buildPatchPayload(orders, groups, verifiedGeocache);
             } else {
-              payload = P2PSync.buildFullPayload(orders, groups, verifiedGeocache);
+              payload = p2p.buildFullPayload(orders, groups, verifiedGeocache);
             }
             p2pHostInstance.send(payload);
           },
@@ -8629,7 +8520,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           alert('Vui lòng nhập mã PIN 6 số hoặc quét mã QR Thiết Bị A!');
           return;
         }
-        if (typeof P2PSync === 'undefined') {
+        var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+        if (!p2p) {
           showToast('⚠️ Module P2P chưa sẵn sàng. Vui lòng thử lại!');
           return;
         }
@@ -8643,7 +8535,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           try { p2pClientInstance.destroy(); } catch(e) {}
         }
 
-        p2pClientInstance = P2PSync.connectToHost(pinOrId, {
+        p2pClientInstance = p2p.connectToHost(pinOrId, {
           onConnecting: function() {
             if (statusMsg) {
               statusMsg.innerHTML = '<span style="color:#2563eb; font-weight:700;">⏳ Đang tìm kiếm Thiết Bị A...</span>';
@@ -8696,128 +8588,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var modal = document.getElementById('qrSyncModal');
         if (!modal) return;
         modal.style.display = 'flex';
-        updateSyncMethodUI();
-      }
-
-      var qrAutoPlayTimer = null;
-      var isQRAutoPlay = true;
-      var QR_AUTO_PLAY_INTERVAL = 800; // Mặc định 0.8s: Nhanh, mượt, camera 24fps bắt tức thì!
-
-      function setQRAutoPlaySpeed(speedMs) {
-        QR_AUTO_PLAY_INTERVAL = speedMs;
-        var buttons = document.querySelectorAll('.btn-qr-speed');
-        buttons.forEach(function(btn) {
-          if (parseInt(btn.getAttribute('data-speed')) === speedMs) {
-            btn.classList.add('active');
-          } else {
-            btn.classList.remove('active');
-          }
-        });
-        updateAutoPlayBtnUI();
-        if (isQRAutoPlay && syncQRPages && syncQRPages.length > 1) {
-          startQRAutoPlay();
-        }
-      }
-
-      function startQRAutoPlay() {
-        stopQRAutoPlay();
-        if (!syncQRPages || syncQRPages.length <= 1) return;
-        isQRAutoPlay = true;
-        updateAutoPlayBtnUI();
-        qrAutoPlayTimer = setInterval(function() {
-          if (syncQRPages && syncQRPages.length > 1) {
-            currentSyncQRPageIndex = (currentSyncQRPageIndex + 1) % syncQRPages.length;
-            displayCurrentQRPage();
-            updateZoomQRIfOpen();
-          }
-        }, QR_AUTO_PLAY_INTERVAL);
-      }
-
-      function stopQRAutoPlay() {
-        if (qrAutoPlayTimer) {
-          clearInterval(qrAutoPlayTimer);
-          qrAutoPlayTimer = null;
-        }
-        isQRAutoPlay = false;
-        updateAutoPlayBtnUI();
-      }
-
-      function toggleQRAutoPlay() {
-        if (isQRAutoPlay) {
-          stopQRAutoPlay();
-        } else {
-          startQRAutoPlay();
-        }
-      }
-
-      function updateAutoPlayBtnUI() {
-        var btn = document.getElementById('btnToggleAutoPlayQR');
-        if (!btn) return;
-        var secText = (QR_AUTO_PLAY_INTERVAL / 1000).toFixed(1) + 's';
-        if (isQRAutoPlay) {
-          btn.innerHTML = '⏸ Tự chuyển (' + secText + ')';
-          btn.style.background = '#10b981';
-          btn.title = 'Bấm để tạm dừng chuyển mã tự động';
-        } else {
-          btn.innerHTML = '▶ Tiếp tục chạy';
-          btn.style.background = '#0f172a';
-          btn.title = 'Bấm để bật tự động chuyển mã vòng lặp';
-        }
-      }
-
-      function renderQRPills() {
-        var pillsBox = document.getElementById('qrPartPillsContainer');
-        if (!pillsBox) return;
-        if (!syncQRPages || syncQRPages.length <= 1) {
-          pillsBox.style.display = 'none';
-          pillsBox.innerHTML = '';
-          return;
-        }
-        pillsBox.style.display = 'flex';
-        pillsBox.innerHTML = '';
-        for (var i = 0; i < syncQRPages.length; i++) {
-          var pill = document.createElement('button');
-          pill.type = 'button';
-          pill.className = 'qr-pill' + (i === currentSyncQRPageIndex ? ' active' : '');
-          pill.textContent = 'P' + (i + 1);
-          pill.setAttribute('data-idx', i);
-          pill.title = 'Bấm để chuyển ngay sang Phần ' + (i + 1);
-          pill.addEventListener('click', function() {
-            currentSyncQRPageIndex = parseInt(this.getAttribute('data-idx'));
-            displayCurrentQRPage();
-            updateZoomQRIfOpen();
-            if (isQRAutoPlay) startQRAutoPlay();
-          });
-          pillsBox.appendChild(pill);
-        }
-      }
-
-      function updateActivePillUI() {
-        var pills = document.querySelectorAll('.qr-pill');
-        pills.forEach(function(p) {
-          var idx = parseInt(p.getAttribute('data-idx'));
-          if (idx === currentSyncQRPageIndex) {
-            p.classList.add('active');
-          } else {
-            p.classList.remove('active');
-          }
-        });
-      }
-
-      function updateZoomQRIfOpen() {
-        var zoomModal = document.getElementById('qrZoomModal');
-        if (zoomModal && zoomModal.style.display === 'flex') {
-          var container = document.getElementById('qrZoomCanvasContainer');
-          var indicator = document.getElementById('qrZoomPageIndicator');
-          if (container && syncQRPages && syncQRPages[currentSyncQRPageIndex]) {
-            if (typeof QRSync !== 'undefined' && QRSync.renderQR) {
-              QRSync.renderQR(container, syncQRPages[currentSyncQRPageIndex], { cellSize: 6, margin: 3 });
-            }
-          }
-          if (indicator) {
-            var secText = (QR_AUTO_PLAY_INTERVAL / 1000).toFixed(1) + 's';
-            indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length + (isQRAutoPlay ? ' (⚡ Đang tự chuyển ' + secText + '...)' : '');
-          }
+        var tabExport = document.getElementById('tabExportQR');
+        if (tabExport && tabExport.classList.contains('active')) {
+          startP2PHost();
         }
       }
 
@@ -8827,127 +8600,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         stopP2PSession();
       }
 
-      function showQrZoomModal() {
-        if (!syncQRPages || syncQRPages.length === 0) return;
-        var modal = document.getElementById('qrZoomModal');
-        var container = document.getElementById('qrZoomCanvasContainer');
-        var indicator = document.getElementById('qrZoomPageIndicator');
-        if (!modal || !container) return;
-
-        var text = syncQRPages[currentSyncQRPageIndex];
-        if (typeof QRSync !== 'undefined' && QRSync.renderQR) {
-          QRSync.renderQR(container, text, { cellSize: 6, margin: 3 });
-        }
-        if (indicator) {
-          var secText = (QR_AUTO_PLAY_INTERVAL / 1000).toFixed(1) + 's';
-          indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length + (isQRAutoPlay ? ' (⚡ Đang tự chuyển ' + secText + '...)' : '');
-        }
-        modal.style.display = 'flex';
-      }
-
-      function hideQrZoomModal() {
-        var modal = document.getElementById('qrZoomModal');
-        if (modal) modal.style.display = 'none';
-      }
-
-      function renderQRCanvas(text) {
-        var container = document.getElementById('qrSyncCanvasContainer');
-        if (!container) return;
-        if (typeof QRSync !== 'undefined' && QRSync.renderQR) {
-          QRSync.renderQR(container, text, { cellSize: 5, margin: 3 });
-        } else if (typeof QRCode !== 'undefined') {
-          try {
-            container.innerHTML = '';
-            new QRCode(container, {
-              text: text,
-              width: 290,
-              height: 290,
-              colorDark: "#000000",
-              colorLight: "#ffffff",
-              correctLevel: 'L'
-            });
-          } catch(e) {
-            console.error('Lỗi tạo mã QR:', e);
-            container.innerHTML = '<div style="color:#ef4444; font-size:11.5px; padding:15px; text-align:center;">⚠️ Lỗi tạo mã: ' + (e.message || e) + '</div>';
-          }
-        } else {
-          container.innerHTML = '<div style="color:#ef4444; font-size:12px; padding:20px; text-align:center;">⚠️ Chưa tải được thư viện QRCode (js/qrcode.min.js). Vui lòng thử lại!</div>';
-        }
-      }
-
-      function generateAndRenderSyncQR() {
-        if (typeof QRSync === 'undefined') {
-          console.warn('Module QRSync chưa sẵn sàng');
-          return;
-        }
-        // Cân bằng tối ưu: 12 đơn/mã cho patch, 3 đơn/mã cho full: Giữ ít trang (chỉ 3-5 mã), module 69x69 to thưa, quét siêu nhạy (<0.1s)!
-        if (currentSyncMode === 'patch') {
-          syncQRPages = QRSync.generatePatchQRs(orders, groups, verifiedGeocache, 12);
-        } else {
-          syncQRPages = QRSync.generateFullQRs(orders, groups, 3);
-        }
-        currentSyncQRPageIndex = 0;
-        displayCurrentQRPage();
-        if (syncQRPages && syncQRPages.length > 1) {
-          startQRAutoPlay();
-        } else {
-          stopQRAutoPlay();
-        }
-      }
-
-      function displayCurrentQRPage() {
-        var container = document.getElementById('qrSyncCanvasContainer');
-        if (!syncQRPages || syncQRPages.length === 0) {
-          if (container) {
-            container.innerHTML = '<div style="color:#64748b; font-size:12px; padding:20px; text-align:center;">Chưa có đơn hàng nào để tạo mã QR đồng bộ!</div>';
-          }
-          return;
-        }
-        var text = syncQRPages[currentSyncQRPageIndex];
-        renderQRCanvas(text);
-        updateQrPagingUI();
-        updateActivePillUI();
-      }
-
-      function updateQrPagingUI() {
-        var pagingBox = document.getElementById('qrPagingControl');
-        var speedBox = document.getElementById('qrSpeedSelectorBox');
-        var indicator = document.getElementById('qrPageIndicator');
-        var btnPrev = document.getElementById('btnPrevQRPage');
-        var btnNext = document.getElementById('btnNextQRPage');
-        var guide = document.getElementById('qrSyncGuideText');
-
-        if (!pagingBox) return;
-
-        if (syncQRPages && syncQRPages.length > 1) {
-          pagingBox.style.display = 'flex';
-          if (speedBox) speedBox.style.display = 'flex';
-          indicator.textContent = 'Phần ' + (currentSyncQRPageIndex + 1) + ' / ' + syncQRPages.length;
-          btnPrev.disabled = false;
-          btnNext.disabled = false;
-          updateAutoPlayBtnUI();
-          renderQRPills();
-          var secText = (QR_AUTO_PLAY_INTERVAL / 1000).toFixed(1) + 's';
-          if (guide) {
-            guide.innerHTML = isQRAutoPlay
-              ? '⚡ Đang <strong>tự động đổi mã sau ' + secText + '</strong> (' + syncQRPages.length + ' phần). Chỉ cần giữ camera máy B để quét liên tục!'
-              : 'Đã tạm dừng. Bấm số phần bên trên để xem ngay, hoặc bấm <strong>"Tiếp tục chạy"</strong>.';
-          }
-        } else {
-          pagingBox.style.display = 'none';
-          if (speedBox) speedBox.style.display = 'none';
-          var pillsBox = document.getElementById('qrPartPillsContainer');
-          if (pillsBox) pillsBox.style.display = 'none';
-          stopQRAutoPlay();
-          if (guide) {
-            guide.innerHTML = 'Dùng <strong>Thiết bị B</strong> mở Camera quét mã trong app để nạp ngay dữ liệu (100% Offline).';
-          }
-        }
-      }
-
       function downloadBackupJson() {
-        if (typeof QRSync === 'undefined') return;
-        var jsonStr = QRSync.exportToFileData(orders, groups, verifiedGeocache);
+        var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+        if (!p2p) return;
+        var jsonStr = p2p.exportToFileData(orders, groups, verifiedGeocache);
         var blob = new Blob([jsonStr], { type: 'application/json' });
         var now = new Date();
         var dateStr = now.getFullYear() + ('0' + (now.getMonth() + 1)).slice(-2) + ('0' + now.getDate()).slice(-2) + '_' + ('0' + now.getHours()).slice(-2) + ('0' + now.getMinutes()).slice(-2);
@@ -8992,101 +8648,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         reader.readAsText(file);
       }
 
-      function handleSyncQRScanned(decodedText) {
-        try {
-          if (typeof QRSync === 'undefined') {
-            showToast('⚠️ Module QRSync chưa tải xong. Vui lòng tải lại trang (F5)!');
-            return;
-          }
-          var payload = QRSync.parseQR(decodedText);
-          if (!payload) {
-            console.warn('Lỗi parseQR:', decodedText);
-            showToast('❌ Không thể giải mã dữ liệu QR! Hãy đảm bảo 2 máy đều dùng bản mới nhất.');
-            return;
-          }
-
-          var pIndex = payload.pIndex || payload.part || payload.i || 1;
-          var pTotal = payload.pTotal || payload.total || payload.n || 1;
-
-          if (pTotal > 1) {
-            var sid = payload.sid || 'batch';
-            if (!syncMultiPartCache.sid || syncMultiPartCache.sid !== sid || syncMultiPartCache.type !== payload.t) {
-              syncMultiPartCache = { sid: sid, type: payload.t, pTotal: pTotal, parts: {} };
-            }
-            var isNewPart = !syncMultiPartCache.parts[pIndex];
-            syncMultiPartCache.parts[pIndex] = payload;
-            var receivedCount = Object.keys(syncMultiPartCache.parts).length;
-
-            if (isNewPart) {
-              playBeep();
-              if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-            }
-
-            if (receivedCount < pTotal) {
-              if (isNewPart) {
-                var missingParts = [];
-                for (var mi = 1; mi <= pTotal; mi++) {
-                  if (!syncMultiPartCache.parts[mi]) missingParts.push(mi);
-                }
-                showToast('🟢 Đã nhận ' + receivedCount + '/' + pTotal + ' phần! Còn thiếu: ' + missingParts.join(', '));
-                var statusTip = document.getElementById('scannerStatusMsg');
-                if (statusTip) {
-                  statusTip.innerHTML = '🟢 Đã nhận <strong>' + receivedCount + '/' + pTotal + ' phần</strong>.<br>' +
-                    '<span style="color:#f59e0b; font-size:12px; font-weight:700;">👉 Còn thiếu: Phần ' + missingParts.join(', ') + '</span>';
-                  statusTip.style.color = '#10b981';
-                }
-              }
-              return;
-            }
-
-            // Đã đủ tất cả các phần!
-            playBeep();
-            if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
-            closeScanner();
-            if (payload.t === 'patch') {
-              var allPatches = [];
-              var allGroups = [];
-              for (var pi = 1; pi <= pTotal; pi++) {
-                var part = syncMultiPartCache.parts[pi];
-                if (part) {
-                  if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
-                  if (part.p && part.p.length) allPatches = allPatches.concat(part.p);
-                }
-              }
-              applySyncedPatch({ v: payload.v || 2, g: allGroups, p: allPatches });
-            } else if (payload.t === 'full') {
-              var allOrders = [];
-              var allGroups = [];
-              for (var pi = 1; pi <= pTotal; pi++) {
-                var part = syncMultiPartCache.parts[pi];
-                if (part) {
-                  if (part.g && part.g.length) allGroups = allGroups.concat(part.g);
-                  if (part.o && part.o.length) allOrders = allOrders.concat(part.o);
-                }
-              }
-              applySyncedFull({ v: payload.v || 2, g: allGroups, o: allOrders });
-            }
-            syncMultiPartCache = { sid: null, type: null, pTotal: 1, parts: {} };
-            return;
-          }
-
-          // 1 phần duy nhất
-          playBeep();
-          if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
-          closeScanner();
-          if (payload.t === 'patch') {
-            applySyncedPatch(payload);
-          } else if (payload.t === 'full') {
-            applySyncedFull(payload);
-          }
-        } catch(err) {
-          console.error('Lỗi khi xử lý dữ liệu đồng bộ:', err);
-          showToast('⚠️ Lỗi nạp dữ liệu: ' + (err.message || err));
-        }
-      }
-
       function applySyncedPatch(payload) {
-        var result = QRSync.applyPatch(payload, orders, groups);
+        var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+        if (!p2p) return;
+        var result = p2p.applyPatch(payload, orders, groups);
         orders = result.orders;
         groups = result.groups;
         saveData();
@@ -9100,7 +8665,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       function applySyncedFull(payload) {
-        var result = QRSync.applyFull(payload, orders, groups, false);
+        var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+        if (!p2p) return;
+        var result = p2p.applyFull(payload, orders, groups, false);
         orders = result.orders;
         groups = result.groups;
         ensureGroupIntegrity();
@@ -9113,9 +8680,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       function onScanSuccess(decodedText) {
         if (!decodedText) return;
 
-        // 1. KIỂM TRA MÃ KẾT NỐI P2P SIÊU TỐC (AIRDROP)
-        if (typeof P2PSync !== 'undefined' && P2PSync.isP2PQR(decodedText)) {
-          var peerId = P2PSync.parseP2PQR(decodedText);
+        // 1. KIỂM TRA MÃ KẾT NỐI P2P SIÊU TỐC (MÃ PIN / QR)
+        var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+        if (p2p && p2p.isP2PQR(decodedText)) {
+          var peerId = p2p.parseP2PQR(decodedText);
           playBeep();
           if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
           closeScanner();
@@ -9126,26 +8694,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           return;
         }
 
-        // 2. KIỂM TRA MÃ ĐỒNG BỘ QR OFFLINE
-        if ((typeof QRSync !== 'undefined' && QRSync.isSyncQR(decodedText)) ||
-            decodedText.indexOf('GHNPATCH') !== -1 || decodedText.indexOf('GHNFULL') !== -1) {
-          handleSyncQRScanned(decodedText);
-          return;
-        }
-
-        // 3. NẾU ĐANG Ở CHẾ ĐỘ QUÉT ĐỒNG BỘ THIẾT BỊ A:
-        // TUYỆT ĐỐI KHÔNG TẮT CAMERA NẾU QUÉT PHẢI MÃ KHÁC
-        if (currentScannerMode === 'p2p') {
+        // 2. NẾU ĐANG Ở CHẾ ĐỘ QUÉT ĐỒNG BỘ MÁY A:
+        if (currentScannerMode === 'p2p' || currentScannerMode === 'sync') {
           var statusTip = document.getElementById('scannerStatusMsg');
           if (statusTip) {
-            statusTip.innerHTML = '<span style="color:#f59e0b; font-weight:700;">⚠️ Chưa phải mã kết nối P2P. Hãy hướng camera vào mã trên Thiết Bị A!</span>';
-          }
-          return;
-        }
-        if (currentScannerMode === 'sync') {
-          var statusTip = document.getElementById('scannerStatusMsg');
-          if (statusTip) {
-            statusTip.innerHTML = '<span style="color:#f59e0b; font-weight:700;">⚠️ Chưa phải mã đồng bộ. Hãy hướng camera vào mã QR trên Thiết Bị A!</span>';
+            statusTip.innerHTML = '<span style="color:#f59e0b; font-weight:700;">⚠️ Chưa phải mã kết nối. Hãy hướng camera vào mã QR trên Thiết Bị A!</span>';
           }
           return;
         }
@@ -9462,22 +9015,6 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           });
         }
 
-        // Chuyển đổi phương thức: P2P AirDrop vs QR Offline
-        var btnMethodP2P = document.getElementById('btnMethodP2P');
-        var btnMethodQR = document.getElementById('btnMethodQR');
-        if (btnMethodP2P) {
-          btnMethodP2P.addEventListener('click', function() {
-            currentSyncMethod = 'p2p';
-            updateSyncMethodUI();
-          });
-        }
-        if (btnMethodQR) {
-          btnMethodQR.addEventListener('click', function() {
-            currentSyncMethod = 'qr';
-            updateSyncMethodUI();
-          });
-        }
-
         // Nút Mở Quét P2P từ tab Nhận
         var btnLaunchP2P = document.getElementById('btnLaunchP2PScanner');
         if (btnLaunchP2P) {
@@ -9518,11 +9055,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             tabImportQR.classList.remove('active');
             if (panelExport) panelExport.style.display = 'block';
             if (panelImport) panelImport.style.display = 'none';
-            if (currentSyncMethod === 'p2p') {
-              startP2PHost();
-            } else {
-              generateAndRenderSyncQR();
-            }
+            startP2PHost();
           });
 
           tabImportQR.addEventListener('click', function() {
@@ -9530,7 +9063,6 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             tabExportQR.classList.remove('active');
             if (panelExport) panelExport.style.display = 'none';
             if (panelImport) panelImport.style.display = 'block';
-            stopQRAutoPlay();
             stopP2PHost();
           });
         }
@@ -9542,52 +9074,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             document.querySelectorAll('.sync-type-card').forEach(function(c) { c.classList.remove('active'); });
             var parentCard = radio.closest('.sync-type-card');
             if (parentCard) parentCard.classList.add('active');
-            if (currentSyncMethod === 'p2p') {
-              startP2PHost();
-            } else {
-              generateAndRenderSyncQR();
-            }
-          });
-        });
-
-        var btnPrevQR = document.getElementById('btnPrevQRPage');
-        var btnNextQR = document.getElementById('btnNextQRPage');
-        var btnToggleAutoPlay = document.getElementById('btnToggleAutoPlayQR');
-
-        if (btnPrevQR) {
-          btnPrevQR.addEventListener('click', function() {
-            if (syncQRPages && syncQRPages.length > 1) {
-              currentSyncQRPageIndex = (currentSyncQRPageIndex - 1 + syncQRPages.length) % syncQRPages.length;
-              displayCurrentQRPage();
-              updateZoomQRIfOpen();
-              if (isQRAutoPlay) startQRAutoPlay();
-            }
-          });
-        }
-        if (btnNextQR) {
-          btnNextQR.addEventListener('click', function() {
-            if (syncQRPages && syncQRPages.length > 1) {
-              currentSyncQRPageIndex = (currentSyncQRPageIndex + 1) % syncQRPages.length;
-              displayCurrentQRPage();
-              updateZoomQRIfOpen();
-              if (isQRAutoPlay) startQRAutoPlay();
-            }
-          });
-        }
-        if (btnToggleAutoPlay) {
-          btnToggleAutoPlay.addEventListener('click', function() {
-            toggleQRAutoPlay();
-            updateQrPagingUI();
-          });
-        }
-
-        var speedButtons = document.querySelectorAll('.btn-qr-speed');
-        speedButtons.forEach(function(btn) {
-          btn.addEventListener('click', function() {
-            var sp = parseInt(this.getAttribute('data-speed'));
-            if (!isNaN(sp)) {
-              setQRAutoPlaySpeed(sp);
-            }
+            startP2PHost();
           });
         });
 
@@ -9605,35 +9092,6 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               importBackupJson(this.files[0]);
               this.value = '';
             }
-          });
-        }
-
-        var btnLaunchScanner = document.getElementById('btnLaunchScannerFromSync');
-        if (btnLaunchScanner) {
-          btnLaunchScanner.addEventListener('click', function() {
-            hideQrSyncModal();
-            openScanner('sync');
-          });
-        }
-
-        // Sự kiện phóng to mã QR toàn màn hình
-        var qrCanvasContainer = document.getElementById('qrSyncCanvasContainer');
-        var btnOpenQrZoom = document.getElementById('btnOpenQrZoom');
-        var btnCloseQrZoom = document.getElementById('btnCloseQrZoom');
-        var qrZoomModal = document.getElementById('qrZoomModal');
-
-        if (qrCanvasContainer) {
-          qrCanvasContainer.addEventListener('click', showQrZoomModal);
-        }
-        if (btnOpenQrZoom) {
-          btnOpenQrZoom.addEventListener('click', showQrZoomModal);
-        }
-        if (btnCloseQrZoom) {
-          btnCloseQrZoom.addEventListener('click', hideQrZoomModal);
-        }
-        if (qrZoomModal) {
-          qrZoomModal.addEventListener('click', function(e) {
-            if (e.target === qrZoomModal) hideQrZoomModal();
           });
         }
       });

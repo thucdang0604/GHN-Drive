@@ -15,8 +15,6 @@
   <script src="js/qrcode.min.js"></script>
   <!-- Thư viện nén dữ liệu LZString offline 100% -->
   <script src="js/lz-string.min.js"></script>
-  <!-- Module đồng bộ mã QR offline -->
-  <script src="js/qr-sync.js"></script>
   <!-- Thư viện truyền dữ liệu siêu tốc P2P WebRTC (AirDrop) -->
   <script src="js/peerjs.min.js"></script>
   <script src="js/p2p-sync.js"></script>
@@ -54,15 +52,15 @@
           ⚡ Lấy Đơn Mã Chuyến
         </button>
 
-        <!-- Nút Xuất Mã QR Đồng Bộ Sang Mobile -->
-        <button id="btnOpenQrSyncModalDesktop" class="btn btn-trip-header" style="background: #2563eb; border-color: #1d4ed8; color: #fff;" title="Tạo mã QR để đồng bộ sang điện thoại (100% Offline)">
+        <!-- Nút Đồng Bộ Sang Mobile -->
+        <button id="btnOpenQrSyncModalDesktop" class="btn btn-trip-header" style="background: #2563eb; border-color: #1d4ed8; color: #fff;" title="Bắn dữ liệu sang điện thoại qua Mã PIN hoặc Quét QR">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
             <rect x="14" y="14" width="7" height="7"></rect>
             <rect x="3" y="14" width="7" height="7"></rect>
           </svg>
-          📲 Xuất QR sang Mobile
+          📲 Đồng Bộ Sang Điện Thoại
         </button>
 
         <!-- Nút dọn dẹp data cũ đã xử lý -->
@@ -413,24 +411,14 @@ giá tiền: 0 VNĐ."
             📲
           </div>
           <div>
-            <h3 style="margin: 0; font-size: 1.1rem; color: var(--brand-navy);">Đồng Bộ Sang Điện Thoại (100% Offline)</h3>
-            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Quét mã QR từ điện thoại để chuyển nhóm & tọa độ</p>
+            <h3 style="margin: 0; font-size: 1.1rem; color: var(--brand-navy);">Đồng Bộ Sang Điện Thoại (P2P / Mã PIN)</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Gõ mã PIN 6 số hoặc quét mã QR trên điện thoại để nhận đơn</p>
           </div>
         </div>
         <button id="btnCloseDesktopQrSyncModal" class="btn-icon" style="font-size: 1.4rem; background: none; border: none; cursor: pointer; color: #94a3b8;">✕</button>
       </div>
 
       <div class="modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
-        <!-- Chuyển đổi phương thức: P2P AirDrop vs QR Offline -->
-        <div class="sync-method-nav">
-          <button type="button" id="btnDesktopMethodP2P" class="btn-sync-method active">
-            <span>⚡</span> Bắn Siêu Tốc P2P (Mượt nhất)
-          </button>
-          <button type="button" id="btnDesktopMethodQR" class="btn-sync-method">
-            <span>📷</span> Quét QR (Offline)
-          </button>
-        </div>
-
         <!-- Lựa chọn chế độ dữ liệu -->
         <div style="display: flex; gap: 10px;">
           <label style="flex: 1; border: 1.5px solid #2563eb; background: #eff6ff; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;" id="desktopOptPatchBox">
@@ -452,48 +440,18 @@ giá tiền: 0 VNĐ."
 
         <!-- Khung hiển thị P2P Gửi Desktop -->
         <div id="desktopP2PHostBox" style="display: flex; flex-direction: column; align-items: center; background: #f8fafc; border: 1px dashed var(--border-color); border-radius: 10px; padding: 16px;">
-          <div id="desktopP2PCanvasContainer" style="width: 240px; height: 240px; background: #fff; padding: 12px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center;"></div>
-          
-          <div class="p2p-pin-box" style="width: 100%; max-width: 280px; margin-top: 12px;">
+          <div class="p2p-pin-box" style="width: 100%; max-width: 280px; margin-bottom: 12px;">
             <div style="font-size: 11px; color: #64748b; font-weight: 700;">MÃ PIN KẾT NỐI (GÕ TRÊN ĐIỆN THOẠI):</div>
-            <div id="desktopP2PHostPinValue" class="p2p-pin-value">------</div>
+            <div id="desktopP2PHostPinValue" class="p2p-pin-value" style="font-size: 26px; letter-spacing: 4px;">------</div>
           </div>
 
-          <div id="desktopP2PHostStatusText" class="p2p-status-pill" style="margin-top: 6px;">
+          <div id="desktopP2PCanvasContainer" style="width: 220px; height: 220px; background: #fff; padding: 10px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center;"></div>
+
+          <div id="desktopP2PHostStatusText" class="p2p-status-pill" style="margin-top: 10px;">
             <span class="pulse-dot"></span> ⏳ Đang mở phòng chờ Điện Thoại quét...
           </div>
           <p style="font-size: 12px; color: #475569; text-align: center; margin-top: 10px; line-height: 1.4;">
-            Mở app GHN trên <strong>Điện thoại</strong>, vào mục Đồng Bộ và quét mã trên (hoặc gõ mã PIN) để bắn dữ liệu qua sóng trong 0.05s!
-          </p>
-        </div>
-
-        <!-- Khung hiển thị QR Code Offline (Dự phòng) -->
-        <div id="desktopQrLegacyBox" style="display: none; flex-direction: column; align-items: center; background: #f8fafc; border: 1px dashed var(--border-color); border-radius: 10px; padding: 16px;">
-          <div id="desktopQrCanvasContainer" style="width: 300px; height: 300px; background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center;"></div>
-          
-          <div id="desktopQrPagingControl" style="display: none; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center;">
-            <button type="button" id="btnDesktopPrevQR" class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Phần trước">&lt;</button>
-            <button type="button" id="btnDesktopToggleAutoPlayQR" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px; background: #10b981; border-color: #10b981; font-weight: 700;" title="Bật/Tắt tự động chạy">
-              ⏸ Tự chuyển (0.8s)
-            </button>
-            <span id="desktopQrPageIndicator" style="font-size: 12px; font-weight: 800; color: #2563eb;">Phần 1/1</span>
-            <button type="button" id="btnDesktopNextQR" class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Phần sau">&gt;</button>
-          </div>
-
-          <!-- Tùy chọn tốc độ chuyển mã -->
-          <div id="desktopQrSpeedSelectorBox" class="qr-speed-bar" style="display: none;">
-            <span style="font-size: 11px; color: #64748b; font-weight: 600;">Tốc độ:</span>
-            <button type="button" class="btn-qr-speed" data-speed="300">⚡ 0.3s</button>
-            <button type="button" class="btn-qr-speed" data-speed="500">⚡ 0.5s</button>
-            <button type="button" class="btn-qr-speed active" data-speed="800">🚀 0.8s</button>
-            <button type="button" class="btn-qr-speed" data-speed="1400">⏳ 1.4s</button>
-          </div>
-
-          <!-- Danh sách các nút chọn nhanh từng phần -->
-          <div id="desktopQrPartPillsContainer" class="qr-part-pills" style="display: none;"></div>
-
-          <p id="desktopQrGuideTip" style="font-size: 12px; color: #475569; text-align: center; margin-top: 10px; line-height: 1.4;">
-            Mở app GHN trên <strong>Điện thoại</strong>, bấm <strong>📷 Quét mã</strong> và hướng camera vào màn hình máy tính.
+            Mở app GHN trên <strong>Điện thoại</strong>, vào mục Đồng Bộ và gõ mã PIN (hoặc quét mã QR) để bắn dữ liệu qua sóng trong 0.05s!
           </p>
         </div>
 
