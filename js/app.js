@@ -1650,8 +1650,8 @@ function renderDesktopMap() {
               <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
                   <strong style="color: #001f3f;">#${o.stt} ${escapeHtml(o.item.customerName || 'Khách lẻ')}</strong>
-                  <span style="font-size: 10.5px; font-weight: 700; color: ${o.item.status === 'gtc' ? '#15803d' : (o.item.status === 'gtb' ? '#dc2626' : '#d97706')};">
-                    ${o.item.status === 'gtc' ? '✓ GTC' : (o.item.status === 'gtb' ? '✕ GTB' : '⏳ Chờ')}
+                  <span style="font-size: 10.5px; font-weight: 700; color: ${o.item.status === 'gtc' ? (o.item.subStatus === 'cho_ck' ? '#d97706' : '#15803d') : (o.item.status === 'gtb' ? '#dc2626' : '#d97706')};">
+                    ${o.item.status === 'gtc' ? (o.item.subStatus === 'cho_ck' ? '🟡 Chờ CK' : '✓ GTC') : (o.item.status === 'gtb' ? '✕ GTB' : '⏳ Chờ')}
                   </span>
                 </div>
                 <div style="font-size: 11.5px; color: #475569; margin-bottom: 2px;">${escapeHtml(o.item.address)}</div>
@@ -1675,12 +1675,26 @@ function renderDesktopMap() {
     } else {
       const o = cluster.orders[0];
       const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${o.lat},${o.lng}`;
-      const statusText = o.item.status === 'gtc' ? '✓ Giao thành công (GTC)' : (o.item.status === 'gtb' ? '✕ Giao thất bại (GTB)' : '⏳ Chờ giao hàng');
+      let statusText = '⏳ Chờ giao hàng';
+      let statusColor = '#d97706';
+      if (o.item.status === 'gtc') {
+        if (o.item.subStatus === 'cho_ck') {
+          statusText = '🟡 Chờ CK';
+          statusColor = '#d97706';
+        } else {
+          statusText = '✓ Giao thành công (GTC)';
+          statusColor = '#15803d';
+        }
+      } else if (o.item.status === 'gtb') {
+        const reason = o.item.gtbReason || (o.item.subStatus === 'hen_giao_lai' ? 'Hẹn giao lại' : (o.item.subStatus === 'knm' ? 'KNM' : (o.item.subStatus === 'tu_choi' ? 'Từ chối nhận' : '')));
+        statusText = reason ? `✕ GTB (${reason})` : '✕ Giao thất bại (GTB)';
+        statusColor = '#dc2626';
+      }
       popupContent = `
         <div style="font-family: inherit; font-size: 13px; line-height: 1.4; min-width: 220px; padding: 2px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">
             <strong style="background: #001f3f; color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 12px;">#${o.stt}</strong>
-            <span style="font-size: 11px; font-weight: 700; color: ${o.item.status === 'gtc' ? '#15803d' : (o.item.status === 'gtb' ? '#dc2626' : '#d97706')};">${statusText}</span>
+            <span style="font-size: 11px; font-weight: 700; color: ${statusColor};">${statusText}</span>
           </div>
           <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 3px;">${escapeHtml(o.item.customerName || 'Khách lẻ')}</div>
           <div style="font-size: 11.5px; color: #64748b; margin-bottom: 4px;">Mã: <code style="color: #2563eb;">${escapeHtml(o.item.trackingCode)}</code></div>
@@ -1892,17 +1906,23 @@ function renderOrderList() {
  */
 function createOrderCard(order, routeNumber, activeOrders, groupName) {
   const card = document.createElement('div');
-  card.className = `order-card status-${order.status}`;
+  card.className = `order-card status-${order.status}${order.subStatus === 'cho_ck' ? ' status-cho-ck' : ''}`;
   card.setAttribute('data-id', order.id);
   card.draggable = true;
 
   let statusText = 'Chờ giao';
   let statusClass = 'pending';
   if (order.status === 'gtc') {
-    statusText = 'GTC (Thành công)';
-    statusClass = 'gtc';
+    if (order.subStatus === 'cho_ck') {
+      statusText = 'Chờ CK 🟡';
+      statusClass = 'cho-ck';
+    } else {
+      statusText = 'GTC (Thành công)';
+      statusClass = 'gtc';
+    }
   } else if (order.status === 'gtb') {
-    statusText = 'GTB (Thất bại)';
+    const reason = order.gtbReason || (order.subStatus === 'hen_giao_lai' ? 'Hẹn giao lại' : (order.subStatus === 'knm' ? 'KNM' : (order.subStatus === 'tu_choi' ? 'Từ chối nhận' : '')));
+    statusText = reason ? `GTB (${reason})` : 'GTB (Thất bại)';
     statusClass = 'gtb';
   }
 
@@ -1954,6 +1974,7 @@ function createOrderCard(order, routeNumber, activeOrders, groupName) {
           </svg>
         </span>
         <span class="status-badge ${statusClass}">${statusText}</span>
+        ${order.deliveryPhoto ? `<a href="${order.deliveryPhoto}" target="_blank" class="badge-geo-alert" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; text-decoration:none;" title="Xem ảnh chụp khi giao">📸 Có ảnh</a>` : ''}
         ${isMissingNum ? `<span class="badge-geo-alert missing" title="Địa chỉ thiếu số nhà cụ thể (chỉ có tên đường/phường). Hãy gọi khách khi tới gần!">⚠️ Thiếu số</span>` : ''}
         ${isHealed ? `<span class="badge-geo-alert healed" title="Tọa độ đã được hệ thống tự động nắn chuẩn">⚡ Đã nắn GPS</span>` : ''}
         ${isOutlier ? `<span class="badge-geo-alert outlier" title="Tọa độ bị lệch > ${order.gpsOutlierDist || 1000}m so với tuyến đường">⚠️ Lệch GPS</span>` : ''}
