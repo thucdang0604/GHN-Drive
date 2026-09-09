@@ -641,19 +641,22 @@
        ========================================================== */
     .table-container {
       width: 100%;
-      max-width: 100vw;
+      max-width: 100%;
       overflow-x: hidden;
       background: var(--bg-body);
-      padding: 6px;
+      padding: 5px;
       box-sizing: border-box;
     }
 
     .ghn-table {
       width: 100%;
+      max-width: 100%;
+      table-layout: fixed;
       border-collapse: separate;
-      border-spacing: 0 8px;
+      border-spacing: 0 5px;
       font-size: 12px;
       text-align: left;
+      box-sizing: border-box;
     }
 
     .ghn-table thead {
@@ -664,6 +667,8 @@
       padding: 0;
       border: none;
       vertical-align: middle;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     /* HÀNG TIÊU ĐỀ NHÓM (ACCORDION GROUP ROW) */
@@ -674,8 +679,7 @@
       border-radius: var(--radius-md);
       overflow: hidden;
       border: 1px solid #cbd5e1;
-      display: block;
-      margin-bottom: 4px;
+      display: table-row;
     }
     .group-header-tr:hover {
       background: #cbd5e1;
@@ -685,17 +689,363 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 10px;
+      padding: 7px 8px;
+      gap: 4px;
+      flex-wrap: wrap;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* ==========================================================
+       HÀNG DỮ LIỆU ĐƠN HÀNG MOBILE-FIRST (COMPACT DATA ROWS)
+       Mật độ cao: 6-8 đơn/màn hình, 0% cuộn ngang, 1-chạm thao tác
+       ========================================================== */
+    .tbl-order-tr {
+      display: table-row;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid #e2e8f0;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      cursor: pointer;
+    }
+    .tbl-order-tr:active {
+      background: #f8fafc;
+    }
+    .tbl-order-tr.status-gtc {
+      background: #f0fdf4;
+    }
+    .tbl-order-tr.status-cho-ck {
+      background: #fffbeb;
+    }
+    .tbl-order-tr.status-gtb {
+      background: #fef2f2;
+    }
+
+    .tbl-row-main {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      gap: 6px;
+      min-height: 52px;
+      box-sizing: border-box;
+      width: 100%;
+      border-radius: 6px;
+      border-left: 4px solid #cbd5e1;
+    }
+    .status-gtc .tbl-row-main {
+      border-left-color: #10b981;
+    }
+    .status-cho-ck .tbl-row-main {
+      border-left-color: #f59e0b;
+    }
+    .status-gtb .tbl-row-main {
+      border-left-color: #ef4444;
+    }
+
+    /* Cột 1: STT & Huy hiệu ảnh */
+    .tbl-col-stt {
+      flex: 0 0 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      line-height: 1;
+    }
+    .tbl-stt-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 20px;
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 10.5px;
+      font-weight: 800;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .status-gtc .tbl-stt-badge {
+      background: #10b981;
+      color: #ffffff;
+    }
+    .status-cho-ck .tbl-stt-badge {
+      background: #f59e0b;
+      color: #ffffff;
+    }
+    .status-gtb .tbl-stt-badge {
+      background: #ef4444;
+      color: #ffffff;
+    }
+    .tbl-ico-photo {
+      font-size: 11px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    /* Cột 2: Khách & Địa chỉ */
+    .tbl-col-info {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .tbl-addr-line {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tbl-sub-line {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+      font-size: 10.5px;
+      color: #64748b;
+      overflow: hidden;
+    }
+    .tbl-cust-name {
+      font-weight: 600;
+      color: #334155;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 75px;
+      flex-shrink: 1;
+    }
+    .tbl-phone-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: #e0f2fe;
+      color: #0284c7;
+      font-weight: 700;
+      font-size: 10px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .tbl-status-pill {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .pill-pending { background: #f1f5f9; color: #64748b; }
+    .pill-cho-ck { background: #fef3c7; color: #b45309; border: 1px solid #fde047; }
+    .pill-gtc { background: #dcfce7; color: #15803d; }
+    .pill-gtb { background: #fee2e2; color: #b91c1c; }
+
+    /* Cột 3: COD */
+    .tbl-col-cod {
+      flex: 0 0 60px;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+    .tbl-cod-val {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #b45309;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .tbl-gtb-thu {
+      font-size: 9px;
+      font-weight: 700;
+      color: #dc2626;
+      white-space: nowrap;
+    }
+
+    /* Cột 4: Thao tác nhanh */
+    .tbl-col-act {
+      flex: 0 0 78px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .tbl-btn-cam {
+      width: 24px;
+      height: 26px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .tbl-btn-cam:active { transform: scale(0.92); background: #e2e8f0; }
+    .tbl-btn-cam.has-photo {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      color: #1d4ed8;
+    }
+    .tbl-btn-gtc {
+      width: 24px;
+      height: 26px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e6fcf5;
+      color: #059669;
+      border: 1px solid #a7f3d0;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .tbl-btn-gtc:active { transform: scale(0.92); }
+    .tbl-btn-gtc.active {
+      background: #10b981;
+      color: #ffffff;
+      border-color: #059669;
+    }
+    .tbl-btn-gtc.active-ck {
+      background: #f59e0b;
+      color: #ffffff;
+      border-color: #d97706;
+    }
+    .tbl-btn-gtb {
+      width: 24px;
+      height: 26px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .tbl-btn-gtb:active { transform: scale(0.92); }
+    .tbl-btn-gtb.active {
+      background: #ef4444;
+      color: #ffffff;
+      border-color: #dc2626;
+    }
+
+    /* Ngăn kéo chi tiết (Drawer khi chạm vào dòng) */
+    .tbl-row-drawer {
+      border-top: 1px dashed #cbd5e1;
+      background: #f8fafc;
+      padding: 7px 8px;
+      border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 6px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+    .drawer-content {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .drawer-tags {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+      font-size: 11px;
+    }
+    .drawer-tag {
+      background: #e2e8f0;
+      color: #1e293b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 10.5px;
+    }
+    .drawer-note {
+      width: 100%;
+      background: #fef3c7;
+      color: #92400e;
+      border-left: 3px solid #f59e0b;
+      padding: 4px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.3;
+      box-sizing: border-box;
+    }
+    .drawer-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .drawer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #334155;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .drawer-btn:active { background: #f1f5f9; transform: scale(0.96); }
+    .drawer-btn.btn-maps {
+      color: #2563eb;
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .drawer-sort-wrap {
+      display: inline-flex;
+      gap: 3px;
+      margin-left: auto;
+    }
+    .drawer-sort-btn {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #475569;
+      cursor: pointer;
+    }
+    .drawer-sort-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
     }
 
     .group-header-left {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       font-weight: 700;
-      font-size: 12.5px;
+      font-size: 12px;
       color: var(--brand-navy);
-      flex: 1;
+      flex: 1 1 auto;
+      min-width: 110px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1050,16 +1400,18 @@
 
     /* HÀNG NÚT THAO TÁC (CAMERA + CHỜ CK + GTC + GTB + TIỆN ÍCH) */
     .m-card-actions {
-      display: grid;
-      grid-template-columns: 36px 1fr 1fr 1fr auto;
-      gap: 5px;
+      display: flex;
+      gap: 4px;
       align-items: center;
       padding-top: 6px;
       margin-top: 6px;
       border-top: 1px dashed #e2e8f0;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .btn-act-camera {
+      flex: 0 0 32px;
       height: 32px;
       padding: 0;
       display: flex;
@@ -1068,9 +1420,10 @@
       background: #f8fafc;
       border: 1.5px solid #cbd5e1;
       border-radius: var(--radius-sm);
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
       transition: all 0.15s ease;
+      flex-shrink: 0;
     }
     .btn-act-camera:active { background: #e2e8f0; transform: scale(0.95); }
     .btn-act-camera.has-photo {
@@ -1080,14 +1433,19 @@
     }
 
     .btn-touch-action {
-      padding: 8px 0;
-      font-size: 11px;
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 8px 2px;
+      font-size: 10.5px;
       font-weight: 800;
       border-radius: var(--radius-sm);
       border: none;
       text-align: center;
       cursor: pointer;
       transition: all 0.12s ease;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .btn-touch-action:active {
       transform: scale(0.96);
@@ -8800,28 +9158,23 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var isGtb = (item.status === 'gtb');
 
             var statusClass = isChoCk ? 'status-cho-ck' : (isGtc ? 'status-gtc' : (isGtb ? 'status-gtb' : 'status-pending'));
-            tr.className = statusClass;
+            tr.className = 'tbl-order-tr ' + statusClass;
+            tr.setAttribute('data-order-id', item.id);
 
-            var statusBadgeHtml = '';
+            var statusTextMini = 'Chờ';
+            var pillClass = 'pill-pending';
             if (isChoCk) {
-              statusBadgeHtml = '<span class="badge-status-cho-ck">🟡 Chờ Chuyển Khoản</span>';
+              statusTextMini = 'Chờ CK 🟡';
+              pillClass = 'pill-cho-ck';
             } else if (isGtc) {
-              statusBadgeHtml = '<span class="badge-status-gtc">✓ Giao Thành Công</span>';
+              statusTextMini = '✓ GTC';
+              pillClass = 'pill-gtc';
             } else if (isGtb) {
-              if (item.subStatus === 'hen_giao_lai') {
-                statusBadgeHtml = '<span class="badge-status-gtb-hen">⏰ Hẹn Giao Lại</span>';
-              } else if (item.subStatus === 'knm') {
-                statusBadgeHtml = '<span class="badge-status-gtb-knm">📵 Không Nghe Máy</span>';
-              } else if (item.subStatus === 'tu_choi') {
-                statusBadgeHtml = '<span class="badge-status-gtb-tuchoi">🚫 Từ Chối Nhận</span>';
-              } else {
-                statusBadgeHtml = '<span class="badge-status-gtb">✕ Giao Thất Bại</span>';
-              }
-            }
-
-            var photoBadgeHtml = '';
-            if (item.deliveryPhoto) {
-              photoBadgeHtml = '<span class="badge-has-photo btn-view-photo" title="Bấm để xem ảnh xác nhận">📸 Đã chụp ảnh</span>';
+              pillClass = 'pill-gtb';
+              if (item.subStatus === 'hen_giao_lai') statusTextMini = 'Hẹn giao ⏰';
+              else if (item.subStatus === 'knm') statusTextMini = 'KNM 📵';
+              else if (item.subStatus === 'tu_choi') statusTextMini = 'Từ chối 🚫';
+              else statusTextMini = '✕ GTB';
             }
 
             var hasGps = isValidCoordinate(item.lat, item.lng);
@@ -8830,52 +9183,74 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(item.address || '');
 
             tr.innerHTML = 
-              '<td colspan="5">' +
-                '<div class="m-card ' + statusClass + '">' +
-                  '<div class="m-card-header">' +
-                    '<div style="display: flex; align-items: center; gap: 6px;">' +
-                      '<span class="m-stt-badge">#' + stt + '</span>' +
-                      '<span class="tracking-tag">' + (escapeHtml(item.trackingCode) || 'Chưa có mã') + '</span>' +
+              '<td colspan="5" style="padding:0; border:none;">' +
+                '<div class="tbl-row-main">' +
+                  '<!-- Cột 1: STT & Huy hiệu ảnh -->' +
+                  '<div class="tbl-col-stt">' +
+                    '<span class="tbl-stt-badge">#' + stt + '</span>' +
+                    (item.deliveryPhoto ? '<span class="tbl-ico-photo" title="Đã có ảnh xác nhận - Chạm xem">📸</span>' : '') +
+                  '</div>' +
+                  '<!-- Cột 2: Khách & Địa chỉ -->' +
+                  '<div class="tbl-col-info">' +
+                    '<div class="tbl-addr-line" title="' + escapeHtml(item.address || '') + '">' +
+                      '<span>' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</span>' +
                     '</div>' +
-                    '<div style="text-align: right;">' +
-                      '<span class="cod-tag">' + formatMoney(item.codAmount) + '</span>' +
-                      (item.gtbThu ? '<br><span class="gtb-tag" title="Tiền thu khi GTB">Thu GTB: ' + formatMoney(item.gtbThu) + '</span>' : '') +
+                    '<div class="tbl-sub-line">' +
+                      '<span class="tbl-cust-name" title="' + escapeHtml(item.customerName || '') + '">👤 ' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span>' +
+                      (item.phone ? '<a href="tel:' + item.phone + '" class="tbl-phone-link" title="Gọi số chính" onclick="event.stopPropagation();">📞 ' + item.phone + '</a>' : '') +
+                      (item.secondaryPhone ? '<a href="tel:' + item.secondaryPhone + '" class="tbl-phone-link" style="background:#f1f5f9; color:#0369a1;" title="Gọi số phụ" onclick="event.stopPropagation();">📞 ' + item.secondaryPhone + '</a>' : '') +
+                      '<span class="tbl-status-pill ' + pillClass + '">' + statusTextMini + '</span>' +
                     '</div>' +
                   '</div>' +
-                  '<div class="m-card-body">' +
-                    '<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">' +
-                      '<span class="cust-name">👤 ' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span>' +
-                      (item.phone ? '<a href="tel:' + item.phone + '" class="phone-btn">📞 ' + item.phone + '</a>' : '') +
-                      (item.secondaryPhone ? '<a href="tel:' + item.secondaryPhone + '" class="phone-btn" style="background:#f1f5f9; color:#0369a1; border-color:#bae6fd;">📞 Phụ: ' + item.secondaryPhone + '</a>' : '') +
-                      '<span class="order-group-badge card-grp-btn" title="Đổi nhóm">📁 ' + escapeHtml(group.name) + '</span>' +
-                    '</div>' +
-                    '<div class="addr-text" style="margin-top: 4px;">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</div>' +
-                    '<div style="margin-top: 5px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">' +
-                      statusBadgeHtml +
-                      photoBadgeHtml +
-                      (hasGps ? '<button type="button" class="btn-jump-map" data-order-id="' + item.id + '" title="Xem trên bản đồ lộ trình">🗺 Bản đồ</button>' : '') +
-                      (item.isGpsOutlier ? '<span class="note-pill" style="background: #fef2f2; color: #b91c1c; border-color: #fecaca;">⚠️ Lệch GPS</span>' : '') +
-                      (item.isGpsHealed ? '<span class="note-pill" style="background: #ecfdf5; color: #047857; border-color: #a7f3d0;">⚡ Đã nắn GPS</span>' : '') +
-                      (item.hasHouseNumber === false ? '<span class="note-pill" style="background: #fffbeb; color: #b45309; border-color: #fde68a;">⚠️ Thiếu số</span>' : '') +
-                      (item.address || hasGps ? '<a href="' + mapsUrl + '" target="_blank" class="map-link">🧭 Chỉ đường</a>' : '') +
-                      '<button type="button" class="btn-row-edit-loc" data-order-id="' + item.id + '">📍 Sửa vị trí</button>' +
-                    '</div>' +
-                    (item.notes ? '<div class="m-card-note">⚠️ ' + escapeHtml(item.notes) + '</div>' : '') +
+                  '<!-- Cột 3: Tiền COD -->' +
+                  '<div class="tbl-col-cod">' +
+                    '<span class="tbl-cod-val">' + formatMoney(item.codAmount) + '</span>' +
+                    (item.gtbThu ? '<span class="tbl-gtb-thu" title="Thu GTB">Thu: ' + formatMoney(item.gtbThu) + '</span>' : '') +
                   '</div>' +
-                  '<div class="m-card-actions">' +
-                    '<button type="button" class="btn-act-camera ' + (item.deliveryPhoto ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
-                    '<button type="button" class="btn-touch-action btn-touch-chock ' + (isChoCk ? 'active' : '') + '">🟡 CHỜ CK</button>' +
-                    '<button type="button" class="btn-touch-action btn-touch-gtc ' + (isGtc ? 'active' : '') + '">✓ GTC</button>' +
-                    '<button type="button" class="btn-touch-action btn-touch-gtb ' + (isGtb ? 'active' : '') + '">✕ GTB</button>' +
-                    '<div class="sort-arrows-mini">' +
-                      '<button class="arrow-btn btn-up" ' + (origIdx === 0 ? 'disabled' : '') + ' title="Lên trên">▲</button>' +
-                      '<button class="arrow-btn btn-down" ' + (origIdx === orders.length - 1 ? 'disabled' : '') + ' title="Xuống dưới">▼</button>' +
+                  '<!-- Cột 4: Thao tác nhanh -->' +
+                  '<div class="tbl-col-act">' +
+                    '<button type="button" class="tbl-btn-cam ' + (item.deliveryPhoto ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
+                    '<button type="button" class="tbl-btn-gtc ' + (isGtc ? 'active' : (isChoCk ? 'active-ck' : '')) + '" title="Giao thành công / Chờ CK">✓</button>' +
+                    '<button type="button" class="tbl-btn-gtb ' + (isGtb ? 'active' : '') + '" title="Báo giao thất bại">✕</button>' +
+                  '</div>' +
+                '</div>' +
+                '<!-- Ngăn kéo tiện ích khi chạm vào dòng -->' +
+                '<div class="tbl-row-drawer" style="display:none;">' +
+                  '<div class="drawer-content">' +
+                    '<div class="drawer-tags">' +
+                      '<span class="drawer-tag">📦 ' + (escapeHtml(item.trackingCode) || 'Chưa có mã') + '</span>' +
+                      '<span class="drawer-tag card-grp-btn" style="cursor:pointer;" title="Đổi nhóm">📁 ' + escapeHtml(group.name) + ' ✏️</span>' +
+                      (item.isGpsOutlier ? '<span class="drawer-tag" style="background:#fee2e2; color:#b91c1c;">⚠️ Lệch GPS</span>' : '') +
+                      (item.isGpsHealed ? '<span class="drawer-tag" style="background:#dcfce7; color:#15803d;">⚡ Đã nắn GPS</span>' : '') +
+                      (item.hasHouseNumber === false ? '<span class="drawer-tag" style="background:#fef3c7; color:#b45309;">⚠️ Thiếu số</span>' : '') +
+                    '</div>' +
+                    (item.notes ? '<div class="drawer-note">⚠️ ' + escapeHtml(item.notes) + '</div>' : '') +
+                    '<div class="drawer-actions">' +
+                      (item.address || hasGps ? '<a href="' + mapsUrl + '" target="_blank" class="drawer-btn btn-maps" onclick="event.stopPropagation();">🧭 Chỉ đường</a>' : '') +
+                      (hasGps ? '<button type="button" class="drawer-btn btn-jump-map" data-order-id="' + item.id + '" onclick="event.stopPropagation();">🗺️ Xem trên bản đồ</button>' : '') +
+                      '<button type="button" class="drawer-btn btn-row-edit-loc" data-order-id="' + item.id + '" onclick="event.stopPropagation();">📍 Sửa vị trí</button>' +
+                      '<button type="button" class="drawer-btn btn-del-order" style="color:#ef4444;" onclick="event.stopPropagation();">🗑️ Xóa</button>' +
+                      '<div class="drawer-sort-wrap">' +
+                        '<button type="button" class="drawer-sort-btn btn-up" ' + (origIdx === 0 ? 'disabled' : '') + ' title="Lên trên" onclick="event.stopPropagation();">▲ Lên</button>' +
+                        '<button type="button" class="drawer-sort-btn btn-down" ' + (origIdx === orders.length - 1 ? 'disabled' : '') + ' title="Xuống dưới" onclick="event.stopPropagation();">▼ Xuống</button>' +
+                      '</div>' +
                     '</div>' +
                   '</div>' +
                 '</div>' +
               '</td>';
 
-            var btnCam = tr.querySelector('.btn-act-camera');
+            // Sự kiện chạm vào dòng để mở/đóng ngăn kéo tiện ích
+            var rowMain = tr.querySelector('.tbl-row-main');
+            var drawer = tr.querySelector('.tbl-row-drawer');
+            if (rowMain && drawer) {
+              rowMain.addEventListener('click', function(e) {
+                if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.tbl-ico-photo')) return;
+                var isOpen = drawer.style.display !== 'none';
+                drawer.style.display = isOpen ? 'none' : 'block';
+              });
+            }
+
+            var btnCam = tr.querySelector('.tbl-btn-cam');
             if (btnCam) {
               btnCam.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -8883,23 +9258,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               });
             }
 
-            var btnViewPic = tr.querySelector('.btn-view-photo');
-            if (btnViewPic) {
-              btnViewPic.addEventListener('click', function(e) {
+            var icoPhoto = tr.querySelector('.tbl-ico-photo');
+            if (icoPhoto) {
+              icoPhoto.addEventListener('click', function(e) {
                 e.stopPropagation();
                 openCameraPreview(item.deliveryPhoto, item);
               });
             }
 
-            var btnChoCk = tr.querySelector('.btn-touch-chock');
-            if (btnChoCk) {
-              btnChoCk.addEventListener('click', function(e) {
-                e.stopPropagation();
-                toggleChoCk(item);
-              });
-            }
-
-            var btnGtc = tr.querySelector('.btn-touch-gtc');
+            var btnGtc = tr.querySelector('.tbl-btn-gtc');
             if (btnGtc) {
               btnGtc.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -8907,7 +9274,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               });
             }
 
-            var btnGtb = tr.querySelector('.btn-touch-gtb');
+            var btnGtb = tr.querySelector('.tbl-btn-gtb');
             if (btnGtb) {
               btnGtb.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -8928,6 +9295,19 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               btnEditLoc.addEventListener('click', function(e) {
                 e.stopPropagation();
                 openUpdateLocationModal(item, stt);
+              });
+            }
+
+            var btnDelOrder = tr.querySelector('.btn-del-order');
+            if (btnDelOrder) {
+              btnDelOrder.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (confirm('Xóa đơn #' + stt + ' (' + item.customerName + ')?')) {
+                  orders = orders.filter(function(o) { return o.id !== item.id; });
+                  saveData();
+                  render();
+                  showToast('Đã xóa đơn hàng');
+                }
               });
             }
 
