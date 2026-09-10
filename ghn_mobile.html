@@ -185,8 +185,10 @@
     .controls-bar {
       position: sticky;
       top: 0;
-      z-index: 400;
-      padding: 7px 10px;
+      z-index: 500;
+      height: 48px;
+      box-sizing: border-box;
+      padding: 6px 10px;
       background: #fff;
       border-bottom: 1px solid #cbd5e1;
       display: flex;
@@ -684,8 +686,8 @@
     }
     .group-header-tr td {
       position: sticky;
-      top: 46px;
-      z-index: 150;
+      top: 48px;
+      z-index: 450;
       background: var(--bg-body);
       padding: 2px 0;
     }
@@ -1367,8 +1369,8 @@
 
     .group-card-header {
       position: sticky;
-      top: 46px;
-      z-index: 150;
+      top: 48px;
+      z-index: 450;
       background: #e2e8f0;
       padding: 8px 10px;
       cursor: pointer;
@@ -3997,11 +3999,10 @@
 <body>
 
   <!-- ==========================================================
-       KHUNG GHIM CỐ ĐỊNH TRÊN CÙNG (STICKY HEADER, CONTROLS & STATS)
+       HEADER, CONTROLS & STATS (Ghim thanh công cụ trên cùng)
        ========================================================== -->
-  <div class="sticky-top-bar" id="stickyTopBar">
-    <!-- Thanh Header Điện Thoại -->
-    <header class="mobile-header">
+  <!-- Thanh Header Điện Thoại -->
+  <header class="mobile-header">
       <div class="header-title">
         <span class="header-badge">GHN</span>
         <h1>Quản Lý Đơn Giao</h1>
@@ -4095,7 +4096,6 @@
         🔽 Thu Gọn
       </button>
     </section>
-  </div>
 
   <!-- ==========================================================
        1. BẢNG HTML ĐỘC LẬP TRÊN ĐIỆN THOẠI (TABLE VIEW)
