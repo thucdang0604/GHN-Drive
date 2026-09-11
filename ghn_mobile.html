@@ -638,6 +638,11 @@
       background: #f1f5f9;
       color: #475569;
     }
+    .btn-group-pill.rules {
+      background: #fdf4ff;
+      color: #9333ea;
+      border-color: #f0abfc;
+    }
 
     /* ==========================================================
        CHẾ ĐỘ XEM 1: DẠNG BẢNG HTML (TABLE VIEW) CHO ĐIỆN THOẠI
@@ -1745,6 +1750,173 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
+    }
+
+    /* CẤU HÌNH PHÂN NHÓM TỰ ĐỘNG (GROUP RULES) */
+    .rules-action-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-rule-action {
+      flex: 1;
+      min-width: 70px;
+      padding: 7px 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: var(--radius-sm);
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: #334155;
+    }
+    .btn-rule-action.primary {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #93c5fd;
+    }
+    .btn-rule-action.reapply {
+      background: #fff7ed;
+      color: #c2410c;
+      border-color: #fdba74;
+    }
+    .rule-form-box {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .rule-form-box h4 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--brand-navy);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .rule-field-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .rule-range-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .rule-range-row input {
+      flex: 1;
+      padding: 6px 8px;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+    }
+    .rule-range-del {
+      background: #fee2e2;
+      color: #dc2626;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .rule-item-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      transition: all 0.2s ease;
+    }
+    .rule-item-card.disabled {
+      opacity: 0.6;
+      background: #f8fafc;
+    }
+    .rule-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .rule-item-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .rule-badge-street {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .rule-badge-arrow {
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .rule-badge-target {
+      background: #fdf4ff;
+      color: #9333ea;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid #f0abfc;
+    }
+    .rule-item-ranges {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 6px;
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .rule-range-pill {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10.5px;
+      font-weight: 600;
+    }
+    .rule-item-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px dashed #f1f5f9;
+      padding-top: 6px;
+    }
+    .rule-item-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-rule-item {
+      padding: 3px 8px;
+      font-size: 10.5px;
+      font-weight: 600;
+      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      cursor: pointer;
+    }
+    .btn-rule-item.del {
+      color: #ef4444;
+      border-color: #fca5a5;
+      background: #fff5f5;
     }
 
     /* THANH THAO TÁC DƯỚI CÙNG (BOTTOM ACTION BAR - NORMAL FLOW) */
@@ -4077,6 +4249,9 @@
 
     <!-- THANH GOM NHÓM ĐỊA CHỈ (GROUPING TOOLBAR) -->
     <section class="group-toolbar" id="groupToolbar">
+      <button id="btnGroupRules" class="btn-group-pill rules" title="Cấu hình phân nhóm tự động theo tên đường & số nhà">
+        ⚙️ Cấu Hình
+      </button>
       <button id="btnSortStreetAndNum" class="btn-group-pill sort-street" title="Sắp xếp đơn hàng tuần tự theo tuyến đường & số nhà">
         ⚡ Xếp Tuyến & Số Nhà
       </button>
@@ -4468,6 +4643,82 @@
     </div>
   </div>
 
+  <!-- POPUP: CẤU HÌNH PHÂN NHÓM TỰ ĐỘNG -->
+  <div id="groupRulesModalBackdrop" class="bottom-sheet-backdrop">
+    <div class="bottom-sheet" style="max-height: 85vh;">
+      <div class="sheet-header">
+        <h3>⚙️ Cấu Hình Phân Nhóm Tự Động</h3>
+        <button id="btnCloseGroupRulesSheet" class="sheet-close">&times;</button>
+      </div>
+      <div class="sheet-body">
+        <p style="font-size: 11.5px; color: #64748b; margin: 0 0 10px 0;">
+          Tự động phân nhóm đơn hàng theo <strong>Tên đường + Khoảng số nhà</strong> khi dán đơn mới hoặc tải Google Sheet.
+        </p>
+
+        <!-- Thao tác nhanh -->
+        <div class="rules-action-bar">
+          <button type="button" id="btnToggleAddRuleForm" class="btn-rule-action primary">
+            ➕ Thêm Quy Tắc
+          </button>
+          <button type="button" id="btnReapplyGroupRules" class="btn-rule-action reapply" title="Áp dụng quy tắc cho tất cả đơn hàng hiện tại">
+            ⚡ Áp Dụng Lại
+          </button>
+          <button type="button" id="btnExportGroupRules" class="btn-rule-action" title="Sao chép cấu hình để chia sẻ cho thiết bị khác">
+            📤 Xuất
+          </button>
+          <button type="button" id="btnImportGroupRules" class="btn-rule-action" title="Nhập cấu hình từ thiết bị khác">
+            📥 Nhập
+          </button>
+        </div>
+
+        <!-- FORM THÊM / CHỈNH SỬA QUY TẮC -->
+        <div id="groupRuleFormContainer" class="rule-form-box" style="display: none;">
+          <h4 id="groupRuleFormTitle">
+            <span id="groupRuleFormTitleText">➕ Thêm Quy Tắc Mới</span>
+            <button type="button" id="btnCloseRuleForm" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">&times;</button>
+          </h4>
+          <input type="hidden" id="ruleEditId" value="">
+
+          <label class="rule-field-label">📍 Tên đường áp dụng:</label>
+          <input type="text" id="ruleStreetInput" class="sheet-input" placeholder="Ví dụ: Võ Văn Tần hoặc NTMK..." style="margin-bottom:8px;">
+
+          <label class="rule-field-label">🏷️ Nhóm đích muốn gán vào:</label>
+          <input type="text" id="ruleTargetGroupInput" class="sheet-input" placeholder="Ví dụ: VVT 1 hoặc Centec..." style="margin-bottom:8px;">
+
+          <label class="rule-field-label">🔢 Phạm vi số nhà:</label>
+          <div style="display: flex; gap: 14px; margin-bottom: 8px; font-size: 11.5px; color: #334155;">
+            <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+              <input type="radio" name="ruleNumMode" value="ranges" checked id="ruleModeRanges"> Khoảng số nhà
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+              <input type="radio" name="ruleNumMode" value="all" id="ruleModeAll"> Tất cả số nhà
+            </label>
+          </div>
+
+          <!-- Danh sách khoảng số nhà -->
+          <div id="ruleRangesContainer">
+            <div id="ruleRangesInputsList"></div>
+            <button type="button" id="btnAddMoreRangeBtn" style="font-size:11px; padding:4px 8px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; color:#1e293b; margin-bottom:10px;">
+              ➕ Thêm khoảng số nhà khác
+            </button>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <button type="button" id="btnSaveRuleSubmit" class="btn-sheet-submit" style="padding:9px; font-size:12px; flex:1;">
+              💾 Lưu Quy Tắc
+            </button>
+            <button type="button" id="btnCancelRuleForm" style="padding:9px; font-size:12px; border:1px solid #cbd5e1; background:#fff; border-radius:var(--radius-md); cursor:pointer; min-width:60px;">
+              Hủy
+            </button>
+          </div>
+        </div>
+
+        <!-- DANH SÁCH QUY TẮC HIỆN CÓ -->
+        <div id="groupRulesListContainer"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- POPUP 2: DÁN NHANH ĐƠN MỚI -->
   <div id="pasteSheetBackdrop" class="bottom-sheet-backdrop">
     <div class="bottom-sheet">
@@ -4833,10 +5084,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
     (function() {
       var ORDERS_STORAGE_KEY = 'ghn_orders_data_v1';
       var GROUPS_STORAGE_KEY = 'ghn_order_groups_v1';
+      var GROUP_RULES_STORAGE_KEY = 'ghn_group_rules_v1';
       var GOOGLE_SHEET_ID = '17jlmfVycw4L0ozXEPW878dkSPdkSM9Ny5eby9XTUCcs';
 
       var orders = [];
       var groups = [];
+      var groupRules = [];
       var currentFilter = 'all';
       var searchQuery = '';
       var isCardView = false;
@@ -4897,6 +5150,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           }
         } catch(e) {
           groups = [{ id: 'group_ungrouped', name: 'Chưa phân nhóm', isCollapsed: false }];
+        }
+
+        try {
+          var rawRules = localStorage.getItem(GROUP_RULES_STORAGE_KEY);
+          if (rawRules) {
+            groupRules = JSON.parse(rawRules);
+          } else {
+            groupRules = [];
+          }
+        } catch(e) {
+          groupRules = [];
         }
 
         // Quy tắc: Mỗi lần chỉ mở rộng tối đa 1 nhóm
@@ -5014,6 +5278,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         try {
           localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
           localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(groups));
+          localStorage.setItem(GROUP_RULES_STORAGE_KEY, JSON.stringify(groupRules));
         } catch(e) {
           console.error('Lỗi lưu dữ liệu:', e);
         }
@@ -6340,6 +6605,503 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           newOrders = newOrders.concat(otherOrders);
         }
         orders = newOrders;
+      }
+
+      // ==========================================================
+      // CẤU HÌNH PHÂN NHÓM TỰ ĐỘNG (AUTO-GROUP RULES)
+      // ==========================================================
+      function saveGroupRules() {
+        try {
+          localStorage.setItem(GROUP_RULES_STORAGE_KEY, JSON.stringify(groupRules));
+        } catch(e) {
+          console.error('Lỗi lưu cấu hình nhóm:', e);
+        }
+      }
+
+      function ensureRuleGroup(targetGroupName) {
+        if (!targetGroupName || !targetGroupName.trim()) return 'group_ungrouped';
+        var trimmed = targetGroupName.trim();
+        var found = groups.find(function(g) {
+          return g.name.toLowerCase() === trimmed.toLowerCase();
+        });
+        if (found) return found.id;
+
+        var newId = 'grp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+        groups.push({
+          id: newId,
+          name: trimmed,
+          isCollapsed: true
+        });
+        saveData();
+        return newId;
+      }
+
+      function applyGroupRules(order) {
+        if (!groupRules || groupRules.length === 0 || !order || !order.address) return null;
+
+        var info = extractStreetAndHouseNumber(order.address);
+        var streetNorm = removeVietnameseTones(info.street || '');
+        var addrNorm = removeVietnameseTones(order.address || '');
+        var houseNum = info.houseNumVal;
+
+        var matchingRules = [];
+
+        for (var i = 0; i < groupRules.length; i++) {
+          var rule = groupRules[i];
+          if (!rule.enabled) continue;
+
+          var ruleStreet = removeVietnameseTones(rule.streetPattern || '');
+          if (!ruleStreet) continue;
+
+          // So khớp tên đường (theo tên đường trích xuất hoặc có trong địa chỉ)
+          var streetMatched = false;
+          if (streetNorm && (streetNorm.indexOf(ruleStreet) !== -1 || ruleStreet.indexOf(streetNorm) !== -1)) {
+            streetMatched = true;
+          } else if (addrNorm && addrNorm.indexOf(ruleStreet) !== -1) {
+            streetMatched = true;
+          }
+
+          if (!streetMatched) continue;
+
+          if (rule.matchAll) {
+            matchingRules.push({
+              rule: rule,
+              isSpecificRange: false,
+              rangeWidth: 999999999,
+              streetLength: ruleStreet.length
+            });
+          } else if (rule.ranges && rule.ranges.length > 0) {
+            if (houseNum !== 999999) {
+              var matchedRange = null;
+              var minWidth = 999999999;
+              for (var r = 0; r < rule.ranges.length; r++) {
+                var rng = rule.ranges[r];
+                var rMin = Number(rng.min);
+                var rMax = Number(rng.max);
+                if (houseNum >= rMin && houseNum <= rMax) {
+                  var w = Math.abs(rMax - rMin);
+                  if (w < minWidth) {
+                    minWidth = w;
+                    matchedRange = rng;
+                  }
+                }
+              }
+              if (matchedRange) {
+                matchingRules.push({
+                  rule: rule,
+                  isSpecificRange: true,
+                  rangeWidth: minWidth,
+                  streetLength: ruleStreet.length
+                });
+              }
+            }
+          }
+        }
+
+        if (matchingRules.length === 0) return null;
+
+        // Q1: Ưu tiên quy tắc cụ thể nhất:
+        // 1. Quy tắc theo khoảng số nhà cụ thể ưu tiên hơn "Tất cả số nhà"
+        // 2. Khoảng hẹp hơn (rangeWidth nhỏ hơn) ưu tiên hơn
+        // 3. Tên đường dài hơn (chi tiết hơn) ưu tiên hơn
+        matchingRules.sort(function(a, b) {
+          if (a.isSpecificRange !== b.isSpecificRange) {
+            return a.isSpecificRange ? -1 : 1;
+          }
+          if (a.rangeWidth !== b.rangeWidth) {
+            return a.rangeWidth - b.rangeWidth;
+          }
+          return b.streetLength - a.streetLength;
+        });
+
+        return matchingRules[0].rule;
+      }
+
+      function applyRulesToOrderList(orderList) {
+        if (!orderList || orderList.length === 0) return 0;
+        var count = 0;
+        orderList.forEach(function(o) {
+          var matchedRule = applyGroupRules(o);
+          if (matchedRule && matchedRule.targetGroupName) {
+            o.groupId = ensureRuleGroup(matchedRule.targetGroupName);
+            count++;
+          }
+        });
+        return count;
+      }
+
+      function reapplyRulesToAllOrders() {
+        if (!orders || orders.length === 0) {
+          showToast('Chưa có đơn hàng nào để áp dụng quy tắc!');
+          return;
+        }
+        var count = applyRulesToOrderList(orders);
+        syncOrdersContiguousByGroups();
+        saveData();
+        render();
+        showToast('⚡ Đã áp dụng quy tắc cho ' + count + '/' + orders.length + ' đơn hàng!');
+      }
+
+      function exportGroupRules() {
+        if (!groupRules || groupRules.length === 0) {
+          showToast('Chưa có quy tắc nào để xuất!');
+          return;
+        }
+        var jsonStr = JSON.stringify(groupRules, null, 2);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(jsonStr).then(function() {
+            showToast('✅ Đã sao chép cấu hình vào bộ nhớ tạm!');
+          }).catch(function() {
+            prompt('Sao chép chuỗi cấu hình quy tắc (JSON):', jsonStr);
+          });
+        } else {
+          prompt('Sao chép chuỗi cấu hình quy tắc (JSON):', jsonStr);
+        }
+      }
+
+      function importGroupRules() {
+        var input = prompt('Dán chuỗi cấu hình quy tắc (JSON) vào đây để nhập:');
+        if (!input || !input.trim()) return;
+        try {
+          var imported = JSON.parse(input.trim());
+          if (!Array.isArray(imported)) {
+            alert('Dữ liệu không hợp lệ (phải là danh sách quy tắc JSON)!');
+            return;
+          }
+          var choice = confirm('Bấm OK để THÊM NỐI TIẾP vào danh sách hiện có.\nBấm Cancel để THAY THẾ toàn bộ quy tắc cũ.');
+          if (choice) {
+            groupRules = groupRules.concat(imported);
+          } else {
+            groupRules = imported;
+          }
+          saveGroupRules();
+          renderGroupRulesList();
+          showToast('✅ Đã nạp thành công ' + imported.length + ' quy tắc!');
+        } catch(err) {
+          alert('Lỗi định dạng JSON: ' + err.message);
+        }
+      }
+
+      function openGroupRulesModal() {
+        var modal = document.getElementById('groupRulesModalBackdrop');
+        if (!modal) return;
+        renderGroupRulesList();
+        resetRuleForm();
+        modal.classList.add('show');
+      }
+
+      function closeGroupRulesModal() {
+        var modal = document.getElementById('groupRulesModalBackdrop');
+        if (modal) modal.classList.remove('show');
+      }
+
+      function renderGroupRulesList() {
+        var container = document.getElementById('groupRulesListContainer');
+        if (!container) return;
+
+        if (!groupRules || groupRules.length === 0) {
+          container.innerHTML = '<div style="text-align: center; padding: 24px 12px; color: #94a3b8; font-size: 12px; line-height: 1.6;">' +
+            'Chưa có quy tắc nào.<br>Bấm <strong>➕ Thêm Quy Tắc</strong> để tự động gán đơn theo tuyến đường & số nhà!</div>';
+          return;
+        }
+
+        var html = '';
+        groupRules.forEach(function(rule, idx) {
+          var rangesHtml = '';
+          if (rule.matchAll) {
+            rangesHtml = '<span class="rule-range-pill" style="background:#e0f2fe; color:#0369a1;">Toàn bộ số nhà</span>';
+          } else if (rule.ranges && rule.ranges.length > 0) {
+            rangesHtml = rule.ranges.map(function(rng) {
+              return '<span class="rule-range-pill">Số: ' + escapeHtml(rng.min) + ' → ' + escapeHtml(rng.max) + '</span>';
+            }).join(' ');
+          } else {
+            rangesHtml = '<span class="rule-range-pill">Không giới hạn</span>';
+          }
+
+          var cardClass = 'rule-item-card' + (rule.enabled ? '' : ' disabled');
+          var isChecked = rule.enabled ? 'checked' : '';
+
+          html += '<div class="' + cardClass + '" data-rule-id="' + escapeHtml(rule.id) + '">' +
+            '<div class="rule-item-header">' +
+              '<div class="rule-item-badges">' +
+                '<label style="display:flex; align-items:center; gap:4px; font-size:11px; cursor:pointer; font-weight:700; color:#334155;">' +
+                  '<input type="checkbox" class="rule-toggle-check" data-rule-id="' + escapeHtml(rule.id) + '" ' + isChecked + '> ' +
+                  (rule.enabled ? 'Bật' : 'Tắt') +
+                '</label>' +
+                '<span class="rule-badge-street">📍 ' + escapeHtml(rule.streetPattern) + '</span>' +
+                '<span class="rule-badge-arrow">➔</span>' +
+                '<span class="rule-badge-target">🏷️ ' + escapeHtml(rule.targetGroupName) + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="rule-item-ranges">' + rangesHtml + '</div>' +
+            '<div class="rule-item-footer">' +
+              '<span style="font-size:10px; color:#94a3b8;">Quy tắc #' + (idx + 1) + '</span>' +
+              '<div class="rule-item-actions">' +
+                '<button type="button" class="btn-rule-item btn-edit-rule" data-rule-id="' + escapeHtml(rule.id) + '">✏️ Sửa</button>' +
+                '<button type="button" class="btn-rule-item del btn-del-rule" data-rule-id="' + escapeHtml(rule.id) + '">🗑️ Xóa</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        });
+
+        container.innerHTML = html;
+
+        // Gắn sự kiện cho các item trong danh sách
+        container.querySelectorAll('.rule-toggle-check').forEach(function(chk) {
+          chk.addEventListener('change', function() {
+            var rId = chk.getAttribute('data-rule-id');
+            var r = groupRules.find(function(item) { return item.id === rId; });
+            if (r) {
+              r.enabled = chk.checked;
+              saveGroupRules();
+              renderGroupRulesList();
+              showToast((r.enabled ? 'Đã bật' : 'Đã tắt') + ' quy tắc: ' + r.streetPattern);
+            }
+          });
+        });
+
+        container.querySelectorAll('.btn-edit-rule').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var rId = btn.getAttribute('data-rule-id');
+            editGroupRule(rId);
+          });
+        });
+
+        container.querySelectorAll('.btn-del-rule').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var rId = btn.getAttribute('data-rule-id');
+            deleteGroupRule(rId);
+          });
+        });
+      }
+
+      function addRangeRow(minVal, maxVal) {
+        var list = document.getElementById('ruleRangesInputsList');
+        if (!list) return;
+        var row = document.createElement('div');
+        row.className = 'rule-range-row';
+        row.innerHTML = 
+          '<input type="number" class="rule-range-min" placeholder="Từ số (vd: 6)" value="' + (minVal !== undefined ? minVal : '') + '">' +
+          '<span style="font-size:11px; color:#64748b;">➔</span>' +
+          '<input type="number" class="rule-range-max" placeholder="Đến số (vd: 14)" value="' + (maxVal !== undefined ? maxVal : '') + '">' +
+          '<button type="button" class="rule-range-del" title="Xóa khoảng">&times;</button>';
+        
+        row.querySelector('.rule-range-del').addEventListener('click', function() {
+          row.remove();
+        });
+        list.appendChild(row);
+      }
+
+      function resetRuleForm() {
+        var formBox = document.getElementById('groupRuleFormContainer');
+        var editId = document.getElementById('ruleEditId');
+        var streetInp = document.getElementById('ruleStreetInput');
+        var targetInp = document.getElementById('ruleTargetGroupInput');
+        var modeRanges = document.getElementById('ruleModeRanges');
+        var rangesList = document.getElementById('ruleRangesInputsList');
+        var rangesContainer = document.getElementById('ruleRangesContainer');
+        var titleText = document.getElementById('groupRuleFormTitleText');
+
+        if (editId) editId.value = '';
+        if (streetInp) streetInp.value = '';
+        if (targetInp) targetInp.value = '';
+        if (modeRanges) modeRanges.checked = true;
+        if (rangesContainer) rangesContainer.style.display = 'block';
+        if (rangesList) rangesList.innerHTML = '';
+        if (titleText) titleText.textContent = '➕ Thêm Quy Tắc Mới';
+        if (formBox) formBox.style.display = 'none';
+      }
+
+      function editGroupRule(ruleId) {
+        var rule = groupRules.find(function(item) { return item.id === ruleId; });
+        if (!rule) return;
+
+        var formBox = document.getElementById('groupRuleFormContainer');
+        var editId = document.getElementById('ruleEditId');
+        var streetInp = document.getElementById('ruleStreetInput');
+        var targetInp = document.getElementById('ruleTargetGroupInput');
+        var modeRanges = document.getElementById('ruleModeRanges');
+        var modeAll = document.getElementById('ruleModeAll');
+        var rangesContainer = document.getElementById('ruleRangesContainer');
+        var rangesList = document.getElementById('ruleRangesInputsList');
+        var titleText = document.getElementById('groupRuleFormTitleText');
+
+        if (editId) editId.value = rule.id;
+        if (streetInp) streetInp.value = rule.streetPattern || '';
+        if (targetInp) targetInp.value = rule.targetGroupName || '';
+
+        if (rule.matchAll) {
+          if (modeAll) modeAll.checked = true;
+          if (rangesContainer) rangesContainer.style.display = 'none';
+        } else {
+          if (modeRanges) modeRanges.checked = true;
+          if (rangesContainer) rangesContainer.style.display = 'block';
+        }
+
+        if (rangesList) {
+          rangesList.innerHTML = '';
+          if (rule.ranges && rule.ranges.length > 0) {
+            rule.ranges.forEach(function(rng) {
+              addRangeRow(rng.min, rng.max);
+            });
+          } else {
+            addRangeRow();
+          }
+        }
+
+        if (titleText) titleText.textContent = '✏️ Chỉnh Sửa Quy Tắc';
+        if (formBox) {
+          formBox.style.display = 'block';
+          formBox.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+
+      function deleteGroupRule(ruleId) {
+        var rule = groupRules.find(function(item) { return item.id === ruleId; });
+        if (!rule) return;
+        if (confirm('Xác nhận xóa quy tắc cho đường "' + rule.streetPattern + '"?')) {
+          groupRules = groupRules.filter(function(item) { return item.id !== ruleId; });
+          saveGroupRules();
+          renderGroupRulesList();
+          showToast('Đã xóa quy tắc!');
+        }
+      }
+
+      function saveRuleFromForm() {
+        var editId = document.getElementById('ruleEditId').value;
+        var street = document.getElementById('ruleStreetInput').value.trim();
+        var targetGroup = document.getElementById('ruleTargetGroupInput').value.trim();
+        var isAll = document.getElementById('ruleModeAll').checked;
+
+        if (!street) {
+          alert('Vui lòng nhập tên đường áp dụng!');
+          document.getElementById('ruleStreetInput').focus();
+          return;
+        }
+        if (!targetGroup) {
+          alert('Vui lòng nhập tên nhóm đích!');
+          document.getElementById('ruleTargetGroupInput').focus();
+          return;
+        }
+
+        var ranges = [];
+        if (!isAll) {
+          var rows = document.querySelectorAll('#ruleRangesInputsList .rule-range-row');
+          rows.forEach(function(row) {
+            var minVal = parseInt(row.querySelector('.rule-range-min').value, 10);
+            var maxVal = parseInt(row.querySelector('.rule-range-max').value, 10);
+            if (!isNaN(minVal) && !isNaN(maxVal)) {
+              ranges.push({
+                min: Math.min(minVal, maxVal),
+                max: Math.max(minVal, maxVal)
+              });
+            } else if (!isNaN(minVal)) {
+              ranges.push({ min: minVal, max: minVal });
+            } else if (!isNaN(maxVal)) {
+              ranges.push({ min: maxVal, max: maxVal });
+            }
+          });
+
+          if (ranges.length === 0) {
+            alert('Vui lòng nhập ít nhất một khoảng số nhà hợp lệ (hoặc chọn "Tất cả số nhà")!');
+            return;
+          }
+        }
+
+        if (editId) {
+          var existing = groupRules.find(function(r) { return r.id === editId; });
+          if (existing) {
+            existing.streetPattern = street;
+            existing.targetGroupName = targetGroup;
+            existing.matchAll = isAll;
+            existing.ranges = ranges;
+            existing.updatedAt = new Date().toISOString();
+          }
+          showToast('✅ Đã cập nhật quy tắc!');
+        } else {
+          var newRule = {
+            id: 'rule_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            streetPattern: street,
+            targetGroupName: targetGroup,
+            matchAll: isAll,
+            ranges: ranges,
+            enabled: true,
+            createdAt: new Date().toISOString()
+          };
+          groupRules.push(newRule);
+          showToast('✅ Đã tạo quy tắc mới!');
+        }
+
+        saveGroupRules();
+        renderGroupRulesList();
+        resetRuleForm();
+      }
+
+      function initGroupRulesModalEvents() {
+        var btnOpen = document.getElementById('btnGroupRules');
+        if (btnOpen) btnOpen.addEventListener('click', openGroupRulesModal);
+
+        var btnClose = document.getElementById('btnCloseGroupRulesSheet');
+        if (btnClose) btnClose.addEventListener('click', closeGroupRulesModal);
+
+        var modal = document.getElementById('groupRulesModalBackdrop');
+        if (modal) {
+          modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeGroupRulesModal();
+          });
+        }
+
+        var btnToggleAdd = document.getElementById('btnToggleAddRuleForm');
+        var formBox = document.getElementById('groupRuleFormContainer');
+        if (btnToggleAdd && formBox) {
+          btnToggleAdd.addEventListener('click', function() {
+            if (formBox.style.display === 'none') {
+              resetRuleForm();
+              addRangeRow();
+              formBox.style.display = 'block';
+              document.getElementById('ruleStreetInput').focus();
+            } else {
+              formBox.style.display = 'none';
+            }
+          });
+        }
+
+        var btnCloseForm = document.getElementById('btnCloseRuleForm');
+        if (btnCloseForm) btnCloseForm.addEventListener('click', resetRuleForm);
+
+        var btnCancelForm = document.getElementById('btnCancelRuleForm');
+        if (btnCancelForm) btnCancelForm.addEventListener('click', resetRuleForm);
+
+        var btnSaveSubmit = document.getElementById('btnSaveRuleSubmit');
+        if (btnSaveSubmit) btnSaveSubmit.addEventListener('click', saveRuleFromForm);
+
+        var btnAddMore = document.getElementById('btnAddMoreRangeBtn');
+        if (btnAddMore) {
+          btnAddMore.addEventListener('click', function() {
+            addRangeRow();
+          });
+        }
+
+        var modeRanges = document.getElementById('ruleModeRanges');
+        var modeAll = document.getElementById('ruleModeAll');
+        var rangesContainer = document.getElementById('ruleRangesContainer');
+        if (modeRanges && modeAll && rangesContainer) {
+          modeRanges.addEventListener('change', function() {
+            if (this.checked) rangesContainer.style.display = 'block';
+          });
+          modeAll.addEventListener('change', function() {
+            if (this.checked) rangesContainer.style.display = 'none';
+          });
+        }
+
+        var btnReapply = document.getElementById('btnReapplyGroupRules');
+        if (btnReapply) btnReapply.addEventListener('click', reapplyRulesToAllOrders);
+
+        var btnExport = document.getElementById('btnExportGroupRules');
+        if (btnExport) btnExport.addEventListener('click', exportGroupRules);
+
+        var btnImport = document.getElementById('btnImportGroupRules');
+        if (btnImport) btnImport.addEventListener('click', importGroupRules);
       }
 
       // Quản lý chọn nhiều đơn (Batch Multi-Select) & Chuyển nhóm 1 chạm
@@ -9384,10 +10146,13 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             currentCameraOrder.status = 'gtc';
             currentCameraOrder.subStatus = 'gtc';
             currentCameraOrder.deliveredAt = new Date().toISOString();
+            if (currentWatermarkedUrl) {
+              downloadWatermarkedPhoto(currentWatermarkedUrl, currentCameraOrder.trackingCode || '');
+            }
             saveData();
             render();
             closeCameraPreview();
-            showToast('Đã lưu ảnh & Xác nhận GTC! 🟢');
+            showToast('Đã lưu ảnh, tải về máy & Xác nhận GTC! 🟢');
           });
         }
 
@@ -9399,10 +10164,13 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             currentCameraOrder.status = 'gtc';
             currentCameraOrder.subStatus = 'cho_ck';
             currentCameraOrder.deliveredAt = new Date().toISOString();
+            if (currentWatermarkedUrl) {
+              downloadWatermarkedPhoto(currentWatermarkedUrl, currentCameraOrder.trackingCode || '');
+            }
             saveData();
             render();
             closeCameraPreview();
-            showToast('Đã lưu ảnh & Chuyển Chờ CK! 🟡');
+            showToast('Đã lưu ảnh, tải về máy & Chuyển Chờ CK! 🟡');
           });
         }
 
@@ -10665,6 +11433,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             alert('Vui lòng dán nội dung đơn hàng hợp lệ!');
             return;
           }
+          var ruleAppliedCount = applyRulesToOrderList(newItems);
           orders = orders.concat(newItems);
           var healedCount = autoHealDuplicateAddresses(false);
           syncOrdersContiguousByGroups();
@@ -10673,6 +11442,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           pasteSheet.classList.remove('show');
           render();
           var pasteMsg = 'Đã thêm ' + newItems.length + ' đơn hàng mới!';
+          if (ruleAppliedCount > 0) pasteMsg += ' (Tự gán nhóm: ' + ruleAppliedCount + ' đơn)';
           if (healedCount > 0) pasteMsg += ' (Đã tự sửa chéo ' + healedCount + ' đơn cùng địa chỉ)';
           showToast(pasteMsg);
         });
@@ -10769,6 +11539,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               if (autoGroupChecked) {
                 autoGroupAllOrders();
               } else {
+                applyRulesToOrderList(result.orders);
+                syncOrdersContiguousByGroups();
                 saveData();
                 render();
               }
@@ -10916,6 +11688,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             }
           });
         }
+        // Khởi tạo modal & sự kiện cấu hình phân nhóm tự động
+        initGroupRulesModalEvents();
       });
 
       function escapeHtml(str) {
