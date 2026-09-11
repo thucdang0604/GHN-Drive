@@ -2947,11 +2947,28 @@ function setupDesktopAiRouteModal() {
         runStatus.textContent = '⏳ AI 9Router đang đọc địa chỉ và tính toán lộ trình tối ưu...';
       }
 
+      let startTime = Date.now();
+      let timer = setInterval(() => {
+        const sec = Math.floor((Date.now() - startTime) / 1000);
+        if (runStatus) {
+          const currentText = runStatus.getAttribute('data-status-text') || 'AI đang phân tích & tối ưu lộ trình...';
+          runStatus.textContent = `⏳ ${currentText} (${sec}s)`;
+        }
+      }, 1000);
+
       try {
         const result = await aiOpt.optimizeRoute(pending, currentGroups, rules, {
           scenario: mode,
           avoidUTurn: avoidUTurn,
-          clusterBuildings: clusterBuildings
+          clusterBuildings: clusterBuildings,
+          onProgress: (info) => {
+            if (runStatus && info) {
+              const txt = info.detail || info.text || 'Đang xử lý...';
+              runStatus.setAttribute('data-status-text', txt);
+              const sec = Math.floor((Date.now() - startTime) / 1000);
+              runStatus.textContent = `⏳ ${txt} (${sec}s)`;
+            }
+          }
         });
 
         lastOptimizedResult = result;
@@ -2996,6 +3013,7 @@ function setupDesktopAiRouteModal() {
         console.error('Lỗi khi chạy tối ưu hóa AI:', err);
         showToast('Lỗi khi tối ưu: ' + (err.message || err), 'error');
       } finally {
+        if (timer) clearInterval(timer);
         btnRun.disabled = false;
         if (runBtnText) runBtnText.textContent = 'Bắt Đầu AI Tối Ưu Lộ Trình (9Router)';
         if (runStatus) runStatus.style.display = 'none';

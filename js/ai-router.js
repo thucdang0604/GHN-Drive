@@ -435,18 +435,36 @@
    * @param {Array} groupRules - Danh sách quy tắc phân nhóm
    * @param {Object} options - { scenario: 'respect_groups' | 'auto_cluster', startOrigin: {lat, lng} }
    */
+  /**
+   * Tối ưu hóa lộ trình bằng AI 9Router
+   * @param {Array} orders - Danh sách đơn hàng cần tối ưu
+   * @param {Array} groups - Danh sách nhóm hiện tại
+   * @param {Array} groupRules - Danh sách quy tắc phân nhóm
+   * @param {Object} options - { scenario: 'respect_groups' | 'auto_cluster', startOrigin: {lat, lng}, onProgress: fn, timeoutMs: number }
+   */
   function optimizeRoute(orders, groups, groupRules, options) {
     options = options || {};
     var scenario = options.scenario || (groupRules && groupRules.length > 0 ? 'respect_groups' : 'auto_cluster');
     var startOrigin = options.startOrigin;
+    var onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
 
     if (!orders || orders.length <= 1) {
+      if (onProgress) onProgress({ percent: 100, step: 'done', text: 'Hoàn tất tối ưu đơn hàng' });
       return Promise.resolve(fallbackOfflineOptimization(orders, groups, groupRules, options));
     }
 
     var endpoint = getEndpoint();
     var model = getModel();
     var apiKey = getApiKey();
+
+    if (onProgress) {
+      onProgress({
+        percent: 25,
+        step: 'prepare',
+        text: 'Đang trích xuất & nén ' + orders.length + ' địa chỉ đơn hàng...',
+        log: '✓ Đã cấu trúc ' + orders.length + ' đơn thành định dạng nén tối ưu token'
+      });
+    }
 
     // Chuẩn bị dữ liệu gửi tới AI siêu gọn nhẹ (tiết kiệm token tối đa)
     var compactList = orders.map(function(o, idx) {
@@ -506,8 +524,19 @@
     var headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
 
+    // Timeout thích ứng theo số lượng đơn (tối thiểu 30s, tối đa 60s)
+    var timeoutMs = options.timeoutMs || Math.min(60000, Math.max(30000, orders.length * 350));
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 12000) : null;
+    var timeoutId = controller ? setTimeout(function() { controller.abort(); }, timeoutMs) : null;
+
+    if (onProgress) {
+      onProgress({
+        percent: 45,
+        step: 'sending',
+        text: 'Đang kết nối & gửi yêu cầu tới 9Router AI (' + model + ')...',
+        log: '✓ Gửi yêu cầu tối ưu tới 9Router AI Gateway (' + model + ')'
+      });
+    }
 
     return fetch(endpoint, {
       method: 'POST',
@@ -553,6 +582,15 @@
         });
       }
 
+      if (onProgress) {
+        onProgress({
+          percent: 85,
+          step: 'receiving',
+          text: '9Router đã phản hồi! Đang giải mã dữ liệu...',
+          log: '✓ Đã nhận phản hồi từ 9Router AI Gateway'
+        });
+      }
+
       return res.text().then(function(rawText) {
         var data = null;
         try {
@@ -588,38 +626,90 @@
       var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
       if (!content) throw new Error('AI không trả về nội dung');
 
-      // Bóc tách JSON an toàn từ nội dung phản hồi
+      if (onProgress) {
+        onProgress({
+          percent: 92,
+          step: 'parsing',
+          text: 'Đang kiểm tra và xác thực thứ tự lộ trình...',
+          log: '✓ Bóc tách JSON lộ trình từ nội dung AI'
+        });
+      }
+
+      // Bóc tách JSON an toàn từ nội dung phản hồi (tìm cặp dấu ngoặc {} ngoài cùng)
       var cleanJson = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+      var firstBrace = cleanJson.indexOf('{');
+      var lastBrace = cleanJson.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+      }
+
       var parsed = JSON.parse(cleanJson);
 
-      if (!parsed.orderedIndices || !Array.isArray(parsed.orderedIndices) || parsed.orderedIndices.length !== orders.length) {
-        throw new Error('Danh sách chỉ số đơn trả về từ AI không đủ số lượng đơn ban đầu');
+      // Tự động sửa chữa và bù đắp chỉ số nếu AI vô tình bỏ sót hoặc trùng lặp
+      var validIndices = [];
+      var seen = {};
+      if (parsed && Array.isArray(parsed.orderedIndices)) {
+        parsed.orderedIndices.forEach(function(idx) {
+          var num = Number(idx);
+          if (!isNaN(num) && num >= 0 && num < orders.length && !seen[num]) {
+            seen[num] = true;
+            validIndices.push(num);
+          }
+        });
       }
 
-      // Kiểm tra tính toàn vẹn của danh sách chỉ số (không trùng lặp, nằm trong khoảng)
-      var checkSet = new Set(parsed.orderedIndices);
-      if (checkSet.size !== orders.length) {
-        throw new Error('Chỉ số đơn từ AI bị trùng lặp');
+      // Bổ sung các đơn còn thiếu nếu có để đảm bảo không mất đơn nào của shipper
+      if (validIndices.length < orders.length) {
+        for (var missingIdx = 0; missingIdx < orders.length; missingIdx++) {
+          if (!seen[missingIdx]) {
+            seen[missingIdx] = true;
+            validIndices.push(missingIdx);
+          }
+        }
       }
 
-      var orderedOrders = parsed.orderedIndices.map(function(idx) {
+      if (validIndices.length !== orders.length || validIndices.length === 0) {
+        throw new Error('Không thể phân tích danh sách chỉ số đơn hợp lệ từ AI');
+      }
+
+      var orderedOrders = validIndices.map(function(idx) {
         return orders[idx];
       });
+
+      if (onProgress) {
+        onProgress({
+          percent: 100,
+          step: 'done',
+          text: 'Hoàn tất! Đã tối ưu ' + orders.length + ' đơn hàng.',
+          log: '✓ Hoàn thành tối ưu ' + orders.length + ' điểm giao với 9Router AI'
+        });
+      }
 
       return finalizeResult({
         success: true,
         source: '9router_ai',
         model: model,
         summary: parsed.summary || 'Đã tối ưu lộ trình thành công bằng AI',
-        orderedIndices: parsed.orderedIndices,
+        orderedIndices: validIndices,
         orderedOrders: orderedOrders,
         stops: parsed.stops || []
       });
     }).catch(function(err) {
       if (timeoutId) clearTimeout(timeoutId);
-      console.warn('9Router AI không phản hồi hoặc lỗi, kích hoạt thuật toán dự phòng Offline:', err);
+      var reason = (err.name === 'AbortError') ? ('Hết thời gian chờ AI (' + Math.round(timeoutMs / 1000) + 's)') : err.message;
+      console.warn('9Router AI không phản hồi hoặc lỗi (' + reason + '), kích hoạt thuật toán dự phòng Offline:', err);
+
+      if (onProgress) {
+        onProgress({
+          percent: 95,
+          step: 'fallback',
+          text: 'Chuyển sang thuật toán nội suy Offline do: ' + reason,
+          log: '⚠️ 9Router (' + reason + ') -> Đang kích hoạt thuật toán dự phòng Offline'
+        });
+      }
+
       var fallbackRes = fallbackOfflineOptimization(orders, groups, groupRules, options);
-      fallbackRes.warning = 'Không thể gọi 9Router (' + err.message + '). Đã tự động dùng thuật toán nội suy Offline!';
+      fallbackRes.warning = 'Không thể gọi 9Router (' + reason + '). Đã tự động dùng thuật toán nội suy Offline!';
       return finalizeResult(fallbackRes);
     });
   }

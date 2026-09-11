@@ -4316,6 +4316,19 @@
     .ai-btn-run:active {
       transform: scale(0.98);
     }
+    .ai-btn-run:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    @keyframes aiSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .ai-spin-icon {
+      display: inline-block;
+      animation: aiSpin 1s linear infinite;
+    }
     .ai-result-panel {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
@@ -5327,6 +5340,31 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         <button type="button" id="btnRunAiOptimize" class="ai-btn-run">
           <span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>
         </button>
+
+        <!-- Khung tiến trình chi tiết khi AI đang chạy -->
+        <div id="aiProgressContainer" style="display: none; background: #f8fafc; border: 1.5px solid #c7d2fe; border-radius: 12px; padding: 12px 14px; margin-top: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 7px;">
+              <span class="ai-spin-icon" style="font-size: 14px;">⚙️</span>
+              <span id="aiProgressTitle" style="font-size: 12.5px; font-weight: 700; color: #3730a3;">Đang phân tích lộ trình...</span>
+            </div>
+            <span id="aiProgressTimeEl" style="font-size: 11px; font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 2px 8px; border-radius: 99px; font-family: monospace;">⏱️ 00:00</span>
+          </div>
+
+          <!-- Thanh tiến trình -->
+          <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
+            <div id="aiProgressBarFill" style="width: 5%; height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6, #3b82f6); border-radius: 99px; transition: width 0.3s ease;"></div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+            <span id="aiProgressStatusText" style="font-size: 11.5px; color: #475569; line-height: 1.3;">Đang khởi động...</span>
+            <span id="aiProgressPercentText" style="font-size: 11px; font-weight: 800; color: #6366f1; font-family: monospace;">5%</span>
+          </div>
+
+          <!-- Lịch sử tiến trình các bước -->
+          <div id="aiProgressStepsHistory" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1; display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #64748b;">
+          </div>
+        </div>
 
         <!-- Khung kết quả sau khi tối ưu -->
         <div id="aiOptimizeResultPanel" class="ai-result-panel" style="display: none;">
@@ -12749,10 +12787,127 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           });
         }
 
+        // Biến lưu tọa độ GPS thiết bị hiện tại & helper lấy vị trí an toàn
+        var currentDeviceGps = null;
+        function getDeviceGpsLocation(timeoutMs) {
+          return new Promise(function(resolve) {
+            if (!navigator.geolocation) {
+              resolve(null);
+              return;
+            }
+            var finished = false;
+            var timer = setTimeout(function() {
+              if (!finished) {
+                finished = true;
+                resolve(null);
+              }
+            }, timeoutMs || 3500);
+
+            try {
+              navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                  if (!finished) {
+                    finished = true;
+                    clearTimeout(timer);
+                    if (pos && pos.coords && pos.coords.latitude != null && pos.coords.longitude != null) {
+                      currentDeviceGps = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude
+                      };
+                      resolve(currentDeviceGps);
+                    } else {
+                      resolve(null);
+                    }
+                  }
+                },
+                function(err) {
+                  if (!finished) {
+                    finished = true;
+                    clearTimeout(timer);
+                    resolve(null);
+                  }
+                },
+                { timeout: 3000, enableHighAccuracy: true, maximumAge: 60000 }
+              );
+            } catch(geoEx) {
+              if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                resolve(null);
+              }
+            }
+          });
+        }
+
+        // Helper quản lý thanh tiến trình AI trực quan
+        var aiProgressTimer = null;
+        var aiProgressHeartbeat = null;
+        var aiStartTime = 0;
+
+        function startAiProgressUI(orderCount) {
+          var container = document.getElementById('aiProgressContainer');
+          var titleEl = document.getElementById('aiProgressTitle');
+          var timeEl = document.getElementById('aiProgressTimeEl');
+          var fillEl = document.getElementById('aiProgressBarFill');
+          var textEl = document.getElementById('aiProgressStatusText');
+          var pctEl = document.getElementById('aiProgressPercentText');
+          var historyEl = document.getElementById('aiProgressStepsHistory');
+
+          if (container) container.style.display = 'block';
+          if (titleEl) titleEl.textContent = 'Đang phân tích & tối ưu ' + orderCount + ' đơn...';
+          if (timeEl) timeEl.textContent = '⏱️ 00:00 (Ước tính ~10-15s)';
+          if (fillEl) fillEl.style.width = '5%';
+          if (textEl) textEl.textContent = 'Đang khởi tạo dữ liệu...';
+          if (pctEl) pctEl.textContent = '5%';
+          if (historyEl) historyEl.innerHTML = '';
+
+          aiStartTime = Date.now();
+          if (aiProgressTimer) clearInterval(aiProgressTimer);
+          aiProgressTimer = setInterval(function() {
+            var elapsed = Math.floor((Date.now() - aiStartTime) / 1000);
+            var m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            var s = String(elapsed % 60).padStart(2, '0');
+            if (timeEl) timeEl.textContent = '⏱️ ' + m + ':' + s + ' (Ước tính ~10-15s)';
+          }, 1000);
+        }
+
+        function updateAiProgressUI(percent, statusText, historyLog) {
+          var fillEl = document.getElementById('aiProgressBarFill');
+          var textEl = document.getElementById('aiProgressStatusText');
+          var pctEl = document.getElementById('aiProgressPercentText');
+          var historyEl = document.getElementById('aiProgressStepsHistory');
+
+          if (fillEl && percent != null) fillEl.style.width = Math.min(100, Math.max(0, percent)) + '%';
+          if (pctEl && percent != null) pctEl.textContent = Math.round(percent) + '%';
+          if (textEl && statusText) textEl.textContent = statusText;
+          if (historyEl && historyLog) {
+            var div = document.createElement('div');
+            div.textContent = historyLog;
+            historyEl.appendChild(div);
+          }
+        }
+
+        function stopAiProgressUI(isSuccess) {
+          if (aiProgressTimer) {
+            clearInterval(aiProgressTimer);
+            aiProgressTimer = null;
+          }
+          if (aiProgressHeartbeat) {
+            clearInterval(aiProgressHeartbeat);
+            aiProgressHeartbeat = null;
+          }
+          var fillEl = document.getElementById('aiProgressBarFill');
+          var pctEl = document.getElementById('aiProgressPercentText');
+          if (isSuccess) {
+            if (fillEl) fillEl.style.width = '100%';
+            if (pctEl) pctEl.textContent = '100%';
+          }
+        }
+
         // Chạy tối ưu lộ trình
         var btnRun = document.getElementById('btnRunAiOptimize');
         if (btnRun) {
-          btnRun.addEventListener('click', function() {
+          btnRun.addEventListener('click', async function() {
             var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
             if (!aiOpt) {
               showToast('Lỗi nạp thư viện AI');
@@ -12769,23 +12924,59 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var startOriginRad = document.querySelector('input[name="aiStartOrigin"]:checked');
             var useGps = startOriginRad && startOriginRad.value === 'gps';
 
+            // Ẩn panel kết quả cũ
+            var resPanel = document.getElementById('aiOptimizeResultPanel');
+            if (resPanel) resPanel.style.display = 'none';
+
             btnRun.disabled = true;
-            btnRun.innerHTML = '<span>⏳ Đang phân tích lộ trình với AI...</span>';
+            btnRun.innerHTML = '<span>⏳ Đang Tối Ưu Lộ Trình...</span>';
 
-            var origin = null;
-            if (useGps && currentGpsLat != null && currentGpsLng != null) {
-              origin = { lat: currentGpsLat, lng: currentGpsLng };
-            }
+            startAiProgressUI(pendingOrders.length);
 
-            aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
-              scenario: scenario,
-              startOrigin: origin
-            }).then(function(result) {
+            try {
+              var origin = null;
+              if (useGps) {
+                updateAiProgressUI(10, '📍 Đang lấy vị trí GPS hiện tại của bạn...');
+                var pos = await getDeviceGpsLocation(3500);
+                if (pos) {
+                  origin = pos;
+                  updateAiProgressUI(18, '✓ Đã lấy GPS xuất phát thành công.', '📍 Vị trí GPS: ' + pos.lat.toFixed(4) + ', ' + pos.lng.toFixed(4));
+                } else {
+                  updateAiProgressUI(18, 'ℹ️ Không lấy được GPS, bắt đầu từ đơn đầu tiên (#1).', '⚠️ Không có GPS (sử dụng đơn đầu tiên #1 làm gốc)');
+                }
+              } else {
+                updateAiProgressUI(18, '✓ Điểm xuất phát: Đơn đầu tiên (#1)', '📍 Điểm xuất phát: Đơn đầu tiên (#1)');
+              }
+
+              updateAiProgressUI(30, '📦 Đang chuẩn bị và trích xuất dữ liệu ' + pendingOrders.length + ' đơn hàng...');
+
+              // Nhịp đập tăng tiến trình mượt mà từ 40% -> 85% trong khi AI đang suy nghĩ
+              var currentSimulatedPercent = 40;
+              aiProgressHeartbeat = setInterval(function() {
+                if (currentSimulatedPercent < 85) {
+                  currentSimulatedPercent += Math.floor(Math.random() * 4) + 2;
+                  updateAiProgressUI(currentSimulatedPercent, '🧠 AI đang phân tích địa chỉ, cụm tòa nhà & tối ưu đường đi...');
+                }
+              }, 1200);
+
+              var result = await aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
+                scenario: scenario,
+                startOrigin: origin,
+                onProgress: function(info) {
+                  if (info && info.percent) {
+                    currentSimulatedPercent = Math.max(currentSimulatedPercent, info.percent);
+                    updateAiProgressUI(currentSimulatedPercent, info.detail || info.text, info.log);
+                  }
+                }
+              });
+
+              stopAiProgressUI(true);
+              updateAiProgressUI(100, '🎉 Hoàn tất tính toán lộ trình tối ưu!', '✓ Đã tối ưu ' + result.orderedOrders.length + ' đơn (' + (result.source === '9router_ai' ? '9Router AI' : 'Offline Heuristic') + ')');
+
               btnRun.disabled = false;
               btnRun.innerHTML = '<span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>';
 
               latestAiOptimizedResult = result;
-              var resPanel = document.getElementById('aiOptimizeResultPanel');
               var summaryEl = document.getElementById('aiResultSummaryText');
               var badgeEl = document.getElementById('aiResultSourceBadge');
               var stopsListEl = document.getElementById('aiResultStopsList');
@@ -12814,12 +13005,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 }
               }
 
+              // Tự động cuộn mượt xuống khung kết quả để người dùng thấy ngay
+              resPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
               showToast('🎉 Đã tính toán xong lộ trình tối ưu!');
-            }).catch(function(err) {
+
+            } catch (err) {
+              stopAiProgressUI(false);
               btnRun.disabled = false;
               btnRun.innerHTML = '<span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>';
-              showToast('Lỗi tối ưu: ' + err.message);
-            });
+              updateAiProgressUI(100, '⚠️ Lỗi: ' + (err.message || err), '✕ Thất bại: ' + (err.message || err));
+              showToast('Lỗi tối ưu: ' + (err.message || err));
+            }
           });
         }
 
@@ -12837,7 +13033,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var finishedOrders = orders.filter(function(o) { return o.status !== 'pending' && o.status !== 'cho_ck'; });
             orders = optimizedPending.concat(finishedOrders);
 
-            syncOrdersContiguousByGroups();
+            // Chỉ đồng bộ gom nhóm contiguous nếu kịch bản là Giữ nguyên nhóm (respect_groups)
+            var radRespect = document.getElementById('optScenarioRespect');
+            if (radRespect && radRespect.checked) {
+              syncOrdersContiguousByGroups();
+            }
             saveData();
             render();
             if (mobileMap) renderMap(orders);
