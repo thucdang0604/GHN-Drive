@@ -127,6 +127,86 @@
   }
 
   /**
+   * Phân tích phản hồi từ 9Router AI Gateway
+   * Hỗ trợ chuẩn OpenAI JSON thông thường và cả Server-Sent Events (SSE Stream: data: {...})
+   * Tự động lọc sạch reasoning_content/thinking tokens và trích xuất đúng nội dung trả về
+   */
+  function parseAiResponseText(rawText) {
+    if (!rawText || typeof rawText !== 'string') {
+      throw new Error('Phản hồi từ AI rỗng');
+    }
+
+    var trimmed = rawText.trim();
+    var data = null;
+    var rawContent = '';
+
+    // 1. Thử parse trực tiếp dạng JSON chuẩn (non-streaming)
+    try {
+      data = JSON.parse(trimmed);
+      if (data && data.choices && data.choices[0]) {
+        var msg = data.choices[0].message || data.choices[0].delta;
+        if (msg && typeof msg.content === 'string') {
+          rawContent = msg.content;
+        }
+      }
+    } catch(e) {
+      // Không phải JSON chuẩn -> Kiểm tra xem có phải SSE stream (data: ...)
+    }
+
+    // 2. Nếu là SSE stream hoặc phản hồi có chứa chuỗi "data:"
+    if (!rawContent && trimmed.indexOf('data:') !== -1) {
+      var combinedContent = '';
+      var lines = trimmed.split('\n');
+      for (var l = 0; l < lines.length; l++) {
+        var line = lines[l].trim();
+        if (line.indexOf('data:') === 0) {
+          var jsonPart = line.slice(5).trim();
+          if (jsonPart && jsonPart !== '[DONE]') {
+            try {
+              var parsedChunk = JSON.parse(jsonPart);
+              var choice = parsedChunk.choices && parsedChunk.choices[0];
+              if (choice) {
+                var delta = choice.delta || choice.message;
+                if (delta && typeof delta.content === 'string') {
+                  combinedContent += delta.content;
+                } else if (typeof choice.text === 'string') {
+                  combinedContent += choice.text;
+                }
+              }
+            } catch(e2) {}
+          }
+        }
+      }
+      if (combinedContent) {
+        rawContent = combinedContent;
+        data = { choices: [{ message: { content: combinedContent } }] };
+      }
+    }
+
+    // 3. Dự phòng cho các schema trả về khác (data.text hoặc choices[0].text)
+    if (!rawContent && data) {
+      if (typeof data.text === 'string') {
+        rawContent = data.text;
+      } else if (data.choices && data.choices[0] && typeof data.choices[0].text === 'string') {
+        rawContent = data.choices[0].text;
+      }
+    }
+
+    // 4. Nếu vẫn chưa trích xuất được nhưng rawText có chứa chuỗi JSON lộ trình {...orderedIndices...}
+    if (!rawContent) {
+      var directMatch = trimmed.match(/\{[\s\S]*"orderedIndices"[\s\S]*\}/);
+      if (directMatch) {
+        rawContent = directMatch[0];
+      }
+    }
+
+    return {
+      data: data,
+      rawContent: rawContent
+    };
+  }
+
+  /**
    * Kiểm tra kết nối tới 9Router
    */
   function testConnection() {
@@ -202,35 +282,11 @@
       }
 
       return res.text().then(function(rawText) {
-        var data = null;
-        try {
-          data = JSON.parse(rawText);
-        } catch(e) {
-          if (rawText.indexOf('data:') !== -1) {
-            var combinedText = '';
-            var lines = rawText.split('\n');
-            for (var l = 0; l < lines.length; l++) {
-              var line = lines[l].trim();
-              if (line.indexOf('data:') === 0) {
-                var jsonPart = line.slice(5).trim();
-                if (jsonPart && jsonPart !== '[DONE]') {
-                  try {
-                    var parsedChunk = JSON.parse(jsonPart);
-                    var delta = parsedChunk.choices && parsedChunk.choices[0] && (parsedChunk.choices[0].delta || parsedChunk.choices[0].message);
-                    if (delta && delta.content) {
-                      combinedText += delta.content;
-                    }
-                  } catch(e2) {}
-                }
-              }
-            }
-            if (combinedText) {
-              data = { choices: [{ message: { content: combinedText } }] };
-            }
-          }
+        var parsedAi = parseAiResponseText(rawText);
+        if (!parsedAi.data && !parsedAi.rawContent) {
+          throw new Error('Không thể đọc dữ liệu phản hồi từ 9Router');
         }
-        if (!data) throw new Error('Không thể đọc dữ liệu phản hồi từ 9Router');
-        return data;
+        return parsedAi.data || { choices: [{ message: { content: parsedAi.rawContent } }] };
       });
     }).then(function(data) {
       var text = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
@@ -1131,7 +1187,10 @@
         orders: compactList
       });
 
-      var headers = { 'Content-Type': 'application/json' };
+      var headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream, */*'
+      };
       if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
 
       // Timeout thích ứng theo số lượng đơn (tối thiểu 30s, tối đa 60s)
@@ -1157,6 +1216,7 @@
             { role: 'user', content: userContent }
           ],
           temperature: 0.1,
+          stream: false,
           response_format: { type: 'json_object' }
         }),
         signal: controller ? controller.signal : undefined
@@ -1167,27 +1227,67 @@
             throw new Error('9Router HTTP ' + res.status + ': ' + (errText.slice(0, 150) || 'Lỗi xử lý'));
           });
         }
-        return res.json();
-      }).then(function(data) {
-        var rawContent = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+        return res.text();
+      }).then(function(rawText) {
+        var parsedAi = parseAiResponseText(rawText);
+        var rawContent = parsedAi.rawContent || '';
+        if (!rawContent) {
+          throw new Error('AI không trả về nội dung lộ trình: ' + (rawText ? rawText.slice(0, 80) : 'Rỗng'));
+        }
+
+        // Loại bỏ codeblock markdown ```json ... ``` nếu có
+        var cleanContent = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
         var parsed = null;
         try {
-          parsed = JSON.parse(rawContent);
+          parsed = JSON.parse(cleanContent);
         } catch(pe) {
-          var m = rawContent.match(/\{[\s\S]*\}/);
+          var m = cleanContent.match(/\{[\s\S]*\}/);
           if (m) {
             try { parsed = JSON.parse(m[0]); } catch(pe2) {}
+          }
+          if (!parsed) {
+            var repaired = cleanContent;
+            if (repaired.lastIndexOf(']') === -1 || repaired.lastIndexOf(']') < repaired.lastIndexOf('[')) {
+              repaired += ']';
+            }
+            if (repaired.lastIndexOf('}') === -1 || repaired.lastIndexOf('}') < repaired.lastIndexOf('{')) {
+              repaired += '}';
+            }
+            try { parsed = JSON.parse(repaired); } catch(pe3) {}
           }
         }
 
         if (!parsed || !Array.isArray(parsed.orderedIndices)) {
-          throw new Error('Không thể phân tích dữ liệu JSON lộ trình từ AI');
+          // Thử trích xuất orderedIndices bằng regex nếu JSON format bị lỗi nhẹ
+          var arrMatch = cleanContent.match(/"orderedIndices"\s*:\s*\[([0-9,\s]*)\]/);
+          if (arrMatch && arrMatch[1]) {
+            var nums = arrMatch[1].split(',').map(function(n) { return parseInt(n.trim(), 10); }).filter(function(n) { return !isNaN(n); });
+            if (nums.length > 0) {
+              parsed = {
+                summary: 'Đã tối ưu thứ tự lộ trình giao hàng theo 9Router AI',
+                orderedIndices: nums
+              };
+            }
+          }
+        }
+
+        if (!parsed || !Array.isArray(parsed.orderedIndices)) {
+          throw new Error('Không thể phân tích dữ liệu JSON lộ trình từ AI: ' + (rawContent.length > 80 ? (rawContent.slice(0, 80) + '...') : rawContent));
         }
 
         var validIndices = [];
         var seen = {};
         parsed.orderedIndices.forEach(function(idx) {
-          var numIdx = parseInt(idx, 10);
+          var numIdx = NaN;
+          if (typeof idx === 'number') {
+            numIdx = idx;
+          } else if (typeof idx === 'string') {
+            numIdx = parseInt(idx, 10);
+          } else if (idx && typeof idx === 'object') {
+            var raw = (idx.i !== undefined) ? idx.i : ((idx.index !== undefined) ? idx.index : idx.orderIndex);
+            numIdx = parseInt(raw, 10);
+          }
           if (!isNaN(numIdx) && numIdx >= 0 && numIdx < orders.length && !seen[numIdx]) {
             validIndices.push(numIdx);
             seen[numIdx] = true;
