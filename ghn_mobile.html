@@ -5336,6 +5336,40 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           </div>
         </div>
 
+        <!-- Tùy chọn Luật Giao Thông & Đường 1 Chiều -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: #1e293b;">
+              <input type="checkbox" id="chkStrictOneWay" checked style="accent-color: #6366f1; width: 16px; height: 16px;">
+              <span>🚦 Tuân thủ đường 1 chiều & Tránh đi ngược chiều</span>
+            </label>
+            <button type="button" id="btnToggleOneWayList" style="background: none; border: none; color: #4338ca; font-size: 11px; font-weight: 700; cursor: pointer; padding: 2px 4px;">
+              ⚙️ Tuyến (<span id="aiOneWayCountBadge">18</span>) ▾
+            </button>
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 3px; line-height: 1.35;">
+            Tự động nhận diện các tuyến đường 1 chiều và sắp xếp số nhà theo đúng chiều xe chạy, tuyệt đối không gợi ý đi giật lùi ngược chiều.
+          </div>
+
+          <!-- Khung danh sách & thêm đường 1 chiều (ẩn/hiện) -->
+          <div id="aiOneWaySettingsPanel" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+            <div style="font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 4px;">Đường 1 chiều đang áp dụng:</div>
+            <div id="aiOneWayListDisplay" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 11px; margin-bottom: 8px;"></div>
+
+            <!-- Thêm đường 1 chiều mới nhanh -->
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              <input type="text" id="inputNewOneWayStreet" placeholder="Tên đường..." style="flex: 1.5; min-width: 110px; padding: 4px 8px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 6px;">
+              <select id="selectNewOneWayDir" style="flex: 1; min-width: 95px; padding: 4px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
+                <option value="asc">Số nhỏ ➜ lớn</option>
+                <option value="desc">Số lớn ➜ nhỏ</option>
+              </select>
+              <button type="button" id="btnAddCustomOneWay" style="padding: 4px 10px; background: #6366f1; color: #fff; border: none; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                + Thêm
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Nút hành động chạy AI -->
         <button type="button" id="btnRunAiOptimize" class="ai-btn-run">
           <span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>
@@ -12643,9 +12677,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (cfgApiKey) cfgApiKey.value = aiOpt.getApiKey();
         }
 
-        // Ẩn panel kết quả cũ nếu có
-        var resPanel = document.getElementById('aiOptimizeResultPanel');
-        if (resPanel) resPanel.style.display = 'none';
+        // Cập nhật danh sách đường 1 chiều
+        if (typeof renderAiOneWayList === 'function') renderAiOneWayList();
 
         modal.style.display = 'flex';
       }
@@ -12904,6 +12937,94 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           }
         }
 
+        // Quản lý hiển thị danh sách đường 1 chiều trong popup
+        function renderAiOneWayList() {
+          var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+          if (!aiOpt || !aiOpt.getAllOneWayStreets) return;
+          var list = aiOpt.getAllOneWayStreets();
+          var badgeEl = document.getElementById('aiOneWayCountBadge');
+          if (badgeEl) badgeEl.textContent = list.length;
+
+          var displayEl = document.getElementById('aiOneWayListDisplay');
+          if (!displayEl) return;
+          displayEl.innerHTML = '';
+
+          list.forEach(function(item) {
+            var row = document.createElement('div');
+            row.style.cssText = 'background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px; display:flex; justify-content:space-between; align-items:center;';
+            var dirText = item.direction === 'desc' ? 'Số lớn ➜ nhỏ' : 'Số nhỏ ➜ lớn';
+            var dirColor = item.direction === 'desc' ? '#c2410c' : '#047857';
+            var dirBg = item.direction === 'desc' ? '#ffedd5' : '#d1fae5';
+
+            var deleteBtnHtml = !item.isBuiltin
+              ? '<button type="button" class="btn-del-oneway" data-street="' + escapeHtml(item.street) + '" style="background:none; border:none; color:#ef4444; font-size:13px; cursor:pointer; padding:0 4px;" title="Xóa đường này">&times;</button>'
+              : '<span style="font-size:9px; color:#94a3b8;" title="Mặc định hệ thống">cố định</span>';
+
+            row.innerHTML = '<div style="display:flex; align-items:center; gap:4px; overflow:hidden;">' +
+                              '<strong style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">' + escapeHtml(item.street) + '</strong> ' +
+                              '<span style="font-size:9.5px; font-weight:700; background:' + dirBg + '; color:' + dirColor + '; padding:1px 5px; border-radius:4px; white-space:nowrap;">' + dirText + '</span>' +
+                            '</div>' +
+                            deleteBtnHtml;
+            displayEl.appendChild(row);
+          });
+
+          // Sự kiện xóa đường 1 chiều tùy chỉnh
+          var delBtns = displayEl.querySelectorAll('.btn-del-oneway');
+          delBtns.forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var stName = btn.getAttribute('data-street');
+              if (stName && aiOpt.getCustomOneWayStreets && aiOpt.saveCustomOneWayStreets) {
+                var cur = aiOpt.getCustomOneWayStreets().filter(function(x) { return x.street.toLowerCase() !== stName.toLowerCase(); });
+                aiOpt.saveCustomOneWayStreets(cur);
+                renderAiOneWayList();
+                showToast('Đã xóa tuyến đường ' + stName);
+              }
+            });
+          });
+        }
+
+        // Toggle ẩn hiện bảng đường 1 chiều
+        var btnToggleOw = document.getElementById('btnToggleOneWayList');
+        var panelOw = document.getElementById('aiOneWaySettingsPanel');
+        if (btnToggleOw && panelOw) {
+          btnToggleOw.addEventListener('click', function() {
+            var isHidden = (panelOw.style.display === 'none' || !panelOw.style.display);
+            panelOw.style.display = isHidden ? 'block' : 'none';
+            btnToggleOw.textContent = isHidden ? 'Ẩn bảng ▴' : ('⚙️ Tuyến (' + (document.getElementById('aiOneWayCountBadge') ? document.getElementById('aiOneWayCountBadge').textContent : '18') + ') ▾');
+            if (isHidden) renderAiOneWayList();
+          });
+        }
+
+        // Thêm đường 1 chiều mới
+        var btnAddOw = document.getElementById('btnAddCustomOneWay');
+        if (btnAddOw) {
+          btnAddOw.addEventListener('click', function() {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            var inputSt = document.getElementById('inputNewOneWayStreet');
+            var selectDir = document.getElementById('selectNewOneWayDir');
+            var stVal = inputSt ? inputSt.value.trim() : '';
+            var dirVal = selectDir ? selectDir.value : 'asc';
+            if (!stVal) {
+              showToast('Vui lòng nhập tên đường 1 chiều!');
+              return;
+            }
+            if (aiOpt && aiOpt.getCustomOneWayStreets && aiOpt.saveCustomOneWayStreets) {
+              var list = aiOpt.getCustomOneWayStreets();
+              list = list.filter(function(x) { return x.street.toLowerCase() !== stVal.toLowerCase(); });
+              list.push({
+                street: stVal,
+                direction: dirVal,
+                note: 'Tùy chỉnh shipper (' + (dirVal === 'desc' ? 'số lớn ➜ nhỏ' : 'số nhỏ ➜ lớn') + ')'
+              });
+              aiOpt.saveCustomOneWayStreets(list);
+              if (inputSt) inputSt.value = '';
+              renderAiOneWayList();
+              showToast('✓ Đã lưu đường 1 chiều: ' + stVal);
+            }
+          });
+        }
+
         // Chạy tối ưu lộ trình
         var btnRun = document.getElementById('btnRunAiOptimize');
         if (btnRun) {
@@ -12923,6 +13044,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var scenario = radCluster && radCluster.checked ? 'auto_cluster' : 'respect_groups';
             var startOriginRad = document.querySelector('input[name="aiStartOrigin"]:checked');
             var useGps = startOriginRad && startOriginRad.value === 'gps';
+
+            var chkStrictOw = document.getElementById('chkStrictOneWay');
+            var strictOneWay = chkStrictOw ? chkStrictOw.checked : true;
 
             // Ẩn panel kết quả cũ
             var resPanel = document.getElementById('aiOptimizeResultPanel');
@@ -12948,6 +13072,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 updateAiProgressUI(18, '✓ Điểm xuất phát: Đơn đầu tiên (#1)', '📍 Điểm xuất phát: Đơn đầu tiên (#1)');
               }
 
+              if (strictOneWay) {
+                updateAiProgressUI(24, '🚦 Đang kích hoạt kiểm tra luật giao thông & các tuyến đường 1 chiều...', '✓ Tuân thủ đường 1 chiều: BẬT');
+              }
+
               updateAiProgressUI(30, '📦 Đang chuẩn bị và trích xuất dữ liệu ' + pendingOrders.length + ' đơn hàng...');
 
               // Nhịp đập tăng tiến trình mượt mà từ 40% -> 85% trong khi AI đang suy nghĩ
@@ -12955,13 +13083,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               aiProgressHeartbeat = setInterval(function() {
                 if (currentSimulatedPercent < 85) {
                   currentSimulatedPercent += Math.floor(Math.random() * 4) + 2;
-                  updateAiProgressUI(currentSimulatedPercent, '🧠 AI đang phân tích địa chỉ, cụm tòa nhà & tối ưu đường đi...');
+                  updateAiProgressUI(currentSimulatedPercent, '🧠 AI đang phân tích địa chỉ, số nhà & chiều đường...');
                 }
               }, 1200);
 
               var result = await aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
                 scenario: scenario,
                 startOrigin: origin,
+                strictOneWay: strictOneWay,
                 onProgress: function(info) {
                   if (info && info.percent) {
                     currentSimulatedPercent = Math.max(currentSimulatedPercent, info.percent);

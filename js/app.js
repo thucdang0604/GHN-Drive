@@ -2939,6 +2939,8 @@ function setupDesktopAiRouteModal() {
       const mode = modeSelect ? modeSelect.value : 'auto';
       const avoidUTurn = chkAvoidUTurn ? chkAvoidUTurn.checked : true;
       const clusterBuildings = chkClusterBuildings ? chkClusterBuildings.checked : true;
+      const chkStrictOneWay = document.getElementById('aiStrictOneWayDesktop');
+      const strictOneWay = chkStrictOneWay ? chkStrictOneWay.checked : true;
 
       btnRun.disabled = true;
       if (runBtnText) runBtnText.textContent = 'Đang phân tích & tối ưu...';
@@ -2961,6 +2963,7 @@ function setupDesktopAiRouteModal() {
           scenario: mode,
           avoidUTurn: avoidUTurn,
           clusterBuildings: clusterBuildings,
+          strictOneWay: strictOneWay,
           onProgress: (info) => {
             if (runStatus && info) {
               const txt = info.detail || info.text || 'Đang xử lý...';
