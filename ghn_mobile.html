@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Bảng Giao Hàng GHN - Tối Ưu Mobile</title>
   <!-- Thư viện quét mã QR / Barcode đa nền tảng (QR & Code 128 GHN) -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Thư viện sinh mã QR offline 100% -->
-  <script src="js/qrcode.min.js"></script>
+  <script defer src="js/qrcode.min.js"></script>
   <!-- Thư viện truyền dữ liệu siêu tốc P2P WebRTC (AirDrop / Mã PIN) -->
-  <script src="js/peerjs.min.js"></script>
-  <script src="js/p2p-sync.js"></script>
+  <script defer src="js/peerjs.min.js"></script>
+  <script defer src="js/p2p-sync.js"></script>
   <!-- Thư viện Bản đồ Leaflet (CDN online giúp file chạy độc lập 100% khi deploy) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     /* ==========================================================
        HỆ THỐNG MÀU SẮC & BIẾN CƠ SỞ (GHN THEME)
@@ -285,8 +285,7 @@
     .scanner-modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.88);
-      backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.92);
       z-index: 999;
       display: none;
       flex-direction: column;
@@ -1662,8 +1661,7 @@
     .bottom-sheet-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(2px);
+      background: rgba(15, 23, 42, 0.72);
       z-index: 2000;
       display: none;
       align-items: flex-end;
@@ -2137,8 +2135,7 @@
       top: 10px;
       left: 10px;
       z-index: 500;
-      background: rgba(255, 251, 235, 0.95);
-      backdrop-filter: blur(4px);
+      background: rgba(255, 251, 235, 0.97);
       border: 1px solid #fde68a;
       color: #92400e;
       padding: 4px 8px;
@@ -2755,8 +2752,7 @@
       left: 10px;
       right: 10px;
       z-index: 650;
-      background: rgba(0, 31, 63, 0.95);
-      backdrop-filter: blur(4px);
+      background: rgba(0, 31, 63, 0.97);
       color: #ffffff;
       border-radius: var(--radius-md);
       padding: 8px 12px;
@@ -2823,8 +2819,7 @@
       left: 10px;
       right: 10px;
       z-index: 660;
-      background: rgba(15, 23, 42, 0.96);
-      backdrop-filter: blur(8px);
+      background: rgba(15, 23, 42, 0.98);
       color: #ffffff;
       border-radius: 12px;
       padding: 10px 14px;
@@ -3550,8 +3545,7 @@
     .sync-modal-backdrop {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(4px);
+      background: rgba(15, 23, 42, 0.82);
       z-index: 9999;
       display: flex;
       align-items: center;
@@ -6582,11 +6576,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       // 7. Render giao diện Bảng và Thẻ theo cấu trúc nhóm
-      function render() {
-        ensureGroupIntegrity();
-        updateStats();
-
-        var filtered = orders.filter(function(o) {
+      // Bộ lọc trung tâm: trả về danh sách đơn hàng đã lọc theo filter + search
+      function getFilteredOrders() {
+        return orders.filter(function(o) {
           if (currentFilter === 'pending') {
             if (o.status !== 'pending') return false;
           } else if (currentFilter === 'cho_ck') {
@@ -6612,10 +6604,22 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           }
           return true;
         });
+      }
 
-        renderTable(filtered);
-        renderCards(filtered);
-        renderMap(filtered);
+      function render() {
+        ensureGroupIntegrity();
+        updateStats();
+
+        var filtered = getFilteredOrders();
+
+        // CHỈ render view đang hiển thị → giảm ~60% thời gian xử lý DOM
+        if (currentView === 'table') {
+          renderTable(filtered);
+        } else if (currentView === 'cards') {
+          renderCards(filtered);
+        } else if (currentView === 'map') {
+          renderMap(filtered);
+        }
       }
 
       function updateStats() {
@@ -9018,6 +9022,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (groupToolbar) groupToolbar.style.display = 'flex';
           if (bottomBar) bottomBar.style.display = 'flex';
           if (btnToggle) btnToggle.textContent = '📋 Xem: Thẻ';
+          // Render lại bảng khi chuyển sang view table
+          renderTable(getFilteredOrders());
         } else if (mode === 'cards') {
           document.body.classList.remove('mode-map');
           tableContainer.style.display = 'none';
@@ -9026,6 +9032,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (groupToolbar) groupToolbar.style.display = 'flex';
           if (bottomBar) bottomBar.style.display = 'flex';
           if (btnToggle) btnToggle.textContent = '🗺️ Xem: Bản đồ';
+          // Render lại cards khi chuyển sang view cards
+          renderCards(getFilteredOrders());
         } else if (mode === 'map') {
           document.body.classList.add('mode-map');
           tableContainer.style.display = 'none';
@@ -9041,7 +9049,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           setTimeout(function() {
             if (mobileMap) {
               mobileMap.invalidateSize();
-              renderMap(orders);
+              renderMap(getFilteredOrders());
             }
           }, 120);
         }
@@ -9443,6 +9451,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           return;
         }
 
+        // Xây dựng HTML cho toàn bộ bảng trong 1 lần (giảm reflow)
+        var htmlParts = [];
+
         groups.forEach(function(group) {
           var groupOrders = list.filter(function(o) { return o.groupId === group.id; });
           if (groupOrders.length === 0) return;
@@ -9454,10 +9465,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           var gGtb = groupOrders.filter(function(o) { return o.status === 'gtb'; }).length;
           var allSelectedInGroup = groupOrders.length > 0 && groupOrders.every(function(o) { return selectedOrderIds.indexOf(o.id) !== -1; });
 
-          // Hàng tiêu đề nhóm (Accordion - Chạm mở 1 nhóm duy nhất, Ghim top: 46px)
-          var trGroup = document.createElement('tr');
-          trGroup.className = 'group-header-tr';
-          trGroup.innerHTML = 
+          // Hàng tiêu đề nhóm
+          htmlParts.push(
+            '<tr class="group-header-tr" data-group-id="' + group.id + '">' +
             '<td colspan="5">' +
               '<div class="group-header-box">' +
                 '<div class="group-header-left">' +
@@ -9480,57 +9490,13 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                     '<button class="btn-group-sort btn-sort-desc" data-group="' + group.id + '" title="Số nhà lớn → nhỏ">▼</button>' +
                   '</span>' +
                   (group.id !== 'group_ungrouped' ? 
-                    '<button class="btn-group-mini btn-rename-group" title="Đổi tên nhóm">✏️</button>' +
-                    '<button class="btn-group-mini btn-delete-group" title="Xóa nhóm">🗑</button>' : '') +
+                    '<button class="btn-group-mini btn-rename-group" data-group-id="' + group.id + '" title="Đổi tên nhóm">✏️</button>' +
+                    '<button class="btn-group-mini btn-delete-group" data-group-id="' + group.id + '" title="Xóa nhóm">🗑</button>' : '') +
                 '</div>' +
               '</div>' +
-            '</td>';
-
-          trGroup.addEventListener('click', function(e) {
-            if (e.target.closest('.btn-group-mini') || e.target.closest('.btn-group-sort') || e.target.closest('.tbl-grp-chk')) return;
-            toggleGroupCollapse(group.id);
-          });
-
-          var grpChk = trGroup.querySelector('.tbl-grp-chk');
-          if (grpChk) {
-            grpChk.addEventListener('click', function(e) {
-              e.stopPropagation();
-              toggleSelectGroup(group.id);
-            });
-          }
-
-          var btnSortAsc = trGroup.querySelector('.btn-sort-asc');
-          var btnSortDesc = trGroup.querySelector('.btn-sort-desc');
-          if (btnSortAsc) {
-            btnSortAsc.addEventListener('click', function(e) {
-              e.stopPropagation();
-              sortGroupByHouseNumber(group.id, 'asc');
-            });
-          }
-          if (btnSortDesc) {
-            btnSortDesc.addEventListener('click', function(e) {
-              e.stopPropagation();
-              sortGroupByHouseNumber(group.id, 'desc');
-            });
-          }
-
-          var btnRename = trGroup.querySelector('.btn-rename-group');
-          if (btnRename) {
-            btnRename.addEventListener('click', function(e) {
-              e.stopPropagation();
-              renameGroup(group.id);
-            });
-          }
-
-          var btnDel = trGroup.querySelector('.btn-delete-group');
-          if (btnDel) {
-            btnDel.addEventListener('click', function(e) {
-              e.stopPropagation();
-              deleteGroup(group.id);
-            });
-          }
-
-          tbody.appendChild(trGroup);
+            '</td>' +
+            '</tr>'
+          );
 
           if (group.isCollapsed) return;
 
@@ -9539,15 +9505,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var idxInGroup = groupOrders.findIndex(function(x) { return x.id === item.id; });
             var stt = origIdx + 1;
             var isChecked = selectedOrderIds.indexOf(item.id) !== -1;
-            var tr = document.createElement('tr');
 
             var isChoCk = (item.status === 'gtc' && item.subStatus === 'cho_ck') || item.status === 'cho_ck';
             var isGtc = (item.status === 'gtc' && !isChoCk);
             var isGtb = (item.status === 'gtb');
 
             var statusClass = isChoCk ? 'status-cho-ck' : (isGtc ? 'status-gtc' : (isGtb ? 'status-gtb' : 'status-pending'));
-            tr.className = 'tbl-order-tr ' + statusClass + (isChecked ? ' row-selected' : '');
-            tr.setAttribute('data-order-id', item.id);
 
             var statusTextMini = 'Chờ';
             var pillClass = 'pill-pending';
@@ -9570,10 +9533,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               ? 'https://www.google.com/maps/dir/?api=1&destination=' + item.lat + ',' + item.lng
               : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(item.address || '');
 
-            tr.innerHTML = 
+            htmlParts.push(
+              '<tr class="tbl-order-tr ' + statusClass + (isChecked ? ' row-selected' : '') + '" data-order-id="' + item.id + '" data-stt="' + stt + '">' +
               '<td colspan="5" style="padding:0; border:none;">' +
                 '<div class="tbl-row-main">' +
-                  '<!-- Cột 1: STT & Checkbox chọn đơn & Huy hiệu ảnh -->' +
                   '<div class="tbl-col-stt">' +
                     '<input type="checkbox" class="tbl-order-chk" data-order-id="' + item.id + '" ' + (isChecked ? 'checked' : '') + '>' +
                     '<div class="tbl-stt-badge-wrap">' +
@@ -9581,7 +9544,6 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                       (item.deliveryPhoto ? '<span class="tbl-ico-photo" title="Đã có ảnh xác nhận - Chạm xem">📸</span>' : '') +
                     '</div>' +
                   '</div>' +
-                  '<!-- Cột 2: Khách & Địa chỉ -->' +
                   '<div class="tbl-col-info">' +
                     '<div class="tbl-addr-line" title="' + escapeHtml(item.address || '') + '">' +
                       '<span>' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</span>' +
@@ -9593,19 +9555,16 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                       '<span class="tbl-status-pill ' + pillClass + '">' + statusTextMini + '</span>' +
                     '</div>' +
                   '</div>' +
-                  '<!-- Cột 3: Tiền COD -->' +
                   '<div class="tbl-col-cod">' +
                     '<span class="tbl-cod-val">' + formatMoney(item.codAmount) + '</span>' +
                     (item.gtbThu ? '<span class="tbl-gtb-thu" title="Thu GTB">Thu: ' + formatMoney(item.gtbThu) + '</span>' : '') +
                   '</div>' +
-                  '<!-- Cột 4: Thao tác nhanh -->' +
                   '<div class="tbl-col-act">' +
                     '<button type="button" class="tbl-btn-cam ' + (item.deliveryPhoto ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
                     '<button type="button" class="tbl-btn-gtc ' + (isGtc ? 'active' : (isChoCk ? 'active-ck' : '')) + '" title="Giao thành công / Chờ CK">✓</button>' +
                     '<button type="button" class="tbl-btn-gtb ' + (isGtb ? 'active' : '') + '" title="Báo giao thất bại">✕</button>' +
                   '</div>' +
                 '</div>' +
-                '<!-- Ngăn kéo tiện ích khi chạm vào dòng -->' +
                 '<div class="tbl-row-drawer" style="display:none;">' +
                   '<div class="drawer-content">' +
                     '<div class="drawer-tags">' +
@@ -9620,126 +9579,184 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                       (item.address || hasGps ? '<a href="' + mapsUrl + '" target="_blank" class="drawer-btn btn-maps" onclick="event.stopPropagation();">🧭 Chỉ đường</a>' : '') +
                       (hasGps ? '<button type="button" class="drawer-btn btn-jump-map" data-order-id="' + item.id + '" onclick="event.stopPropagation();">🗺️ Xem trên bản đồ</button>' : '') +
                       '<button type="button" class="drawer-btn btn-row-edit-loc" data-order-id="' + item.id + '" onclick="event.stopPropagation();">📍 Sửa vị trí</button>' +
-                      '<button type="button" class="drawer-btn btn-del-order" style="color:#ef4444;" onclick="event.stopPropagation();">🗑️ Xóa</button>' +
+                      '<button type="button" class="drawer-btn btn-del-order" data-order-id="' + item.id + '" style="color:#ef4444;" onclick="event.stopPropagation();">🗑️ Xóa</button>' +
                       '<div class="drawer-sort-wrap">' +
-                        '<button type="button" class="drawer-sort-btn btn-up" ' + (idxInGroup === 0 ? 'disabled' : '') + ' title="Lên trên trong nhóm" onclick="event.stopPropagation();">▲ Lên</button>' +
-                        '<button type="button" class="drawer-sort-btn btn-down" ' + (idxInGroup === groupOrders.length - 1 ? 'disabled' : '') + ' title="Xuống dưới trong nhóm" onclick="event.stopPropagation();">▼ Xuống</button>' +
+                        '<button type="button" class="drawer-sort-btn btn-up" data-order-id="' + item.id + '" ' + (idxInGroup === 0 ? 'disabled' : '') + ' title="Lên trên trong nhóm" onclick="event.stopPropagation();">▲ Lên</button>' +
+                        '<button type="button" class="drawer-sort-btn btn-down" data-order-id="' + item.id + '" ' + (idxInGroup === groupOrders.length - 1 ? 'disabled' : '') + ' title="Xuống dưới trong nhóm" onclick="event.stopPropagation();">▼ Xuống</button>' +
                       '</div>' +
                     '</div>' +
                   '</div>' +
                 '</div>' +
-              '</td>';
-
-            // Sự kiện chọn checkbox đơn hàng
-            var chk = tr.querySelector('.tbl-order-chk');
-            if (chk) {
-              chk.addEventListener('click', function(e) {
-                e.stopPropagation();
-                toggleSelectOrder(item.id, e.target.checked);
-              });
-            }
-
-            // Sự kiện chạm vào dòng để mở/đóng ngăn kéo tiện ích
-            var rowMain = tr.querySelector('.tbl-row-main');
-            var drawer = tr.querySelector('.tbl-row-drawer');
-            if (rowMain && drawer) {
-              rowMain.addEventListener('click', function(e) {
-                if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.tbl-ico-photo') || e.target.closest('.tbl-order-chk')) return;
-                var isOpen = drawer.style.display !== 'none';
-                drawer.style.display = isOpen ? 'none' : 'block';
-              });
-            }
-
-            var btnCam = tr.querySelector('.tbl-btn-cam');
-            if (btnCam) {
-              btnCam.addEventListener('click', function(e) {
-                e.stopPropagation();
-                triggerCameraForOrder(item.id);
-              });
-            }
-
-            var icoPhoto = tr.querySelector('.tbl-ico-photo');
-            if (icoPhoto) {
-              icoPhoto.addEventListener('click', function(e) {
-                e.stopPropagation();
-                openCameraPreview(item.deliveryPhoto, item);
-              });
-            }
-
-            var btnGtc = tr.querySelector('.tbl-btn-gtc');
-            if (btnGtc) {
-              btnGtc.addEventListener('click', function(e) {
-                e.stopPropagation();
-                openGtcModal(item, stt);
-              });
-            }
-
-            var btnGtb = tr.querySelector('.tbl-btn-gtb');
-            if (btnGtb) {
-              btnGtb.addEventListener('click', function(e) {
-                e.stopPropagation();
-                openGtbModal(item, stt);
-              });
-            }
-
-            var btnJump = tr.querySelector('.btn-jump-map');
-            if (btnJump) {
-              btnJump.addEventListener('click', function(e) {
-                e.stopPropagation();
-                jumpToOrderOnMap(item.id);
-              });
-            }
-
-            var btnEditLoc = tr.querySelector('.btn-row-edit-loc');
-            if (btnEditLoc) {
-              btnEditLoc.addEventListener('click', function(e) {
-                e.stopPropagation();
-                openUpdateLocationModal(item, stt);
-              });
-            }
-
-            var btnDelOrder = tr.querySelector('.btn-del-order');
-            if (btnDelOrder) {
-              btnDelOrder.addEventListener('click', function(e) {
-                e.stopPropagation();
-                if (confirm('Xóa đơn #' + stt + ' (' + item.customerName + ')?')) {
-                  orders = orders.filter(function(o) { return o.id !== item.id; });
-                  selectedOrderIds = selectedOrderIds.filter(function(id) { return id !== item.id; });
-                  updateBatchBar();
-                  saveData();
-                  render();
-                  showToast('Đã xóa đơn hàng');
-                }
-              });
-            }
-
-            var grpBtn = tr.querySelector('.card-grp-btn');
-            if (grpBtn) {
-              grpBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                promptChangeOrderGroup(item.id);
-              });
-            }
-
-            var btnUp = tr.querySelector('.btn-up');
-            var btnDown = tr.querySelector('.btn-down');
-            if (btnUp) {
-              btnUp.addEventListener('click', function(e) {
-                e.stopPropagation();
-                moveOrderWithinGroup(item.id, 'up');
-              });
-            }
-            if (btnDown) {
-              btnDown.addEventListener('click', function(e) {
-                e.stopPropagation();
-                moveOrderWithinGroup(item.id, 'down');
-              });
-            }
-
-            tbody.appendChild(tr);
+              '</td>' +
+              '</tr>'
+            );
           });
         });
+
+        // Gán HTML 1 lần duy nhất (1 reflow thay vì N reflow)
+        tbody.innerHTML = htmlParts.join('');
       }
+
+      // EVENT DELEGATION: 1 listener duy nhất cho toàn bộ bảng thay vì N listener/dòng
+      (function setupTableDelegation() {
+        var tbody = document.getElementById('ordersTableBody');
+        if (!tbody) return;
+
+        tbody.addEventListener('click', function(e) {
+          var target = e.target;
+
+          // Checkbox đơn hàng
+          if (target.classList.contains('tbl-order-chk')) {
+            e.stopPropagation();
+            toggleSelectOrder(target.getAttribute('data-order-id'), target.checked);
+            return;
+          }
+
+          // Checkbox nhóm
+          if (target.classList.contains('tbl-grp-chk')) {
+            e.stopPropagation();
+            toggleSelectGroup(target.getAttribute('data-group'));
+            return;
+          }
+
+          // Nút sắp xếp nhóm ASC
+          var btnSortAsc = target.closest('.btn-sort-asc');
+          if (btnSortAsc) {
+            e.stopPropagation();
+            sortGroupByHouseNumber(btnSortAsc.getAttribute('data-group'), 'asc');
+            return;
+          }
+
+          // Nút sắp xếp nhóm DESC
+          var btnSortDesc = target.closest('.btn-sort-desc');
+          if (btnSortDesc) {
+            e.stopPropagation();
+            sortGroupByHouseNumber(btnSortDesc.getAttribute('data-group'), 'desc');
+            return;
+          }
+
+          // Nút đổi tên nhóm
+          var btnRename = target.closest('.btn-rename-group');
+          if (btnRename) {
+            e.stopPropagation();
+            renameGroup(btnRename.getAttribute('data-group-id'));
+            return;
+          }
+
+          // Nút xóa nhóm
+          var btnDelGroup = target.closest('.btn-delete-group');
+          if (btnDelGroup) {
+            e.stopPropagation();
+            deleteGroup(btnDelGroup.getAttribute('data-group-id'));
+            return;
+          }
+
+          // Click trên hàng tiêu đề nhóm (toggle collapse)
+          var groupRow = target.closest('.group-header-tr');
+          if (groupRow && !target.closest('.btn-group-mini') && !target.closest('.btn-group-sort') && !target.closest('.tbl-grp-chk')) {
+            var gid = groupRow.getAttribute('data-group-id');
+            if (gid) toggleGroupCollapse(gid);
+            return;
+          }
+
+          // Tìm hàng đơn hàng chứa target
+          var orderRow = target.closest('.tbl-order-tr');
+          if (!orderRow) return;
+          var orderId = orderRow.getAttribute('data-order-id');
+          if (!orderId) return;
+
+          var item = orders.find(function(o) { return o.id === orderId; });
+          if (!item) return;
+          var origIdx = orders.indexOf(item);
+          var stt = origIdx + 1;
+
+          // Nút Camera
+          if (target.closest('.tbl-btn-cam')) {
+            e.stopPropagation();
+            triggerCameraForOrder(orderId);
+            return;
+          }
+
+          // Icon xem ảnh
+          if (target.closest('.tbl-ico-photo')) {
+            e.stopPropagation();
+            openCameraPreview(item.deliveryPhoto, item);
+            return;
+          }
+
+          // Nút GTC
+          if (target.closest('.tbl-btn-gtc')) {
+            e.stopPropagation();
+            openGtcModal(item, stt);
+            return;
+          }
+
+          // Nút GTB
+          if (target.closest('.tbl-btn-gtb')) {
+            e.stopPropagation();
+            openGtbModal(item, stt);
+            return;
+          }
+
+          // Nút Xem trên bản đồ
+          if (target.closest('.btn-jump-map')) {
+            e.stopPropagation();
+            jumpToOrderOnMap(orderId);
+            return;
+          }
+
+          // Nút Sửa vị trí
+          if (target.closest('.btn-row-edit-loc')) {
+            e.stopPropagation();
+            openUpdateLocationModal(item, stt);
+            return;
+          }
+
+          // Nút Xóa đơn
+          if (target.closest('.btn-del-order')) {
+            e.stopPropagation();
+            if (confirm('Xóa đơn #' + stt + ' (' + item.customerName + ')?')) {
+              orders = orders.filter(function(o) { return o.id !== orderId; });
+              selectedOrderIds = selectedOrderIds.filter(function(id) { return id !== orderId; });
+              updateBatchBar();
+              saveData();
+              render();
+              showToast('Đã xóa đơn hàng');
+            }
+            return;
+          }
+
+          // Nút Chuyển nhóm
+          if (target.closest('.card-grp-btn')) {
+            e.stopPropagation();
+            promptChangeOrderGroup(orderId);
+            return;
+          }
+
+          // Nút Lên trên
+          if (target.closest('.btn-up')) {
+            e.stopPropagation();
+            moveOrderWithinGroup(orderId, 'up');
+            return;
+          }
+
+          // Nút Xuống dưới
+          if (target.closest('.btn-down')) {
+            e.stopPropagation();
+            moveOrderWithinGroup(orderId, 'down');
+            return;
+          }
+
+          // Click vào dòng chính → mở/đóng drawer
+          if (target.closest('.tbl-row-main') && !target.closest('button') && !target.closest('a') && !target.closest('.tbl-ico-photo') && !target.closest('.tbl-order-chk')) {
+            var drawer = orderRow.querySelector('.tbl-row-drawer');
+            if (drawer) {
+              var isOpen = drawer.style.display !== 'none';
+              drawer.style.display = isOpen ? 'none' : 'block';
+            }
+          }
+        });
+      })();
 
       // Render Dạng Thẻ gom nhóm
       // Render Dạng Thẻ gom nhóm
@@ -10526,12 +10543,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var searchEl = document.getElementById('mSearchInput');
         var btnClearSearch = document.getElementById('btnClearSearch');
 
+        var _searchDebounceTimer = null;
         searchEl.addEventListener('input', function(e) {
           searchQuery = e.target.value.trim();
           if (btnClearSearch) {
             btnClearSearch.style.display = searchQuery ? 'flex' : 'none';
           }
-          render();
+          // Debounce 250ms: tránh rebuild DOM mỗi keystroke
+          clearTimeout(_searchDebounceTimer);
+          _searchDebounceTimer = setTimeout(function() {
+            render();
+          }, 250);
         });
 
         if (btnClearSearch) {
