@@ -5336,27 +5336,36 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           </div>
         </div>
 
-        <!-- Tùy chọn Luật Giao Thông & Đường 1 Chiều -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; font-size: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: #1e293b;">
+        <!-- Tùy chọn Luật Giao Thông & Đường 1 Chiều Lọc Từ Bản Đồ -->
+        <div style="background: #f8fafc; border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 10px 12px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: #1e293b; flex: 1;">
               <input type="checkbox" id="chkStrictOneWay" checked style="accent-color: #6366f1; width: 16px; height: 16px;">
-              <span>🚦 Tuân thủ đường 1 chiều & Tránh đi ngược chiều</span>
+              <span>🚦 Tuân thủ đường 1 chiều (Bản đồ OSM)</span>
             </label>
-            <button type="button" id="btnToggleOneWayList" style="background: none; border: none; color: #4338ca; font-size: 11px; font-weight: 700; cursor: pointer; padding: 2px 4px;">
-              ⚙️ Tuyến (<span id="aiOneWayCountBadge">18</span>) ▾
-            </button>
+            <div style="display: flex; gap: 4px; align-items: center;">
+              <button type="button" id="btnScanMapOneWay" style="background: #e0e7ff; border: 1px solid #c7d2fe; color: #4338ca; font-size: 10.5px; font-weight: 700; cursor: pointer; padding: 3px 8px; border-radius: 6px; display: flex; align-items: center; gap: 3px;" title="Quét lại các đường 1 chiều từ bản đồ khu vực">
+                <span>🔄</span> Quét bản đồ
+              </button>
+              <button type="button" id="btnToggleOneWayList" style="background: none; border: none; color: #4338ca; font-size: 11px; font-weight: 700; cursor: pointer; padding: 2px 4px;">
+                Tuyến (<span id="aiOneWayCountBadge">0</span>) ▾
+              </button>
+            </div>
           </div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 3px; line-height: 1.35;">
-            Tự động nhận diện các tuyến đường 1 chiều và sắp xếp số nhà theo đúng chiều xe chạy, tuyệt đối không gợi ý đi giật lùi ngược chiều.
+          <div id="aiOneWayStatusNote" style="font-size: 11px; color: #475569; margin-top: 4px; line-height: 1.4;">
+            🗺️ Dữ liệu được <strong>lọc trực tiếp từ OpenStreetMap</strong> cho khu vực giao hàng của bạn (chiều đường & số nhà xe chạy, tuyệt đối không gợi ý đi ngược chiều).
           </div>
 
           <!-- Khung danh sách & thêm đường 1 chiều (ẩn/hiện) -->
           <div id="aiOneWaySettingsPanel" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
-            <div style="font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 4px;">Đường 1 chiều đang áp dụng:</div>
-            <div id="aiOneWayListDisplay" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 11px; margin-bottom: 8px;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <div style="font-size: 11px; font-weight: 700; color: #334155;">Đường 1 chiều phát hiện từ bản đồ:</div>
+              <span id="aiMapSourceTag" style="font-size: 9.5px; background: #e0e7ff; color: #4338ca; padding: 1px 6px; border-radius: 4px; font-weight: 700;">OpenStreetMap Live</span>
+            </div>
+            <div id="aiOneWayListDisplay" style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 11px; margin-bottom: 8px;"></div>
 
-            <!-- Thêm đường 1 chiều mới nhanh -->
+            <!-- Thêm đường 1 chiều mới nhanh (dành cho shipper bổ sung nếu đường mới cấm) -->
+            <div style="font-size: 10.5px; color: #64748b; margin-bottom: 3px;">+ Thêm tuyến đường 1 chiều mới (nếu bản đồ chưa kịp cập nhật):</div>
             <div style="display: flex; gap: 4px; flex-wrap: wrap;">
               <input type="text" id="inputNewOneWayStreet" placeholder="Tên đường..." style="flex: 1.5; min-width: 110px; padding: 4px 8px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 6px;">
               <select id="selectNewOneWayDir" style="flex: 1; min-width: 95px; padding: 4px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
@@ -12949,20 +12958,35 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (!displayEl) return;
           displayEl.innerHTML = '';
 
+          if (list.length === 0) {
+            displayEl.innerHTML = '<div style="color:#94a3b8; font-style:italic; padding:6px; text-align:center;">Chưa có dữ liệu. Bấm "Quét bản đồ" để lọc tự động.</div>';
+            return;
+          }
+
           list.forEach(function(item) {
             var row = document.createElement('div');
-            row.style.cssText = 'background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px; display:flex; justify-content:space-between; align-items:center;';
+            row.style.cssText = 'background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:5px 8px; display:flex; justify-content:space-between; align-items:center; gap:6px;';
             var dirText = item.direction === 'desc' ? 'Số lớn ➜ nhỏ' : 'Số nhỏ ➜ lớn';
             var dirColor = item.direction === 'desc' ? '#c2410c' : '#047857';
             var dirBg = item.direction === 'desc' ? '#ffedd5' : '#d1fae5';
 
-            var deleteBtnHtml = !item.isBuiltin
-              ? '<button type="button" class="btn-del-oneway" data-street="' + escapeHtml(item.street) + '" style="background:none; border:none; color:#ef4444; font-size:13px; cursor:pointer; padding:0 4px;" title="Xóa đường này">&times;</button>'
-              : '<span style="font-size:9px; color:#94a3b8;" title="Mặc định hệ thống">cố định</span>';
+            var srcTag = '';
+            if (item.isMapDerived) {
+              srcTag = '<span style="font-size:9px; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:1px 5px; border-radius:4px; font-weight:700;">🗺️ Bản đồ OSM</span>';
+            } else if (item.isCustom) {
+              srcTag = '<span style="font-size:9px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:1px 5px; border-radius:4px; font-weight:700;">👤 Shipper</span>';
+            } else {
+              srcTag = '<span style="font-size:9px; background:#f1f5f9; color:#64748b; padding:1px 5px; border-radius:4px;">Dự phòng</span>';
+            }
 
-            row.innerHTML = '<div style="display:flex; align-items:center; gap:4px; overflow:hidden;">' +
-                              '<strong style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">' + escapeHtml(item.street) + '</strong> ' +
-                              '<span style="font-size:9.5px; font-weight:700; background:' + dirBg + '; color:' + dirColor + '; padding:1px 5px; border-radius:4px; white-space:nowrap;">' + dirText + '</span>' +
+            var deleteBtnHtml = (item.isCustom || !item.isBuiltin)
+              ? '<button type="button" class="btn-del-oneway" data-street="' + escapeHtml(item.street) + '" style="background:none; border:none; color:#ef4444; font-size:14px; cursor:pointer; padding:0 4px;" title="Xóa đường này">&times;</button>'
+              : '<span style="font-size:9px; color:#cbd5e1;">•</span>';
+
+            row.innerHTML = '<div style="display:flex; align-items:center; gap:5px; overflow:hidden; flex:1;">' +
+                              '<strong style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden; font-size:11.5px;">' + escapeHtml(item.street) + '</strong> ' +
+                              '<span style="font-size:9px; font-weight:700; background:' + dirBg + '; color:' + dirColor + '; padding:1px 5px; border-radius:4px; white-space:nowrap;">' + dirText + '</span> ' +
+                              srcTag +
                             '</div>' +
                             deleteBtnHtml;
             displayEl.appendChild(row);
@@ -12984,6 +13008,43 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           });
         }
 
+        // Nút bấm Quét Bản Đồ OpenStreetMap lọc đường 1 chiều
+        var btnScanOw = document.getElementById('btnScanMapOneWay');
+        if (btnScanOw) {
+          btnScanOw.addEventListener('click', function() {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            if (!aiOpt || !aiOpt.scanAreaOneWayFromMap) {
+              showToast('Chưa nạp module bản đồ');
+              return;
+            }
+
+            btnScanOw.disabled = true;
+            btnScanOw.innerHTML = '<span>⏳</span> Đang quét...';
+            var pendingOrders = orders.filter(function(o) { return o.status === 'pending' || o.status === 'cho_ck'; });
+            var bounds = (typeof mobileMap !== 'undefined' && mobileMap && mobileMap.getBounds) ? {
+              s: mobileMap.getBounds().getSouth(),
+              w: mobileMap.getBounds().getWest(),
+              n: mobileMap.getBounds().getNorth(),
+              e: mobileMap.getBounds().getEast()
+            } : null;
+
+            aiOpt.scanAreaOneWayFromMap(pendingOrders, bounds, function(prog) {
+              if (prog && prog.text) showToast(prog.text);
+            }).then(function(mapStreets) {
+              btnScanOw.disabled = false;
+              btnScanOw.innerHTML = '<span>🔄</span> Quét bản đồ';
+              renderAiOneWayList();
+              var noteEl = document.getElementById('aiOneWayStatusNote');
+              if (noteEl) noteEl.innerHTML = '✓ Đã lọc <strong>' + mapStreets.length + ' tuyến đường 1 chiều</strong> từ OpenStreetMap trong khu vực giao!';
+              showToast('✓ Đã lọc ' + mapStreets.length + ' tuyến 1 chiều từ bản đồ!');
+            }).catch(function(err) {
+              btnScanOw.disabled = false;
+              btnScanOw.innerHTML = '<span>🔄</span> Quét bản đồ';
+              showToast('Không thể kết nối OpenStreetMap: ' + (err.message || 'Lỗi mạng'));
+            });
+          });
+        }
+
         // Toggle ẩn hiện bảng đường 1 chiều
         var btnToggleOw = document.getElementById('btnToggleOneWayList');
         var panelOw = document.getElementById('aiOneWaySettingsPanel');
@@ -12991,7 +13052,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           btnToggleOw.addEventListener('click', function() {
             var isHidden = (panelOw.style.display === 'none' || !panelOw.style.display);
             panelOw.style.display = isHidden ? 'block' : 'none';
-            btnToggleOw.textContent = isHidden ? 'Ẩn bảng ▴' : ('⚙️ Tuyến (' + (document.getElementById('aiOneWayCountBadge') ? document.getElementById('aiOneWayCountBadge').textContent : '18') + ') ▾');
+            btnToggleOw.textContent = isHidden ? 'Ẩn bảng ▴' : ('Tuyến (' + (document.getElementById('aiOneWayCountBadge') ? document.getElementById('aiOneWayCountBadge').textContent : '0') + ') ▾');
             if (isHidden) renderAiOneWayList();
           });
         }
@@ -13087,10 +13148,18 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 }
               }, 1200);
 
+              var bounds = (typeof mobileMap !== 'undefined' && mobileMap && mobileMap.getBounds) ? {
+                s: mobileMap.getBounds().getSouth(),
+                w: mobileMap.getBounds().getWest(),
+                n: mobileMap.getBounds().getNorth(),
+                e: mobileMap.getBounds().getEast()
+              } : null;
+
               var result = await aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
                 scenario: scenario,
                 startOrigin: origin,
                 strictOneWay: strictOneWay,
+                bounds: bounds,
                 onProgress: function(info) {
                   if (info && info.percent) {
                     currentSimulatedPercent = Math.max(currentSimulatedPercent, info.percent);
@@ -13098,6 +13167,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   }
                 }
               });
+
+              if (typeof renderAiOneWayList === 'function') renderAiOneWayList();
 
               stopAiProgressUI(true);
               updateAiProgressUI(100, '🎉 Hoàn tất tính toán lộ trình tối ưu!', '✓ Đã tối ưu ' + result.orderedOrders.length + ' đơn (' + (result.source === '9router_ai' ? '9Router AI' : 'Offline Heuristic') + ')');

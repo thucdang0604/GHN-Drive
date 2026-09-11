@@ -694,8 +694,14 @@ giá tiền: 0 VNĐ."
           </label>
           <label class="ai-checkbox-label">
             <input type="checkbox" id="aiStrictOneWayDesktop" checked style="accent-color: #4f46e5; width: 16px; height: 16px;">
-            <span>🚦 Tuân thủ đường 1 chiều & Tránh đi ngược chiều (Số nhà tăng/giảm theo chiều xe chạy)</span>
+            <span>🚦 Tuân thủ đường 1 chiều (Bản đồ OSM) & Tránh đi ngược chiều</span>
           </label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-left: 24px;">
+            <span style="font-size: 11px; color: #64748b;" id="aiOneWayMapNoteDesktop">🗺️ Lọc trực tiếp từ bản đồ OpenStreetMap khu vực</span>
+            <button type="button" id="btnScanMapOneWayDesktop" class="ai-btn-secondary" style="padding: 2px 8px; font-size: 10.5px; height: auto; cursor: pointer;">
+              🔄 Quét bản đồ (OSM)
+            </button>
+          </div>
         </div>
 
         <button type="button" id="btnRunAiOptimizeDesktop" class="ai-btn-primary">

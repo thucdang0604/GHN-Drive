@@ -2958,12 +2958,20 @@ function setupDesktopAiRouteModal() {
         }
       }, 1000);
 
+      const desktopBounds = (typeof desktopMap !== 'undefined' && desktopMap && desktopMap.getBounds) ? {
+        s: desktopMap.getBounds().getSouth(),
+        w: desktopMap.getBounds().getWest(),
+        n: desktopMap.getBounds().getNorth(),
+        e: desktopMap.getBounds().getEast()
+      } : null;
+
       try {
         const result = await aiOpt.optimizeRoute(pending, currentGroups, rules, {
           scenario: mode,
           avoidUTurn: avoidUTurn,
           clusterBuildings: clusterBuildings,
           strictOneWay: strictOneWay,
+          bounds: desktopBounds,
           onProgress: (info) => {
             if (runStatus && info) {
               const txt = info.detail || info.text || 'Đang xử lý...';
@@ -3076,6 +3084,38 @@ function setupDesktopAiRouteModal() {
       const btnOpenQrSync = document.getElementById('btnOpenQrSyncModalDesktop');
       if (btnOpenQrSync) {
         btnOpenQrSync.click();
+      }
+    });
+  }
+
+  // Nút Quét bản đồ OpenStreetMap lọc đường 1 chiều trên Desktop
+  const btnScanMapDesktop = document.getElementById('btnScanMapOneWayDesktop');
+  if (btnScanMapDesktop) {
+    btnScanMapDesktop.addEventListener('click', async () => {
+      const aiOpt = window.AIRouteOptimizer;
+      if (!aiOpt || !aiOpt.scanAreaOneWayFromMap) return;
+
+      btnScanMapDesktop.disabled = true;
+      btnScanMapDesktop.textContent = '⏳ Đang quét...';
+      const activeOrders = typeof getActiveTripOrders === 'function' ? getActiveTripOrders() : currentOrders;
+      const pending = activeOrders.filter(o => o.status === 'pending');
+      const desktopBounds = (typeof desktopMap !== 'undefined' && desktopMap && desktopMap.getBounds) ? {
+        s: desktopMap.getBounds().getSouth(),
+        w: desktopMap.getBounds().getWest(),
+        n: desktopMap.getBounds().getNorth(),
+        e: desktopMap.getBounds().getEast()
+      } : null;
+
+      try {
+        const streets = await aiOpt.scanAreaOneWayFromMap(pending, desktopBounds);
+        const noteEl = document.getElementById('aiOneWayMapNoteDesktop');
+        if (noteEl) noteEl.textContent = `✓ Đã lọc ${streets.length} tuyến đường 1 chiều từ OpenStreetMap!`;
+        showToast(`✓ Đã lọc thành công ${streets.length} tuyến đường 1 chiều từ bản đồ!`, 'success');
+      } catch(err) {
+        showToast('Không thể quét dữ liệu bản đồ: ' + (err.message || 'Lỗi kết nối'), 'error');
+      } finally {
+        btnScanMapDesktop.disabled = false;
+        btnScanMapDesktop.textContent = '🔄 Quét bản đồ (OSM)';
       }
     });
   }
