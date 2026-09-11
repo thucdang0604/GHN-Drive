@@ -6636,6 +6636,24 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         return newId;
       }
 
+      function getRangeParity(rng) {
+        if (!rng) return 'all';
+        if (rng.parity && (rng.parity === 'even' || rng.parity === 'odd' || rng.parity === 'all')) {
+          return rng.parity;
+        }
+        var min = parseInt(rng.min, 10);
+        var max = parseInt(rng.max, 10);
+        if (!isNaN(min) && !isNaN(max)) {
+          if (min % 2 === 0 && max % 2 === 0) return 'even';
+          if (min % 2 !== 0 && max % 2 !== 0) return 'odd';
+        } else if (!isNaN(min)) {
+          return (min % 2 === 0) ? 'even' : 'odd';
+        } else if (!isNaN(max)) {
+          return (max % 2 === 0) ? 'even' : 'odd';
+        }
+        return 'all';
+      }
+
       function applyGroupRules(order) {
         if (!groupRules || groupRules.length === 0 || !order || !order.address) return null;
 
@@ -6667,15 +6685,21 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             matchingRules.push({
               rule: rule,
               isSpecificRange: false,
+              isParitySpecific: false,
               rangeWidth: 999999999,
               streetLength: ruleStreet.length
             });
           } else if (rule.ranges && rule.ranges.length > 0) {
             if (houseNum !== 999999) {
+              var isNumEven = (houseNum % 2 === 0);
               var matchedRange = null;
               var minWidth = 999999999;
               for (var r = 0; r < rule.ranges.length; r++) {
                 var rng = rule.ranges[r];
+                var parity = getRangeParity(rng);
+                if (parity === 'even' && !isNumEven) continue;
+                if (parity === 'odd' && isNumEven) continue;
+
                 var rMin = Number(rng.min);
                 var rMax = Number(rng.max);
                 if (houseNum >= rMin && houseNum <= rMax) {
@@ -6687,9 +6711,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 }
               }
               if (matchedRange) {
+                var matchedParity = getRangeParity(matchedRange);
                 matchingRules.push({
                   rule: rule,
                   isSpecificRange: true,
+                  isParitySpecific: (matchedParity === 'even' || matchedParity === 'odd'),
                   rangeWidth: minWidth,
                   streetLength: ruleStreet.length
                 });
@@ -6702,11 +6728,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         // Q1: Ưu tiên quy tắc cụ thể nhất:
         // 1. Quy tắc theo khoảng số nhà cụ thể ưu tiên hơn "Tất cả số nhà"
-        // 2. Khoảng hẹp hơn (rangeWidth nhỏ hơn) ưu tiên hơn
-        // 3. Tên đường dài hơn (chi tiết hơn) ưu tiên hơn
+        // 2. Quy tắc có phân biệt Chẵn/Lẻ cụ thể ưu tiên hơn khoảng chung
+        // 3. Khoảng hẹp hơn (rangeWidth nhỏ hơn) ưu tiên hơn
+        // 4. Tên đường dài hơn (chi tiết hơn) ưu tiên hơn
         matchingRules.sort(function(a, b) {
           if (a.isSpecificRange !== b.isSpecificRange) {
             return a.isSpecificRange ? -1 : 1;
+          }
+          if (a.isParitySpecific !== b.isParitySpecific) {
+            return a.isParitySpecific ? -1 : 1;
           }
           if (a.rangeWidth !== b.rangeWidth) {
             return a.rangeWidth - b.rangeWidth;
@@ -6812,7 +6842,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             rangesHtml = '<span class="rule-range-pill" style="background:#e0f2fe; color:#0369a1;">Toàn bộ số nhà</span>';
           } else if (rule.ranges && rule.ranges.length > 0) {
             rangesHtml = rule.ranges.map(function(rng) {
-              return '<span class="rule-range-pill">Số: ' + escapeHtml(rng.min) + ' → ' + escapeHtml(rng.max) + '</span>';
+              var p = getRangeParity(rng);
+              var pLabel = '';
+              var pStyle = '';
+              if (p === 'even') {
+                pLabel = ' (Số Chẵn)';
+                pStyle = 'background:#ede9fe; color:#6d28d9; border:1px solid #ddd6fe;';
+              } else if (p === 'odd') {
+                pLabel = ' (Số Lẻ)';
+                pStyle = 'background:#fef3c7; color:#b45309; border:1px solid #fde68a;';
+              }
+              return '<span class="rule-range-pill" style="' + pStyle + '">Số: ' + escapeHtml(rng.min) + ' → ' + escapeHtml(rng.max) + pLabel + '</span>';
             }).join(' ');
           } else {
             rangesHtml = '<span class="rule-range-pill">Không giới hạn</span>';
@@ -6875,17 +6915,64 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         });
       }
 
-      function addRangeRow(minVal, maxVal) {
+      function addRangeRow(minVal, maxVal, parityVal) {
         var list = document.getElementById('ruleRangesInputsList');
         if (!list) return;
         var row = document.createElement('div');
         row.className = 'rule-range-row';
+        row.style.cssText = 'display:flex; align-items:center; gap:4px; margin-bottom:6px; flex-wrap:wrap;';
+
+        var initParity = parityVal;
+        if (!initParity || (initParity !== 'even' && initParity !== 'odd' && initParity !== 'all')) {
+          var mn = parseInt(minVal, 10);
+          var mx = parseInt(maxVal, 10);
+          if (!isNaN(mn) && !isNaN(mx)) {
+            if (mn % 2 === 0 && mx % 2 === 0) initParity = 'even';
+            else if (mn % 2 !== 0 && mx % 2 !== 0) initParity = 'odd';
+            else initParity = 'all';
+          } else {
+            initParity = 'all';
+          }
+        }
+
         row.innerHTML = 
-          '<input type="number" class="rule-range-min" placeholder="Từ số (vd: 6)" value="' + (minVal !== undefined ? minVal : '') + '">' +
-          '<span style="font-size:11px; color:#64748b;">➔</span>' +
-          '<input type="number" class="rule-range-max" placeholder="Đến số (vd: 14)" value="' + (maxVal !== undefined ? maxVal : '') + '">' +
-          '<button type="button" class="rule-range-del" title="Xóa khoảng">&times;</button>';
+          '<div style="display:flex; align-items:center; gap:4px; flex:1; min-width:140px;">' +
+            '<input type="number" class="rule-range-min" placeholder="Từ" value="' + (minVal !== undefined ? minVal : '') + '" style="flex:1; min-width:50px; padding:6px 8px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px;">' +
+            '<span style="font-size:11px; color:#64748b;">➔</span>' +
+            '<input type="number" class="rule-range-max" placeholder="Đến" value="' + (maxVal !== undefined ? maxVal : '') + '" style="flex:1; min-width:50px; padding:6px 8px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px;">' +
+          '</div>' +
+          '<div style="display:flex; align-items:center; gap:4px;">' +
+            '<select class="rule-range-parity" style="padding:6px 6px; font-size:11px; font-weight:700; border:1.5px solid #cbd5e1; border-radius:4px; background:#ffffff; color:#334155; cursor:pointer;">' +
+              '<option value="all"' + (initParity === 'all' ? ' selected' : '') + '>Cả Chẵn & Lẻ</option>' +
+              '<option value="even"' + (initParity === 'even' ? ' selected' : '') + '>Chỉ Số Chẵn</option>' +
+              '<option value="odd"' + (initParity === 'odd' ? ' selected' : '') + '>Chỉ Số Lẻ</option>' +
+            '</select>' +
+            '<button type="button" class="rule-range-del" title="Xóa khoảng" style="padding:6px 10px; background:#fee2e2; color:#dc2626; border:none; border-radius:4px; cursor:pointer; font-weight:700;">&times;</button>' +
+          '</div>';
         
+        var selParity = row.querySelector('.rule-range-parity');
+        var minInp = row.querySelector('.rule-range-min');
+        var maxInp = row.querySelector('.rule-range-max');
+
+        selParity.addEventListener('change', function() {
+          selParity.dataset.userModified = 'true';
+        });
+
+        function autoDetectParity() {
+          if (selParity.dataset.userModified === 'true') return;
+          var vMin = parseInt(minInp.value, 10);
+          var vMax = parseInt(maxInp.value, 10);
+          if (!isNaN(vMin) && !isNaN(vMax)) {
+            if (vMin % 2 === 0 && vMax % 2 === 0) selParity.value = 'even';
+            else if (vMin % 2 !== 0 && vMax % 2 !== 0) selParity.value = 'odd';
+            else selParity.value = 'all';
+          } else if (!isNaN(vMin)) {
+            selParity.value = (vMin % 2 === 0) ? 'even' : 'odd';
+          }
+        }
+        minInp.addEventListener('input', autoDetectParity);
+        maxInp.addEventListener('input', autoDetectParity);
+
         row.querySelector('.rule-range-del').addEventListener('click', function() {
           row.remove();
         });
@@ -6942,7 +7029,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           rangesList.innerHTML = '';
           if (rule.ranges && rule.ranges.length > 0) {
             rule.ranges.forEach(function(rng) {
-              addRangeRow(rng.min, rng.max);
+              addRangeRow(rng.min, rng.max, rng.parity);
             });
           } else {
             addRangeRow();
@@ -6990,15 +7077,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           rows.forEach(function(row) {
             var minVal = parseInt(row.querySelector('.rule-range-min').value, 10);
             var maxVal = parseInt(row.querySelector('.rule-range-max').value, 10);
+            var parityVal = row.querySelector('.rule-range-parity') ? row.querySelector('.rule-range-parity').value : 'all';
             if (!isNaN(minVal) && !isNaN(maxVal)) {
               ranges.push({
                 min: Math.min(minVal, maxVal),
-                max: Math.max(minVal, maxVal)
+                max: Math.max(minVal, maxVal),
+                parity: parityVal
               });
             } else if (!isNaN(minVal)) {
-              ranges.push({ min: minVal, max: minVal });
+              ranges.push({ min: minVal, max: minVal, parity: parityVal });
             } else if (!isNaN(maxVal)) {
-              ranges.push({ min: maxVal, max: maxVal });
+              ranges.push({ min: maxVal, max: maxVal, parity: parityVal });
             }
           });
 
