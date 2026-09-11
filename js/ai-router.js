@@ -146,11 +146,12 @@
       messages: [
         { role: 'user', content: 'Ping. Trả lời "PONG" nếu bạn nhận được.' }
       ],
-      max_tokens: 10
+      max_tokens: 10,
+      stream: false
     };
 
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 6000) : null;
+    var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 8000) : null;
 
     return fetch(endpoint, {
       method: 'POST',
@@ -168,7 +169,19 @@
               detail = typeof parsed.error === 'string' ? parsed.error : (parsed.error.message || JSON.stringify(parsed.error));
             }
           } catch(e) {
-            detail = errText ? errText.slice(0, 150) : '';
+            detail = '';
+          }
+
+          if (!detail && /<html/i.test(errText)) {
+            if (res.status === 530) {
+              detail = 'Đường truyền Cloudflare Tunnel của 9Router đang tạm ngắt kết nối hoặc đang khởi động lại. Hãy đợi 5-10 giây rồi thử lại.';
+            } else if (res.status === 502 || res.status === 504) {
+              detail = 'Cổng kết nối 9Router Gateway bị nghẽn hoặc hết thời gian chờ.';
+            } else {
+              detail = 'Máy chủ trả về trang lỗi HTML (' + res.status + ')';
+            }
+          } else if (!detail && errText) {
+            detail = errText.slice(0, 150);
           }
 
           var msg = 'Mã phản hồi HTTP: ' + res.status;
@@ -178,6 +191,8 @@
             msg += ' (Unauthorized) - Cần có API Key hợp lệ cho 9Router';
           } else if (res.status === 404) {
             msg += ' (Not Found) - Không tìm thấy route hoặc model AI';
+          } else if (res.status === 530) {
+            msg += ' (Cloudflare Tunnel) - Tunnel đang tạm ngắt kết nối';
           }
           if (detail) {
             msg += ' [' + detail + ']';
@@ -185,7 +200,38 @@
           throw new Error(msg);
         });
       }
-      return res.json();
+
+      return res.text().then(function(rawText) {
+        var data = null;
+        try {
+          data = JSON.parse(rawText);
+        } catch(e) {
+          if (rawText.indexOf('data:') !== -1) {
+            var combinedText = '';
+            var lines = rawText.split('\n');
+            for (var l = 0; l < lines.length; l++) {
+              var line = lines[l].trim();
+              if (line.indexOf('data:') === 0) {
+                var jsonPart = line.slice(5).trim();
+                if (jsonPart && jsonPart !== '[DONE]') {
+                  try {
+                    var parsedChunk = JSON.parse(jsonPart);
+                    var delta = parsedChunk.choices && parsedChunk.choices[0] && (parsedChunk.choices[0].delta || parsedChunk.choices[0].message);
+                    if (delta && delta.content) {
+                      combinedText += delta.content;
+                    }
+                  } catch(e2) {}
+                }
+              }
+            }
+            if (combinedText) {
+              data = { choices: [{ message: { content: combinedText } }] };
+            }
+          }
+        }
+        if (!data) throw new Error('Không thể đọc dữ liệu phản hồi từ 9Router');
+        return data;
+      });
     }).then(function(data) {
       var text = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
       return {
@@ -472,7 +518,8 @@
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent }
         ],
-        temperature: 0.2
+        temperature: 0.2,
+        stream: false
       }),
       signal: controller ? controller.signal : undefined
     }).then(function(res) {
@@ -486,13 +533,57 @@
               detail = typeof parsed.error === 'string' ? parsed.error : (parsed.error.message || JSON.stringify(parsed.error));
             }
           } catch(e) {
-            detail = errText ? errText.slice(0, 150) : '';
+            detail = '';
           }
+
+          if (!detail && /<html/i.test(errText)) {
+            if (res.status === 530) {
+              detail = 'Đường truyền Cloudflare Tunnel của 9Router đang tạm ngắt kết nối hoặc đang khởi động lại. Hãy đợi 5-10 giây rồi thử lại.';
+            } else if (res.status === 502 || res.status === 504) {
+              detail = 'Cổng kết nối 9Router Gateway bị nghẽn hoặc hết thời gian chờ.';
+            } else {
+              detail = 'Máy chủ trả về trang lỗi HTML (' + res.status + ')';
+            }
+          } else if (!detail && errText) {
+            detail = errText.slice(0, 150);
+          }
+
           var msg = 'HTTP ' + res.status + (detail ? ': ' + detail : (res.statusText ? ': ' + res.statusText : ''));
           throw new Error(msg);
         });
       }
-      return res.json();
+
+      return res.text().then(function(rawText) {
+        var data = null;
+        try {
+          data = JSON.parse(rawText);
+        } catch(e) {
+          if (rawText.indexOf('data:') !== -1) {
+            var combinedText = '';
+            var lines = rawText.split('\n');
+            for (var l = 0; l < lines.length; l++) {
+              var line = lines[l].trim();
+              if (line.indexOf('data:') === 0) {
+                var jsonPart = line.slice(5).trim();
+                if (jsonPart && jsonPart !== '[DONE]') {
+                  try {
+                    var parsedChunk = JSON.parse(jsonPart);
+                    var delta = parsedChunk.choices && parsedChunk.choices[0] && (parsedChunk.choices[0].delta || parsedChunk.choices[0].message);
+                    if (delta && delta.content) {
+                      combinedText += delta.content;
+                    }
+                  } catch(e2) {}
+                }
+              }
+            }
+            if (combinedText) {
+              data = { choices: [{ message: { content: combinedText } }] };
+            }
+          }
+        }
+        if (!data) throw new Error('Không thể đọc dữ liệu phản hồi từ 9Router');
+        return data;
+      });
     }).then(function(data) {
       var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
       if (!content) throw new Error('AI không trả về nội dung');
