@@ -18,6 +18,8 @@
   <!-- Thư viện truyền dữ liệu siêu tốc P2P WebRTC (AirDrop) -->
   <script src="js/peerjs.min.js"></script>
   <script src="js/p2p-sync.js"></script>
+  <!-- Module AI 9Router & Tối Ưu Hóa Lộ Trình -->
+  <script src="js/ai-router.js"></script>
   <!-- Thư viện Bản đồ Leaflet -->
   <link rel="stylesheet" href="css/leaflet.css">
   <script src="js/leaflet.js"></script>
@@ -50,6 +52,15 @@
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
           </svg>
           ⚡ Lấy Đơn Mã Chuyến
+        </button>
+
+        <!-- Nút AI 9Router Tối Ưu Lộ Trình -->
+        <button id="btnOpenAiRouteDesktop" class="btn btn-trip-header" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border-color: #6366f1; color: #fff;" title="Dùng AI 9Router tối ưu hóa thứ tự lộ trình giao hàng">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path>
+            <path d="M12 6v6l4 2"></path>
+          </svg>
+          🤖 AI Lộ Trình (9Router)
         </button>
 
         <!-- Nút Đồng Bộ Sang Mobile -->
@@ -632,6 +643,128 @@ giá tiền: 0 VNĐ."
             <button type="button" id="btnUpdSaveManual" class="btn-upd-save">Lưu</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AI 9ROUTER TỐI ƯU HÓA LỘ TRÌNH (DESKTOP) -->
+  <div id="aiRouteModalDesktop" class="modal-backdrop" style="display: none;">
+    <div class="modal-box ai-modal-box">
+      <div class="ai-modal-header">
+        <h3>
+          <span>🤖</span> AI Tối Ưu Lộ Trình (9Router)
+        </h3>
+        <button id="btnCloseAiRouteModalDesktop" class="btn-icon" style="font-size: 1.3rem; background: none; border: none; cursor: pointer; color: #cbd5e1;">✕</button>
+      </div>
+
+      <div class="ai-tabs-bar">
+        <button type="button" class="ai-tab-btn active" id="tabBtnAiOptimizeDesktop">⚡ Tối Ưu Lộ Trình</button>
+        <button type="button" class="ai-tab-btn" id="tabBtnAiConfigDesktop">⚙️ Cấu Hình 9Router</button>
+      </div>
+
+      <!-- Tab 1: Chạy Tối Ưu Lộ Trình -->
+      <div class="ai-tab-panel active" id="tabPanelAiOptimizeDesktop">
+        <div class="ai-card-info" id="aiStrategyInfoDesktop">
+          💡 <strong>Trợ lý AI 9Router:</strong> Tự động phát hiện bối cảnh phân nhóm. Đối với shipper đã có nhóm & quy tắc tên đường, AI sẽ giữ cấu trúc tuyến và sắp xếp số chẵn/lẻ tránh quay đầu xe. Đối với shipper mới hoặc đơn hỗn hợp, AI sẽ gom cụm tòa nhà và tìm đường đi ngắn nhất.
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 12.5px; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div>📦 Đơn cần giao: <strong id="aiPendingCountDesktop" style="color: #4f46e5;">0</strong></div>
+          <div>📁 Nhóm hiện có: <strong id="aiGroupCountDesktop" style="color: #0284c7;">0</strong></div>
+          <div>📋 Quy tắc đường: <strong id="aiRuleCountDesktop" style="color: #16a34a;">0</strong></div>
+        </div>
+
+        <div class="ai-form-group">
+          <label for="aiModeSelectDesktop">Chiến lược tối ưu hóa:</label>
+          <select id="aiModeSelectDesktop" class="ai-input" style="font-weight: 600;">
+            <option value="auto">🎯 Tự động (Ưu tiên Nhóm & Quy tắc, kết hợp Cụm Địa chỉ AI)</option>
+            <option value="groups_strict">📁 Bám sát Nhóm & Quy tắc tên đường (Shipper rành tuyến)</option>
+            <option value="free_cluster">🌐 AI tự do tối ưu theo Cụm Tòa Nhà & Khoảng cách (Shipper mới / Tuyến lạ)</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label class="ai-checkbox-label">
+            <input type="checkbox" id="aiAvoidUTurnDesktop" checked style="accent-color: #4f46e5; width: 16px; height: 16px;">
+            <span>Phân tách số nhà Chẵn / Lẻ để đi một bên đường, tránh quay đầu xe</span>
+          </label>
+          <label class="ai-checkbox-label">
+            <input type="checkbox" id="aiClusterBuildingsDesktop" checked style="accent-color: #4f46e5; width: 16px; height: 16px;">
+            <span>Gom cụm các đơn cùng Tòa nhà / Chung cư / Hẻm vào 1 điểm dừng liên tiếp</span>
+          </label>
+        </div>
+
+        <button type="button" id="btnRunAiOptimizeDesktop" class="ai-btn-primary">
+          <span id="aiRunBtnIconDesktop">🚀</span>
+          <span id="aiRunBtnTextDesktop">Bắt Đầu AI Tối Ưu Lộ Trình (9Router)</span>
+        </button>
+
+        <div id="aiRunStatusDesktop" style="display: none; margin-top: 10px; font-size: 12px; text-align: center; color: #4f46e5; font-weight: 600;"></div>
+
+        <!-- Khung Kết Quả -->
+        <div id="aiResultBoxDesktop" class="ai-results-wrap" style="display: none;">
+          <div class="ai-results-stats">
+            <div class="ai-stat-box">
+              <div class="val" id="aiResStopsDesktop">0</div>
+              <div class="lbl">Điểm dừng</div>
+            </div>
+            <div class="ai-stat-box">
+              <div class="val" id="aiResDistanceDesktop">0 km</div>
+              <div class="lbl">Ước tính lộ trình</div>
+            </div>
+            <div class="ai-stat-box">
+              <div class="val" id="aiResEngineDesktop" style="color: #10b981; font-size: 13px;">9Router AI</div>
+              <div class="lbl">Bộ xử lý</div>
+            </div>
+          </div>
+
+          <div id="aiExplanationDesktop" style="font-size: 12px; color: #334155; margin-bottom: 10px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; line-height: 1.4;"></div>
+
+          <div style="font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px;">📋 Thứ tự giao hàng đề xuất:</div>
+          <div class="ai-stops-list" id="aiPreviewStopsListDesktop"></div>
+
+          <div style="display: flex; gap: 8px; margin-top: 14px;">
+            <button type="button" id="btnApplyAiRouteDesktop" class="ai-btn-primary" style="flex: 2; background: #16a34a;">
+              ✓ Áp Dụng Lộ Trình Này (Cập nhật Bản đồ & Bảng)
+            </button>
+            <button type="button" id="btnSyncAfterAiDesktop" class="ai-btn-secondary" style="flex: 1; background: #2563eb; color: #fff; border-color: #1d4ed8;">
+              📲 Bắn Sang Mobile
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Cấu Hình 9Router -->
+      <div class="ai-tab-panel" id="tabPanelAiConfigDesktop">
+        <div class="ai-card-info" style="background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
+          ℹ️ <strong>Hướng dẫn:</strong> 9Router đóng vai trò API Gateway chạy cục bộ trên Laptop/PC. Bạn có thể kết nối với các mô hình AI như Gemini Flash, GPT-4o-mini hoặc Claude để phân tích ngôn ngữ tự nhiên tiếng Việt và địa chỉ giao hàng.
+        </div>
+
+        <div class="ai-form-group">
+          <label for="aiCfgEndpointDesktop">Endpoint 9Router (OpenAI-compatible):</label>
+          <input type="text" id="aiCfgEndpointDesktop" class="ai-input" placeholder="http://localhost:20128/v1/chat/completions">
+        </div>
+
+        <div class="ai-form-group">
+          <label for="aiCfgModelDesktop">Model AI:</label>
+          <input type="text" id="aiCfgModelDesktop" class="ai-input" placeholder="gemini-2.5-flash">
+        </div>
+
+        <div class="ai-form-group">
+          <label for="aiCfgApiKeyDesktop">API Key (Tùy chọn):</label>
+          <input type="password" id="aiCfgApiKeyDesktop" class="ai-input" placeholder="sk-9router hoặc để trống">
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <button type="button" id="btnTestAiConnectionDesktop" class="ai-btn-secondary" style="flex: 1;">
+            🔍 Kiểm Tra Kết Nối 9Router
+          </button>
+          <button type="button" id="btnSaveAiConfigDesktop" class="ai-btn-primary" style="flex: 1; padding: 8px 14px; font-size: 13px;">
+            💾 Lưu Cấu Hình
+          </button>
+        </div>
+
+        <div id="aiConnectionStatusDesktop" style="display: none; margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 600;"></div>
       </div>
     </div>
   </div>

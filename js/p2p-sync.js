@@ -172,7 +172,7 @@
     /**
      * Tạo Payload cho chế độ Full (Toàn bộ đơn hàng & Nhóm)
      */
-    buildFullPayload: function(orders, groups, verifiedGeocache) {
+    buildFullPayload: function(orders, groups, verifiedGeocache, groupRules) {
       var cleanGroups = (groups || []).filter(function(g) {
         return g && g.id && g.id !== 'group_ungrouped';
       }).map(function(g) {
@@ -210,8 +210,10 @@
           v: 2,
           t: 'full',
           g: cleanGroups,
-          o: compactOrders
+          o: compactOrders,
+          gr: groupRules || []
         },
+        groupRules: groupRules || [],
         verifiedGeocache: verifiedGeocache || {}
       };
     },
@@ -557,9 +559,12 @@
         finalOrders = unpackedOrders;
       }
 
+      var extractedRules = (fullPayload && fullPayload.payload && fullPayload.payload.gr) || (fullPayload && fullPayload.groupRules) || [];
+
       return {
         orders: finalOrders,
         groups: groups,
+        groupRules: extractedRules,
         importedCount: unpackedOrders.length
       };
     },
@@ -567,13 +572,14 @@
     /**
      * Xuất dữ liệu ra JSON để tải về máy
      */
-    exportToFileData: function(orders, groups, verifiedGeocache) {
+    exportToFileData: function(orders, groups, verifiedGeocache, groupRules) {
       return JSON.stringify({
         version: 1,
         source: 'GHN_LOGISTICS_SYNC',
         exportedAt: new Date().toISOString(),
         groups: groups || [],
         orders: orders || [],
+        groupRules: groupRules || [],
         verifiedGeocache: verifiedGeocache || {}
       }, null, 2);
     }

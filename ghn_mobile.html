@@ -11,6 +11,8 @@
   <!-- Thư viện truyền dữ liệu siêu tốc P2P WebRTC (AirDrop / Mã PIN) -->
   <script defer src="js/peerjs.min.js"></script>
   <script defer src="js/p2p-sync.js"></script>
+  <!-- Module AI 9Router & Tối Ưu Hóa Lộ Trình -->
+  <script defer src="js/ai-router.js"></script>
   <!-- Thư viện Bản đồ Leaflet (CDN online giúp file chạy độc lập 100% khi deploy) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -4160,6 +4162,379 @@
       transform: scale(0.98);
       background: #059669;
     }
+
+    /* ==========================================================
+       AI ROUTE MODAL (9ROUTER) & LIVE DELIVERY BAR (PRE-CALL)
+       ========================================================== */
+    .btn-header.ai-route {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      border: 1px solid #7c3aed;
+      font-weight: 800;
+      box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+    }
+    .btn-header.ai-route:active {
+      transform: scale(0.96);
+      opacity: 0.9;
+    }
+
+    /* Modal AI Route */
+    .ai-route-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      transition: opacity 0.2s ease;
+    }
+    .ai-route-modal {
+      width: 100%;
+      max-width: 540px;
+      max-height: 90vh;
+      background: #ffffff;
+      border-radius: 20px 20px 0 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+      animation: slideUpAiModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUpAiModal {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .ai-modal-header {
+      padding: 14px 18px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .ai-modal-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ai-modal-title h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+    }
+    .ai-modal-close {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .ai-modal-tabs {
+      display: flex;
+      background: #f1f5f9;
+      padding: 4px;
+      gap: 4px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .ai-modal-tab-btn {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .ai-modal-tab-btn.active {
+      background: #ffffff;
+      color: #4f46e5;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+    .ai-modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .ai-scenario-card {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .ai-scenario-card.active {
+      border-color: #6366f1;
+      background: #f5f3ff;
+    }
+    .ai-scenario-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+    .ai-scenario-card-desc {
+      font-size: 11.5px;
+      color: #64748b;
+      line-height: 1.4;
+      padding-left: 24px;
+    }
+    .ai-btn-run {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #ffffff;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+      transition: all 0.15s;
+    }
+    .ai-btn-run:active {
+      transform: scale(0.98);
+    }
+    .ai-result-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Live Delivery Stop Bar (Đang Giao & Gọi Trước) */
+    .live-stop-bar {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #ffffff;
+      padding: 12px 14px;
+      border-bottom: 2px solid var(--ghn-orange);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: slideDownLiveBar 0.25s ease-out;
+    }
+    @keyframes slideDownLiveBar {
+      from { transform: translateY(-30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .live-stop-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .live-stop-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+    .live-pulse-dot {
+      width: 9px;
+      height: 9px;
+      background: #38bdf8;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7);
+      animation: livePulse 1.4s infinite cubic-bezier(0.45, 0, 0.2, 1);
+    }
+    @keyframes livePulse {
+      0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.8); }
+      70% { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+    }
+    .live-stop-close {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .live-stop-main {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .live-stop-cust {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .live-stop-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .live-stop-phone {
+      background: #0284c7;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .live-stop-addr {
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.35;
+    }
+    .live-stop-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .btn-live-act {
+      flex: 1;
+      border: none;
+      padding: 7px 6px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.12s;
+    }
+    .btn-live-act.gtc {
+      background: #10b981;
+      color: #fff;
+    }
+    .btn-live-act.chock {
+      background: #f59e0b;
+      color: #fff;
+    }
+    .btn-live-act.camera {
+      background: #0284c7;
+      color: #fff;
+      flex: 0 0 42px;
+    }
+
+    /* Khung đơn cùng địa chỉ (Same Stop Cluster) */
+    .live-cluster-box {
+      background: rgba(242, 101, 34, 0.15);
+      border: 1px solid rgba(242, 101, 34, 0.4);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .live-cluster-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #fdba74;
+    }
+    .btn-batch-gtc-live {
+      background: #f26522;
+      color: #fff;
+      border: none;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .live-cluster-item {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 6px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+    }
+
+    /* Smart Pre-Call Widget */
+    .live-precall-box {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25));
+      border: 1px solid rgba(139, 92, 246, 0.5);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .live-precall-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #c4b5fd;
+    }
+    .live-timer-badge {
+      font-family: monospace;
+      font-size: 11px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fde047;
+    }
+    .live-precall-info {
+      font-size: 12px;
+      color: #f1f5f9;
+      line-height: 1.35;
+    }
+    .btn-precall-action {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      box-shadow: 0 3px 8px rgba(16, 185, 129, 0.35);
+    }
+    .btn-precall-action:active {
+      transform: scale(0.98);
+    }
   </style>
 </head>
 <body>
@@ -4179,6 +4554,9 @@
         </button>
         <button id="btnOpenTripSheetHeader" class="btn-header trip" title="Đồng bộ đơn theo Mã Chuyến từ Google Sheet">
           ⚡ Mã Chuyến
+        </button>
+        <button id="btnOpenAiRouteModal" class="btn-header ai-route" title="AI 9Router: Tối ưu lộ trình & Phân nhóm thông minh">
+          🤖 AI Lộ Trình
         </button>
         <button id="btnOpenQrSyncModal" class="btn-header sync" title="Đồng bộ dữ liệu sang thiết bị khác (P2P / Mã PIN)">
           📲 Đồng Bộ
@@ -4208,6 +4586,58 @@
       </button>
       <button id="btnToggleView" class="view-toggle-btn">📋 Xem: Thẻ</button>
     </section>
+
+    <!-- THANH LIVE DELIVERY STOP (Điểm đang giao, đơn cùng tòa nhà & gợi ý gọi trước) -->
+    <div id="liveDeliveryStopBar" class="live-stop-bar" style="display: none;">
+      <div class="live-stop-top">
+        <div class="live-stop-badge">
+          <span class="live-pulse-dot"></span>
+          <span>🚚 ĐANG GIAO: <strong id="liveStopStt">#1</strong></span>
+          <span id="liveStopTimer" class="live-timer-badge" style="display:none;">⏱️ 00:00</span>
+        </div>
+        <button type="button" id="btnCloseLiveStopBar" class="live-stop-close">✕ Xong điểm này</button>
+      </div>
+
+      <div class="live-stop-main">
+        <div class="live-stop-cust">
+          <div class="live-stop-name" id="liveStopCustName">Khách hàng</div>
+          <a href="#" id="liveStopPhoneLink" class="live-stop-phone">📞 Gọi khách</a>
+        </div>
+        <div class="live-stop-addr" id="liveStopAddr">📍 Địa chỉ đang giao</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-top:2px;">
+          <span style="color:#fde047; font-weight:800;">COD: <span id="liveStopCod">0 đ</span></span>
+          <span id="liveStopTracking" style="color:#93c5fd; font-family:monospace; font-size:11px;">Mã đơn</span>
+        </div>
+        <div class="live-stop-actions">
+          <button type="button" id="btnLiveGtc" class="btn-live-act gtc">✓ GTC</button>
+          <button type="button" id="btnLiveChoCk" class="btn-live-act chock">🟡 Chờ CK</button>
+          <button type="button" id="btnLiveCam" class="btn-live-act camera" title="Chụp ảnh xác nhận">📸</button>
+        </div>
+      </div>
+
+      <!-- Khung các đơn cùng địa chỉ/tòa nhà -->
+      <div id="liveClusterBox" class="live-cluster-box" style="display: none;">
+        <div class="live-cluster-header">
+          <span>🏢 Cùng điểm này còn có <strong id="liveClusterCount">0</strong> đơn khác:</span>
+          <button type="button" id="btnLiveBatchGtc" class="btn-batch-gtc-live">⚡ GTC Cả Cụm</button>
+        </div>
+        <div id="liveClusterList" style="display: flex; flex-direction: column; gap: 4px;"></div>
+      </div>
+
+      <!-- Smart Pre-Call Widget: Gợi ý gọi trước khách tiếp theo -->
+      <div id="livePrecallBox" class="live-precall-box" style="display: none;">
+        <div class="live-precall-header">
+          <span>💡 Gợi ý gọi trước cho điểm tiếp theo:</span>
+          <span style="font-size:10.5px; opacity:0.85;">Trong lúc chờ</span>
+        </div>
+        <div class="live-precall-info" id="livePrecallInfo">
+          Đang tìm điểm kế tiếp...
+        </div>
+        <a href="#" id="btnPrecallAction" class="btn-precall-action">
+          📞 Bấm Gọi Trước Ngay
+        </a>
+      </div>
+    </div>
 
     <!-- Thanh Thống Kê & Lọc Trạng Thái Nhanh (5 cột: Tất cả, Chờ, Chờ CK 🟡, GTC 🟢, GTB 🔴) -->
     <section class="stats-bar">
@@ -4831,6 +5261,129 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         <input type="file" id="qrFileInput" accept="image/*" capture="environment" style="display: none;">
         <input type="file" id="qrGalleryInput" accept="image/*" style="display: none;">
         <div id="qrHiddenContainer" style="display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP AI 9ROUTER: TỐI ƯU HÓA LỘ TRÌNH & PHÂN NHÓM THÔNG MINH -->
+  <div id="aiRouteModal" class="ai-route-modal-backdrop" style="display: none;">
+    <div class="ai-route-modal">
+      <div class="ai-modal-header">
+        <div class="ai-modal-title">
+          <span>🤖</span>
+          <h3>AI 9Router: Tối Ưu Lộ Trình</h3>
+        </div>
+        <button type="button" id="btnCloseAiRouteModal" class="ai-modal-close">&times;</button>
+      </div>
+
+      <div class="ai-modal-tabs">
+        <button type="button" class="ai-modal-tab-btn active" id="tabAiOptimize">⚡ Tối Ưu Lộ Trình</button>
+        <button type="button" class="ai-modal-tab-btn" id="tabAiConfig">⚙️ Cấu Hình 9Router</button>
+      </div>
+
+      <!-- TAB 1: TỐI ƯU LỘ TRÌNH -->
+      <div class="ai-modal-body" id="panelAiOptimize">
+        <div style="background: #f1f5f9; padding: 10px 12px; border-radius: 10px; font-size: 12px; color: #334155; line-height: 1.4;">
+          📊 Đang có <strong id="aiStatPendingCount">0</strong> đơn chờ giao. Chọn kịch bản tối ưu theo kinh nghiệm shipper:
+        </div>
+
+        <!-- Lựa chọn Kịch bản -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="ai-scenario-card active" id="cardScenarioRespect">
+            <div class="ai-scenario-card-header">
+              <input type="radio" name="aiScenario" id="optScenarioRespect" value="respect_groups" checked style="accent-color: #6366f1;">
+              <label for="optScenarioRespect" style="cursor:pointer;">🏆 Kịch bản 1: Giữ nguyên nhóm (NV quen tuyến)</label>
+            </div>
+            <div class="ai-scenario-card-desc">
+              Tôn trọng cấu hình nhóm (K1, K2...) và quy tắc đường/số nhà. AI tối ưu thứ tự đi qua các nhóm và sắp xếp số nhà chẵn/lẻ để tránh quay đầu xe.
+            </div>
+          </div>
+
+          <div class="ai-scenario-card" id="cardScenarioCluster">
+            <div class="ai-scenario-card-header">
+              <input type="radio" name="aiScenario" id="optScenarioCluster" value="auto_cluster" style="accent-color: #6366f1;">
+              <label for="optScenarioCluster" style="cursor:pointer;">✨ Kịch bản 2: AI tự gom cụm (NV mới / Tuyến mới)</label>
+            </div>
+            <div class="ai-scenario-card-desc">
+              Chưa có cấu hình nhóm cụ thể. AI tự động phân tích địa chỉ, nhận diện tòa nhà/chung cư, gom cụm các điểm gần nhau và nối tuyến ngắn nhất toàn tuyến.
+            </div>
+          </div>
+        </div>
+
+        <!-- Điểm xuất phát -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; font-size: 12px;">
+          <span style="font-weight: 700; color: #1e293b;">🎯 Điểm xuất phát tính lộ trình:</span>
+          <div style="display: flex; gap: 14px; margin-top: 6px;">
+            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+              <input type="radio" name="aiStartOrigin" value="gps" checked style="accent-color: #6366f1;"> GPS hiện tại của tôi
+            </label>
+            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+              <input type="radio" name="aiStartOrigin" value="first" style="accent-color: #6366f1;"> Đơn đầu tiên (#1)
+            </label>
+          </div>
+        </div>
+
+        <!-- Nút hành động chạy AI -->
+        <button type="button" id="btnRunAiOptimize" class="ai-btn-run">
+          <span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>
+        </button>
+
+        <!-- Khung kết quả sau khi tối ưu -->
+        <div id="aiOptimizeResultPanel" class="ai-result-panel" style="display: none;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:13px; color:#10b981;">🎉 Kết quả tối ưu:</strong>
+            <span id="aiResultSourceBadge" style="font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e0e7ff; color:#4338ca;">9Router AI</span>
+          </div>
+          <div id="aiResultSummaryText" style="font-size:12px; color:#334155; line-height:1.4;"></div>
+          <div id="aiResultStopsList" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;"></div>
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <button type="button" id="btnApplyAiRoute" class="btn-launch-scanner" style="margin:0; flex:1;">
+              ✓ Áp Dụng Thứ Tự Mới
+            </button>
+            <button type="button" id="btnSyncAfterAi" class="btn-sync-file" style="flex:1; background:#2563eb; color:#fff; border:none; border-radius:var(--radius-md); font-weight:800;">
+              📲 Bắn Sang Điện Thoại
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: CẤU HÌNH 9ROUTER -->
+      <div class="ai-modal-body" id="panelAiConfig" style="display: none;">
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #1e40af; line-height: 1.4;">
+          💡 <strong>9Router AI Gateway:</strong> Chạy trên PC/Laptop hoặc server mạng nội bộ. Cho phép định tuyến đa mô hình AI (Gemini, Claude, GPT, DeepSeek) không lo tràn quota.
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155;">Địa chỉ 9Router Endpoint (URL):</label>
+          <input type="text" id="cfgAiEndpoint" class="upd-input" placeholder="http://localhost:20128/v1/chat/completions" style="font-family: monospace; font-size: 12px;">
+          <span style="font-size: 10.5px; color: #64748b;">Mặc định PC: http://localhost:20128/v1/chat/completions | Điện thoại cùng Wi-Fi: http://[IP_máy_tính]:20128/v1/chat/completions</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155;">Tên mô hình AI (Model):</label>
+          <input type="text" id="cfgAiModel" class="upd-input" placeholder="gemini-2.5-flash" style="font-size: 12.5px;">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="gemini-2.5-flash">gemini-2.5-flash</button>
+            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="gpt-4o-mini">gpt-4o-mini</button>
+            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="claude-3-5-sonnet">claude-3-5-sonnet</button>
+            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="deepseek-chat">deepseek-chat</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155;">API Key (Tùy chọn):</label>
+          <input type="password" id="cfgAiApiKey" class="upd-input" placeholder="Để trống nếu 9Router local không yêu cầu key">
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <button type="button" id="btnTestAiConnection" class="btn-upd-save" style="flex:1; background:#4f46e5;">
+            🔌 Kiểm Tra Kết Nối 9Router
+          </button>
+          <button type="button" id="btnSaveAiConfig" class="btn-upd-save" style="flex:1; background:#10b981;">
+            💾 Lưu Cấu Hình
+          </button>
+        </div>
+        <div id="aiTestResultBox" style="font-size: 11.5px; padding: 8px 10px; border-radius: 8px; display: none;"></div>
       </div>
     </div>
   </div>
@@ -10607,6 +11160,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                     '</div>' +
                     (item.notes ? '<div class="drawer-note">⚠️ ' + escapeHtml(item.notes) + '</div>' : '') +
                     '<div class="drawer-actions">' +
+                      '<button type="button" class="drawer-btn btn-row-live" data-order-id="' + item.id + '" style="background:#0284c7; color:#fff; font-weight:700;" onclick="event.stopPropagation();">🚚 Giao điểm này</button>' +
                       (item.address || hasGps ? '<a href="' + mapsUrl + '" target="_blank" class="drawer-btn btn-maps" onclick="event.stopPropagation();">🧭 Chỉ đường</a>' : '') +
                       (hasGps ? '<button type="button" class="drawer-btn btn-jump-map" data-order-id="' + item.id + '" onclick="event.stopPropagation();">🗺️ Xem trên bản đồ</button>' : '') +
                       '<button type="button" class="drawer-btn btn-row-edit-loc" data-order-id="' + item.id + '" onclick="event.stopPropagation();">📍 Sửa vị trí</button>' +
@@ -10700,6 +11254,19 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (!item) return;
           var origIdx = orders.indexOf(item);
           var stt = origIdx + 1;
+
+          // Nút Giao điểm này (Thanh Giao Hàng Trực Tiếp)
+          if (target.closest('.btn-row-live')) {
+            e.stopPropagation();
+            startLiveDelivery(item);
+            return;
+          }
+
+          // Gọi điện cho khách -> kích hoạt ngay Thanh Giao Hàng Trực Tiếp cho đơn này
+          if (target.closest('.tbl-phone-link')) {
+            startLiveDelivery(item);
+            return;
+          }
 
           // Nút Camera
           if (target.closest('.tbl-btn-cam')) {
@@ -10917,6 +11484,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   (item.notes ? '<div class="m-card-note">⚠️ ' + escapeHtml(item.notes) + '</div>' : '') +
                 '</div>' +
                 '<div class="m-card-actions">' +
+                  '<button type="button" class="btn-touch-action btn-touch-live" style="background:#0284c7; color:#fff; font-weight:700;">🚚 GIAO</button>' +
                   '<button type="button" class="btn-act-camera ' + ((item.deliveryPhoto || item.hasStoredPhoto) ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
                   '<button type="button" class="btn-touch-action btn-touch-chock ' + (isChoCk ? 'active' : '') + '">🟡 CHỜ CK</button>' +
                   '<button type="button" class="btn-touch-action btn-touch-gtc ' + (isGtc ? 'active' : '') + '">✓ GTC</button>' +
@@ -10925,6 +11493,20 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   '<button type="button" class="drawer-sort-btn btn-card-down" ' + (idxInGroup === groupOrders.length - 1 ? 'disabled' : '') + ' title="Xuống dưới trong nhóm" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">▼</button>' +
                   '<button class="del-btn" title="Xóa đơn">🗑</button>' +
                 '</div>';
+
+              var btnLiveCard = card.querySelector('.btn-touch-live');
+              if (btnLiveCard) {
+                btnLiveCard.addEventListener('click', function(e) {
+                  e.stopPropagation();
+                  startLiveDelivery(item);
+                });
+              }
+
+              card.querySelectorAll('.phone-btn').forEach(function(pBtn) {
+                pBtn.addEventListener('click', function() {
+                  startLiveDelivery(item);
+                });
+              });
 
               var chkCard = card.querySelector('.card-order-chk');
               if (chkCard) {
@@ -11991,7 +12573,560 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         window.addEventListener('beforeunload', function() {
           saveData();
         });
+
+        // Khởi tạo các sự kiện AI Route & Live Delivery Stop
+        initAiRouteModalEvents();
+        initLiveDeliveryEvents();
       });
+
+      // ==========================================================
+      // MODULE AI 9ROUTER (TỐI ƯU LỘ TRÌNH & CẤU HÌNH GATEWAY)
+      // ==========================================================
+      var latestAiOptimizedResult = null;
+
+      function openAiRouteModal() {
+        var modal = document.getElementById('aiRouteModal');
+        if (!modal) return;
+
+        // Cập nhật số lượng đơn pending
+        var pendingOrders = orders.filter(function(o) { return o.status === 'pending' || o.status === 'cho_ck'; });
+        var statEl = document.getElementById('aiStatPendingCount');
+        if (statEl) statEl.textContent = pendingOrders.length;
+
+        // Điền cấu hình hiện tại
+        var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+        if (aiOpt) {
+          var cfgEndpoint = document.getElementById('cfgAiEndpoint');
+          var cfgModel = document.getElementById('cfgAiModel');
+          var cfgApiKey = document.getElementById('cfgAiApiKey');
+          if (cfgEndpoint) cfgEndpoint.value = aiOpt.getEndpoint();
+          if (cfgModel) cfgModel.value = aiOpt.getModel();
+          if (cfgApiKey) cfgApiKey.value = aiOpt.getApiKey();
+        }
+
+        // Ẩn panel kết quả cũ nếu có
+        var resPanel = document.getElementById('aiOptimizeResultPanel');
+        if (resPanel) resPanel.style.display = 'none';
+
+        modal.style.display = 'flex';
+      }
+
+      function closeAiRouteModal() {
+        var modal = document.getElementById('aiRouteModal');
+        if (modal) modal.style.display = 'none';
+      }
+
+      function initAiRouteModalEvents() {
+        var btnOpen = document.getElementById('btnOpenAiRouteModal');
+        if (btnOpen) btnOpen.addEventListener('click', openAiRouteModal);
+
+        var btnClose = document.getElementById('btnCloseAiRouteModal');
+        if (btnClose) btnClose.addEventListener('click', closeAiRouteModal);
+
+        var modal = document.getElementById('aiRouteModal');
+        if (modal) {
+          modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeAiRouteModal();
+          });
+        }
+
+        // Tabs bên trong AI modal
+        var tabOpt = document.getElementById('tabAiOptimize');
+        var tabCfg = document.getElementById('tabAiConfig');
+        var panelOpt = document.getElementById('panelAiOptimize');
+        var panelCfg = document.getElementById('panelAiConfig');
+
+        if (tabOpt && tabCfg && panelOpt && panelCfg) {
+          tabOpt.addEventListener('click', function() {
+            tabOpt.classList.add('active');
+            tabCfg.classList.remove('active');
+            panelOpt.style.display = 'flex';
+            panelCfg.style.display = 'none';
+          });
+
+          tabCfg.addEventListener('click', function() {
+            tabCfg.classList.add('active');
+            tabOpt.classList.remove('active');
+            panelCfg.style.display = 'flex';
+            panelOpt.style.display = 'none';
+          });
+        }
+
+        // Chips model
+        var modelChips = document.querySelectorAll('.btn-chip-model');
+        modelChips.forEach(function(chip) {
+          chip.addEventListener('click', function() {
+            var m = chip.getAttribute('data-model');
+            var inp = document.getElementById('cfgAiModel');
+            if (inp && m) inp.value = m;
+          });
+        });
+
+        // Scenario cards radio selection
+        var cardRespect = document.getElementById('cardScenarioRespect');
+        var cardCluster = document.getElementById('cardScenarioCluster');
+        var radRespect = document.getElementById('optScenarioRespect');
+        var radCluster = document.getElementById('optScenarioCluster');
+
+        if (cardRespect && radRespect) {
+          cardRespect.addEventListener('click', function() {
+            radRespect.checked = true;
+            cardRespect.classList.add('active');
+            if (cardCluster) cardCluster.classList.remove('active');
+          });
+        }
+        if (cardCluster && radCluster) {
+          cardCluster.addEventListener('click', function() {
+            radCluster.checked = true;
+            cardCluster.classList.add('active');
+            if (cardRespect) cardRespect.classList.remove('active');
+          });
+        }
+
+        // Lưu cấu hình 9Router
+        var btnSaveCfg = document.getElementById('btnSaveAiConfig');
+        if (btnSaveCfg) {
+          btnSaveCfg.addEventListener('click', function() {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            if (!aiOpt) return;
+            var endpoint = (document.getElementById('cfgAiEndpoint').value || '').trim();
+            var model = (document.getElementById('cfgAiModel').value || '').trim();
+            var apiKey = (document.getElementById('cfgAiApiKey').value || '').trim();
+
+            aiOpt.setEndpoint(endpoint || aiOpt.DEFAULT_ENDPOINT);
+            aiOpt.setModel(model || aiOpt.DEFAULT_MODEL);
+            aiOpt.setApiKey(apiKey);
+
+            showToast('💾 Đã lưu cấu hình 9Router AI thành công!');
+          });
+        }
+
+        // Kiểm tra kết nối 9Router
+        var btnTest = document.getElementById('btnTestAiConnection');
+        var testBox = document.getElementById('aiTestResultBox');
+        if (btnTest) {
+          btnTest.addEventListener('click', function() {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            if (!aiOpt) return;
+
+            var endpoint = (document.getElementById('cfgAiEndpoint').value || '').trim();
+            var model = (document.getElementById('cfgAiModel').value || '').trim();
+            var apiKey = (document.getElementById('cfgAiApiKey').value || '').trim();
+            aiOpt.setEndpoint(endpoint || aiOpt.DEFAULT_ENDPOINT);
+            aiOpt.setModel(model || aiOpt.DEFAULT_MODEL);
+            aiOpt.setApiKey(apiKey);
+
+            if (testBox) {
+              testBox.style.display = 'block';
+              testBox.style.background = '#f1f5f9';
+              testBox.style.color = '#334155';
+              testBox.textContent = '⏳ Đang kiểm tra kết nối tới 9Router (' + model + ')...';
+            }
+
+            aiOpt.testConnection().then(function(res) {
+              if (res.success) {
+                if (testBox) {
+                  testBox.style.background = '#ecfdf5';
+                  testBox.style.color = '#047857';
+                  testBox.textContent = '🟢 ' + res.message;
+                }
+                showToast('🟢 ' + res.message);
+              } else {
+                if (testBox) {
+                  testBox.style.background = '#fef2f2';
+                  testBox.style.color = '#b91c1c';
+                  testBox.textContent = '🔴 Lỗi kết nối: ' + res.error;
+                }
+                showToast('🔴 Không kết nối được 9Router');
+              }
+            });
+          });
+        }
+
+        // Chạy tối ưu lộ trình
+        var btnRun = document.getElementById('btnRunAiOptimize');
+        if (btnRun) {
+          btnRun.addEventListener('click', function() {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            if (!aiOpt) {
+              showToast('Lỗi nạp thư viện AI');
+              return;
+            }
+
+            var pendingOrders = orders.filter(function(o) { return o.status === 'pending' || o.status === 'cho_ck'; });
+            if (pendingOrders.length === 0) {
+              showToast('Không có đơn hàng nào đang chờ giao để tối ưu!');
+              return;
+            }
+
+            var scenario = radCluster && radCluster.checked ? 'auto_cluster' : 'respect_groups';
+            var startOriginRad = document.querySelector('input[name="aiStartOrigin"]:checked');
+            var useGps = startOriginRad && startOriginRad.value === 'gps';
+
+            btnRun.disabled = true;
+            btnRun.innerHTML = '<span>⏳ Đang phân tích lộ trình với AI...</span>';
+
+            var origin = null;
+            if (useGps && currentGpsLat != null && currentGpsLng != null) {
+              origin = { lat: currentGpsLat, lng: currentGpsLng };
+            }
+
+            aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
+              scenario: scenario,
+              startOrigin: origin
+            }).then(function(result) {
+              btnRun.disabled = false;
+              btnRun.innerHTML = '<span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>';
+
+              latestAiOptimizedResult = result;
+              var resPanel = document.getElementById('aiOptimizeResultPanel');
+              var summaryEl = document.getElementById('aiResultSummaryText');
+              var badgeEl = document.getElementById('aiResultSourceBadge');
+              var stopsListEl = document.getElementById('aiResultStopsList');
+
+              if (resPanel) resPanel.style.display = 'flex';
+              if (summaryEl) summaryEl.textContent = result.summary || 'Đã tối ưu thứ tự giao hàng.';
+              if (badgeEl) {
+                badgeEl.textContent = result.source === '9router_ai' ? ('9Router (' + (result.model || 'AI') + ')') : 'Offline Heuristic';
+                badgeEl.style.background = result.source === '9router_ai' ? '#e0e7ff' : '#fef3c7';
+                badgeEl.style.color = result.source === '9router_ai' ? '#4338ca' : '#b45309';
+              }
+
+              if (stopsListEl) {
+                stopsListEl.innerHTML = '';
+                var stops = result.stops || [];
+                if (stops.length > 0) {
+                  stops.forEach(function(s, sIdx) {
+                    var div = document.createElement('div');
+                    div.style.cssText = 'background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:5px 8px; font-size:11px; display:flex; justify-content:space-between; align-items:center;';
+                    div.innerHTML = '<span><strong>#' + (sIdx + 1) + '.</strong> ' + escapeHtml(s.name || 'Điểm dừng') + ' (' + (s.indices ? s.indices.length : 1) + ' đơn)</span>' +
+                                    (s.tip ? '<span style="color:#64748b; font-size:10px;">' + escapeHtml(s.tip) + '</span>' : '');
+                    stopsListEl.appendChild(div);
+                  });
+                } else {
+                  stopsListEl.innerHTML = '<div style="font-size:11px; color:#64748b;">Đã sắp xếp lại toàn bộ ' + result.orderedOrders.length + ' đơn theo thứ tự tối ưu.</div>';
+                }
+              }
+
+              showToast('🎉 Đã tính toán xong lộ trình tối ưu!');
+            }).catch(function(err) {
+              btnRun.disabled = false;
+              btnRun.innerHTML = '<span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>';
+              showToast('Lỗi tối ưu: ' + err.message);
+            });
+          });
+        }
+
+        // Áp dụng lộ trình
+        var btnApply = document.getElementById('btnApplyAiRoute');
+        if (btnApply) {
+          btnApply.addEventListener('click', function() {
+            if (!latestAiOptimizedResult || !latestAiOptimizedResult.orderedOrders) {
+              showToast('Chưa có lộ trình nào được tính toán!');
+              return;
+            }
+
+            var optimizedPending = latestAiOptimizedResult.orderedOrders;
+            // Giữ lại các đơn đã GTC/GTB ở phía sau
+            var finishedOrders = orders.filter(function(o) { return o.status !== 'pending' && o.status !== 'cho_ck'; });
+            orders = optimizedPending.concat(finishedOrders);
+
+            syncOrdersContiguousByGroups();
+            saveData();
+            render();
+            if (mobileMap) renderMap(orders);
+
+            closeAiRouteModal();
+            showToast('🎉 Đã áp dụng thứ tự giao hàng tối ưu mới!');
+          });
+        }
+
+        // Bắn sang điện thoại
+        var btnSyncAfter = document.getElementById('btnSyncAfterAi');
+        if (btnSyncAfter) {
+          btnSyncAfter.addEventListener('click', function() {
+            closeAiRouteModal();
+            var btnSyncHeader = document.getElementById('btnOpenQrSyncModal');
+            if (btnSyncHeader) btnSyncHeader.click();
+          });
+        }
+      }
+
+      // ==========================================================
+      // MODULE LIVE DELIVERY STOP & SMART PRE-CALL
+      // ==========================================================
+      var activeLiveOrder = null;
+      var liveTimerInterval = null;
+      var liveTimerSeconds = 0;
+
+      function startLiveDelivery(order) {
+        if (!order) return;
+        activeLiveOrder = order;
+
+        var bar = document.getElementById('liveDeliveryStopBar');
+        if (!bar) return;
+
+        var stt = orders.indexOf(order) + 1;
+        var sttEl = document.getElementById('liveStopStt');
+        if (sttEl) sttEl.textContent = '#' + stt;
+
+        var nameEl = document.getElementById('liveStopCustName');
+        if (nameEl) nameEl.textContent = order.customerName || 'Khách lẻ';
+
+        var phoneLink = document.getElementById('liveStopPhoneLink');
+        if (phoneLink) {
+          if (order.phone) {
+            phoneLink.href = 'tel:' + order.phone;
+            phoneLink.style.display = 'inline-flex';
+            phoneLink.textContent = '📞 ' + order.phone;
+          } else {
+            phoneLink.style.display = 'none';
+          }
+        }
+
+        var addrEl = document.getElementById('liveStopAddr');
+        if (addrEl) addrEl.textContent = '📍 ' + (order.address || 'Chưa có địa chỉ');
+
+        var codEl = document.getElementById('liveStopCod');
+        if (codEl) codEl.textContent = formatMoney(order.codAmount || 0);
+
+        var trackEl = document.getElementById('liveStopTracking');
+        if (trackEl) trackEl.textContent = order.trackingCode || '';
+
+        // 1. Quét tìm các đơn cùng tòa nhà / cùng địa chỉ (Same Stop Cluster)
+        var cleanTargetAddr = removeDiacritics(order.address || '').toLowerCase().trim();
+        var sameClusterOrders = orders.filter(function(o) {
+          if (o.id === order.id) return false;
+          if (o.status !== 'pending' && o.status !== 'cho_ck') return false;
+          var oAddr = removeDiacritics(o.address || '').toLowerCase().trim();
+          if (oAddr === cleanTargetAddr && oAddr.length > 5) return true;
+          if (isValidCoordinate(order.lat, order.lng) && isValidCoordinate(o.lat, o.lng)) {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            var dist = aiOpt ? aiOpt.calculateDistance(order.lat, order.lng, o.lat, o.lng) : 999;
+            if (dist <= 25) return true;
+          }
+          return false;
+        });
+
+        var clusterBox = document.getElementById('liveClusterBox');
+        var clusterCountEl = document.getElementById('liveClusterCount');
+        var clusterListEl = document.getElementById('liveClusterList');
+
+        if (sameClusterOrders.length > 0) {
+          if (clusterBox) clusterBox.style.display = 'flex';
+          if (clusterCountEl) clusterCountEl.textContent = sameClusterOrders.length;
+          if (clusterListEl) {
+            clusterListEl.innerHTML = '';
+            sameClusterOrders.forEach(function(sib) {
+              var sStt = orders.indexOf(sib) + 1;
+              var row = document.createElement('div');
+              row.className = 'live-cluster-item';
+              row.innerHTML = 
+                '<div>' +
+                  '<strong>#' + sStt + '</strong> ' + escapeHtml(sib.customerName || 'Khách') +
+                  (sib.phone ? ' (<a href="tel:' + sib.phone + '" style="color:#38bdf8; text-decoration:none;">' + sib.phone + '</a>)' : '') +
+                  ' - <span style="color:#fde047; font-weight:700;">' + formatMoney(sib.codAmount) + '</span>' +
+                '</div>' +
+                '<div style="display:flex; gap:4px;">' +
+                  '<button type="button" class="btn-live-act gtc" data-id="' + sib.id + '" style="padding:3px 7px; font-size:10px;">✓</button>' +
+                  '<button type="button" class="btn-live-act chock" data-id="' + sib.id + '" style="padding:3px 7px; font-size:10px;">🟡</button>' +
+                '</div>';
+
+              row.querySelector('.btn-live-act.gtc').addEventListener('click', function(e) {
+                e.stopPropagation();
+                sib.status = 'gtc';
+                sib.subStatus = 'gtc';
+                sib.deliveredAt = new Date().toISOString();
+                saveData();
+                render();
+                startLiveDelivery(activeLiveOrder);
+                showToast('Đã GTC đơn #' + sStt + ' 🟢');
+              });
+
+              row.querySelector('.btn-live-act.chock').addEventListener('click', function(e) {
+                e.stopPropagation();
+                sib.status = 'gtc';
+                sib.subStatus = 'cho_ck';
+                sib.deliveredAt = new Date().toISOString();
+                saveData();
+                render();
+                startLiveDelivery(activeLiveOrder);
+                showToast('Đã chuyển Chờ CK đơn #' + sStt + ' 🟡');
+              });
+
+              clusterListEl.appendChild(row);
+            });
+          }
+
+          var btnBatch = document.getElementById('btnLiveBatchGtc');
+          if (btnBatch) {
+            btnBatch.onclick = function() {
+              sameClusterOrders.forEach(function(sib) {
+                sib.status = 'gtc';
+                sib.subStatus = 'gtc';
+                sib.deliveredAt = new Date().toISOString();
+              });
+              saveData();
+              render();
+              startLiveDelivery(activeLiveOrder);
+              showToast('⚡ Đã GTC toàn bộ ' + sameClusterOrders.length + ' đơn cùng điểm! 🟢');
+            };
+          }
+        } else {
+          if (clusterBox) clusterBox.style.display = 'none';
+        }
+
+        // 2. Smart Pre-Call Widget: Tìm đơn kế tiếp trong lộ trình
+        updateSmartPreCallWidget(order, sameClusterOrders);
+
+        // 3. Khởi động đồng hồ đếm thời gian chờ khách
+        if (liveTimerInterval) clearInterval(liveTimerInterval);
+        liveTimerSeconds = 0;
+        var timerBadge = document.getElementById('liveStopTimer');
+        if (timerBadge) {
+          timerBadge.style.display = 'inline-block';
+          timerBadge.textContent = '⏱️ 00:00';
+          liveTimerInterval = setInterval(function() {
+            liveTimerSeconds++;
+            var m = Math.floor(liveTimerSeconds / 60);
+            var s = liveTimerSeconds % 60;
+            timerBadge.textContent = '⏱️ ' + (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+          }, 1000);
+        }
+
+        bar.style.display = 'flex';
+      }
+
+      function updateSmartPreCallWidget(currOrder, currentClusterSiblings) {
+        var precallBox = document.getElementById('livePrecallBox');
+        var precallInfo = document.getElementById('livePrecallInfo');
+        var precallBtn = document.getElementById('btnPrecallAction');
+        if (!precallBox || !precallInfo || !precallBtn) return;
+
+        var siblingIds = {};
+        if (currentClusterSiblings) {
+          currentClusterSiblings.forEach(function(s) { siblingIds[s.id] = true; });
+        }
+        siblingIds[currOrder.id] = true;
+
+        var currIdx = orders.indexOf(currOrder);
+        var nextOrder = null;
+
+        for (var i = currIdx + 1; i < orders.length; i++) {
+          var cand = orders[i];
+          if ((cand.status === 'pending' || cand.status === 'cho_ck') && !siblingIds[cand.id]) {
+            nextOrder = cand;
+            break;
+          }
+        }
+        if (!nextOrder) {
+          for (var j = 0; j < currIdx; j++) {
+            var cand2 = orders[j];
+            if ((cand2.status === 'pending' || cand2.status === 'cho_ck') && !siblingIds[cand2.id]) {
+              nextOrder = cand2;
+              break;
+            }
+          }
+        }
+
+        if (nextOrder && nextOrder.phone) {
+          var nextStt = orders.indexOf(nextOrder) + 1;
+          var distStr = '';
+          if (isValidCoordinate(currOrder.lat, currOrder.lng) && isValidCoordinate(nextOrder.lat, nextOrder.lng)) {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            var distM = aiOpt ? Math.round(aiOpt.calculateDistance(currOrder.lat, currOrder.lng, nextOrder.lat, nextOrder.lng)) : 0;
+            if (distM > 0) {
+              distStr = ' (cách ~' + (distM >= 1000 ? (distM / 1000).toFixed(1) + 'km' : distM + 'm') + ')';
+            }
+          }
+
+          precallInfo.innerHTML = 
+            '<strong>Điểm kế tiếp #' + nextStt + ':</strong> ' + escapeHtml(nextOrder.customerName || 'Khách lẻ') + distStr + '<br>' +
+            '📍 ' + escapeHtml(nextOrder.address || '') + ' - <span style="color:#fde047; font-weight:700;">COD: ' + formatMoney(nextOrder.codAmount) + '</span>';
+
+          precallBtn.href = 'tel:' + nextOrder.phone;
+          precallBtn.innerHTML = '📞 Gọi Trước Cho #' + nextStt + ' (' + nextOrder.phone + ')';
+          precallBox.style.display = 'flex';
+        } else {
+          precallBox.style.display = 'none';
+        }
+      }
+
+      function closeLiveDeliveryStop() {
+        if (liveTimerInterval) {
+          clearInterval(liveTimerInterval);
+          liveTimerInterval = null;
+        }
+        activeLiveOrder = null;
+        var bar = document.getElementById('liveDeliveryStopBar');
+        if (bar) bar.style.display = 'none';
+      }
+
+      function initLiveDeliveryEvents() {
+        var btnClose = document.getElementById('btnCloseLiveStopBar');
+        if (btnClose) btnClose.addEventListener('click', closeLiveDeliveryStop);
+
+        var btnGtc = document.getElementById('btnLiveGtc');
+        if (btnGtc) {
+          btnGtc.addEventListener('click', function() {
+            if (!activeLiveOrder) return;
+            activeLiveOrder.status = 'gtc';
+            activeLiveOrder.subStatus = 'gtc';
+            activeLiveOrder.deliveredAt = new Date().toISOString();
+            saveData();
+            render();
+            showToast('Đã xác nhận GTC đơn #' + (orders.indexOf(activeLiveOrder) + 1) + ' 🟢');
+            moveToNextLiveOrder();
+          });
+        }
+
+        var btnChoCk = document.getElementById('btnLiveChoCk');
+        if (btnChoCk) {
+          btnChoCk.addEventListener('click', function() {
+            if (!activeLiveOrder) return;
+            activeLiveOrder.status = 'gtc';
+            activeLiveOrder.subStatus = 'cho_ck';
+            activeLiveOrder.deliveredAt = new Date().toISOString();
+            saveData();
+            render();
+            showToast('Đã chuyển Chờ CK đơn #' + (orders.indexOf(activeLiveOrder) + 1) + ' 🟡');
+            moveToNextLiveOrder();
+          });
+        }
+
+        var btnCam = document.getElementById('btnLiveCam');
+        if (btnCam) {
+          btnCam.addEventListener('click', function() {
+            if (activeLiveOrder) triggerCameraForOrder(activeLiveOrder.id);
+          });
+        }
+      }
+
+      function moveToNextLiveOrder() {
+        if (!activeLiveOrder) return;
+        var currIdx = orders.indexOf(activeLiveOrder);
+        var nextOrder = null;
+        for (var i = currIdx + 1; i < orders.length; i++) {
+          if (orders[i].status === 'pending') {
+            nextOrder = orders[i];
+            break;
+          }
+        }
+        if (!nextOrder) {
+          for (var j = 0; j < currIdx; j++) {
+            if (orders[j].status === 'pending') {
+              nextOrder = orders[j];
+              break;
+            }
+          }
+        }
+        if (nextOrder) {
+          startLiveDelivery(nextOrder);
+        } else {
+          closeLiveDeliveryStop();
+          showToast('🎉 Chúc mừng! Bạn đã hoàn tất toàn bộ các đơn hàng!');
+        }
+      }
 
       function escapeHtml(str) {
         if (!str) return '';

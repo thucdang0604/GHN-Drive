@@ -265,6 +265,9 @@ function setupEventListeners() {
 
   // Modal Danh sách đơn thiếu GPS
   setupDesktopUnmappedModal();
+
+  // Modal AI 9Router Tối Ưu Lộ Trình
+  setupDesktopAiRouteModal();
 }
 
 /**
@@ -2761,3 +2764,297 @@ function setupDesktopUnmappedModal() {
     });
   }
 }
+
+// ==========================================================
+// MODAL: AI 9ROUTER TỐI ƯU HÓA LỘ TRÌNH (DESKTOP)
+// ==========================================================
+function setupDesktopAiRouteModal() {
+  const btnOpen = document.getElementById('btnOpenAiRouteDesktop');
+  const modal = document.getElementById('aiRouteModalDesktop');
+  const btnClose = document.getElementById('btnCloseAiRouteModalDesktop');
+  if (!btnOpen || !modal) return;
+
+  const tabBtnOptimize = document.getElementById('tabBtnAiOptimizeDesktop');
+  const tabBtnConfig = document.getElementById('tabBtnAiConfigDesktop');
+  const panelOptimize = document.getElementById('tabPanelAiOptimizeDesktop');
+  const panelConfig = document.getElementById('tabPanelAiConfigDesktop');
+
+  const pendingCountEl = document.getElementById('aiPendingCountDesktop');
+  const groupCountEl = document.getElementById('aiGroupCountDesktop');
+  const ruleCountEl = document.getElementById('aiRuleCountDesktop');
+
+  const modeSelect = document.getElementById('aiModeSelectDesktop');
+  const chkAvoidUTurn = document.getElementById('aiAvoidUTurnDesktop');
+  const chkClusterBuildings = document.getElementById('aiClusterBuildingsDesktop');
+
+  const btnRun = document.getElementById('btnRunAiOptimizeDesktop');
+  const runBtnText = document.getElementById('aiRunBtnTextDesktop');
+  const runStatus = document.getElementById('aiRunStatusDesktop');
+
+  const resultBox = document.getElementById('aiResultBoxDesktop');
+  const resStops = document.getElementById('aiResStopsDesktop');
+  const resDist = document.getElementById('aiResDistanceDesktop');
+  const resEngine = document.getElementById('aiResEngineDesktop');
+  const expEl = document.getElementById('aiExplanationDesktop');
+  const previewList = document.getElementById('aiPreviewStopsListDesktop');
+
+  const btnApply = document.getElementById('btnApplyAiRouteDesktop');
+  const btnSync = document.getElementById('btnSyncAfterAiDesktop');
+
+  // Config tab elements
+  const inputEndpoint = document.getElementById('aiCfgEndpointDesktop');
+  const inputModel = document.getElementById('aiCfgModelDesktop');
+  const inputApiKey = document.getElementById('aiCfgApiKeyDesktop');
+  const btnTestConn = document.getElementById('btnTestAiConnectionDesktop');
+  const btnSaveCfg = document.getElementById('btnSaveAiConfigDesktop');
+  const connStatus = document.getElementById('aiConnectionStatusDesktop');
+
+  let lastOptimizedResult = null;
+
+  // Tab switching
+  if (tabBtnOptimize && tabBtnConfig) {
+    tabBtnOptimize.addEventListener('click', () => {
+      tabBtnOptimize.classList.add('active');
+      tabBtnConfig.classList.remove('active');
+      panelOptimize.classList.add('active');
+      panelConfig.classList.remove('active');
+    });
+
+    tabBtnConfig.addEventListener('click', () => {
+      tabBtnConfig.classList.add('active');
+      tabBtnOptimize.classList.remove('active');
+      panelConfig.classList.add('active');
+      panelOptimize.classList.remove('active');
+      loadAiConfig();
+    });
+  }
+
+  function loadAiConfig() {
+    const aiOpt = window.AIRouteOptimizer;
+    if (!aiOpt) return;
+    const cfg = aiOpt.getConfig();
+    if (inputEndpoint) inputEndpoint.value = cfg.endpoint || '';
+    if (inputModel) inputModel.value = cfg.model || '';
+    if (inputApiKey) inputApiKey.value = cfg.apiKey || '';
+  }
+
+  function openModal() {
+    loadAiConfig();
+    const activeOrders = typeof getActiveTripOrders === 'function' ? getActiveTripOrders() : currentOrders;
+    const pending = activeOrders.filter(o => o.status === 'pending');
+    const rules = StorageService.getGroupRules ? StorageService.getGroupRules() : [];
+
+    if (pendingCountEl) pendingCountEl.textContent = pending.length;
+    if (groupCountEl) groupCountEl.textContent = currentGroups.length;
+    if (ruleCountEl) ruleCountEl.textContent = rules.length;
+
+    // Reset result box
+    if (resultBox) resultBox.style.display = 'none';
+    if (runStatus) runStatus.style.display = 'none';
+    lastOptimizedResult = null;
+
+    modal.style.display = 'flex';
+  }
+
+  function closeModal() {
+    modal.style.display = 'none';
+  }
+
+  btnOpen.addEventListener('click', openModal);
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  // Test Connection
+  if (btnTestConn) {
+    btnTestConn.addEventListener('click', async () => {
+      const aiOpt = window.AIRouteOptimizer;
+      if (!aiOpt) {
+        showToast('Chưa nạp module AI Route Optimizer!', 'error');
+        return;
+      }
+      connStatus.style.display = 'block';
+      connStatus.style.background = '#f1f5f9';
+      connStatus.style.color = '#334155';
+      connStatus.textContent = '⏳ Đang kiểm tra kết nối đến 9Router...';
+      btnTestConn.disabled = true;
+
+      // Save temp config to test
+      aiOpt.saveConfig({
+        endpoint: inputEndpoint.value.trim(),
+        model: inputModel.value.trim(),
+        apiKey: inputApiKey.value.trim()
+      });
+
+      const res = await aiOpt.testConnection();
+      btnTestConn.disabled = false;
+      if (res.success) {
+        connStatus.style.background = '#f0fdf4';
+        connStatus.style.color = '#166534';
+        connStatus.textContent = '✓ ' + res.message;
+        showToast('Kết nối 9Router thành công!', 'success');
+      } else {
+        connStatus.style.background = '#fef2f2';
+        connStatus.style.color = '#991b1b';
+        connStatus.textContent = '✕ Lỗi kết nối: ' + res.error;
+        showToast('Không thể kết nối 9Router: ' + res.error, 'error');
+      }
+    });
+  }
+
+  // Save Config
+  if (btnSaveCfg) {
+    btnSaveCfg.addEventListener('click', () => {
+      const aiOpt = window.AIRouteOptimizer;
+      if (!aiOpt) return;
+      aiOpt.saveConfig({
+        endpoint: inputEndpoint.value.trim(),
+        model: inputModel.value.trim(),
+        apiKey: inputApiKey.value.trim()
+      });
+      showToast('Đã lưu cấu hình 9Router!', 'success');
+    });
+  }
+
+  // Run Optimization
+  if (btnRun) {
+    btnRun.addEventListener('click', async () => {
+      const aiOpt = window.AIRouteOptimizer;
+      if (!aiOpt) {
+        showToast('Lỗi: Chưa nạp module AIRouteOptimizer!', 'error');
+        return;
+      }
+
+      const activeOrders = typeof getActiveTripOrders === 'function' ? getActiveTripOrders() : currentOrders;
+      const pending = activeOrders.filter(o => o.status === 'pending');
+      if (pending.length === 0) {
+        showToast('Không có đơn hàng nào đang ở trạng thái Chờ Giao!', 'warning');
+        return;
+      }
+
+      const rules = StorageService.getGroupRules ? StorageService.getGroupRules() : [];
+      const mode = modeSelect ? modeSelect.value : 'auto';
+      const avoidUTurn = chkAvoidUTurn ? chkAvoidUTurn.checked : true;
+      const clusterBuildings = chkClusterBuildings ? chkClusterBuildings.checked : true;
+
+      btnRun.disabled = true;
+      if (runBtnText) runBtnText.textContent = 'Đang phân tích & tối ưu...';
+      if (runStatus) {
+        runStatus.style.display = 'block';
+        runStatus.textContent = '⏳ AI 9Router đang đọc địa chỉ và tính toán lộ trình tối ưu...';
+      }
+
+      try {
+        const result = await aiOpt.optimizeRoute(pending, currentGroups, rules, {
+          scenario: mode,
+          avoidUTurn: avoidUTurn,
+          clusterBuildings: clusterBuildings
+        });
+
+        lastOptimizedResult = result;
+
+        // Render preview
+        if (resultBox) resultBox.style.display = 'block';
+        if (resStops) resStops.textContent = result.orderedOrders.length;
+        if (resDist) {
+          const km = (result.totalDistance / 1000).toFixed(1);
+          resDist.textContent = km + ' km';
+        }
+        if (resEngine) {
+          resEngine.textContent = result.isAIEngine ? '🤖 9Router AI' : '⚡ Thuật toán Offline';
+          resEngine.style.color = result.isAIEngine ? '#4f46e5' : '#059669';
+        }
+
+        if (expEl) {
+          expEl.innerHTML = `<strong>Chiến lược:</strong> ${escapeHtml(result.explanation || 'Đã sắp xếp lộ trình theo trình tự di chuyển tối ưu.')}`;
+        }
+
+        if (previewList) {
+          previewList.innerHTML = '';
+          result.orderedOrders.forEach((item, idx) => {
+            const stopNum = idx + 1;
+            const row = document.createElement('div');
+            row.className = 'ai-stop-row';
+            row.innerHTML = `
+              <span class="ai-stop-badge">#${stopNum}</span>
+              <div style="flex: 1; min-width: 0;">
+                <strong style="color: #0f172a;">${escapeHtml(item.customerName || 'Khách lẻ')}</strong>
+                <span style="color: #64748b; font-size: 11px; margin-left: 4px;">(${escapeHtml(item.trackingCode || '')})</span>
+                <div style="color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📍 ${escapeHtml(item.address || 'Chưa có địa chỉ')}</div>
+              </div>
+              <span style="font-weight: 700; color: #b45309; font-size: 11px;">${formatCurrency(item.codAmount || 0)}</span>
+            `;
+            previewList.appendChild(row);
+          });
+        }
+
+        showToast('Đã tính toán xong lộ trình tối ưu!', 'success');
+      } catch (err) {
+        console.error('Lỗi khi chạy tối ưu hóa AI:', err);
+        showToast('Lỗi khi tối ưu: ' + (err.message || err), 'error');
+      } finally {
+        btnRun.disabled = false;
+        if (runBtnText) runBtnText.textContent = 'Bắt Đầu AI Tối Ưu Lộ Trình (9Router)';
+        if (runStatus) runStatus.style.display = 'none';
+      }
+    });
+  }
+
+  // Apply Route
+  if (btnApply) {
+    btnApply.addEventListener('click', () => {
+      if (!lastOptimizedResult || !lastOptimizedResult.orderedOrders) {
+        showToast('Chưa có kết quả tối ưu để áp dụng!', 'warning');
+        return;
+      }
+
+      const orderedPendingIds = lastOptimizedResult.orderedOrders.map(o => o.id);
+      const pendingMap = new Map();
+      lastOptimizedResult.orderedOrders.forEach(o => pendingMap.set(o.id, o));
+
+      // Tái sắp xếp currentOrders: các đơn pending theo thứ tự mới, các đơn gtc/gtb giữ nguyên
+      const newOrders = [];
+      const remainingOthers = [];
+
+      currentOrders.forEach(o => {
+        if (pendingMap.has(o.id)) {
+          // pending order
+        } else {
+          remainingOthers.push(o);
+        }
+      });
+
+      // Thêm các pending theo đúng thứ tự AI
+      orderedPendingIds.forEach(id => {
+        const found = currentOrders.find(o => o.id === id);
+        if (found) newOrders.push(found);
+      });
+
+      // Thêm các đơn khác (đã giao xong hoặc thất bại) vào sau
+      remainingOthers.forEach(o => newOrders.push(o));
+
+      currentOrders = newOrders;
+      StorageService.saveOrders(currentOrders);
+      renderApp();
+      showToast('🎉 Đã áp dụng lộ trình tối ưu AI vào hệ thống!', 'success');
+      closeModal();
+    });
+  }
+
+  // Sync to Mobile
+  if (btnSync) {
+    btnSync.addEventListener('click', () => {
+      // Tự động áp dụng nếu có kết quả
+      if (lastOptimizedResult && lastOptimizedResult.orderedOrders) {
+        btnApply.click();
+      }
+      closeModal();
+      const btnOpenQrSync = document.getElementById('btnOpenQrSyncModalDesktop');
+      if (btnOpenQrSync) {
+        btnOpenQrSync.click();
+      }
+    });
+  }
+}
+

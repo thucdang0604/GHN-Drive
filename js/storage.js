@@ -5,6 +5,7 @@
 
 const STORAGE_KEY = 'ghn_orders_data_v1';
 const GROUPS_STORAGE_KEY = 'ghn_order_groups_v1';
+const GROUP_RULES_STORAGE_KEY = 'ghn_group_rules_v1';
 
 export const StorageService = {
   /**
@@ -263,6 +264,34 @@ export const StorageService = {
       return sample;
     }
     return current;
+  },
+
+  /**
+   * Lấy cấu hình phân nhóm tự động theo tên đường & số nhà (Group Rules)
+   */
+  getGroupRules() {
+    try {
+      const data = localStorage.getItem(GROUP_RULES_STORAGE_KEY);
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error('Lỗi khi đọc Group Rules:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Lưu cấu hình phân nhóm tự động theo tên đường & số nhà (Group Rules)
+   */
+  saveGroupRules(rules) {
+    try {
+      localStorage.setItem(GROUP_RULES_STORAGE_KEY, JSON.stringify(rules || []));
+      return true;
+    } catch (e) {
+      console.error('Lỗi khi ghi Group Rules:', e);
+      return false;
+    }
   }
 };
 
