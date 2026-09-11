@@ -5355,14 +5355,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         <div style="display: flex; flex-direction: column; gap: 4px;">
           <label style="font-size: 12px; font-weight: 700; color: #334155;">Địa chỉ 9Router Endpoint (URL):</label>
-          <input type="text" id="cfgAiEndpoint" class="upd-input" placeholder="http://localhost:20128/v1/chat/completions" style="font-family: monospace; font-size: 12px;">
-          <span style="font-size: 10.5px; color: #64748b;">Mặc định PC: http://localhost:20128/v1/chat/completions | Điện thoại cùng Wi-Fi: http://[IP_máy_tính]:20128/v1/chat/completions</span>
+          <input type="text" id="cfgAiEndpoint" class="upd-input" placeholder="https://rv9w6kc.abc-tunnel.us/v1/chat/completions" style="font-family: monospace; font-size: 12px;">
+          <span style="font-size: 10.5px; color: #64748b;">Hỗ trợ link Tunnel/BaseURL (ví dụ: https://.../v1) hoặc link đầy đủ (.../v1/chat/completions). Hệ thống tự động chuẩn hóa.</span>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 4px;">
           <label style="font-size: 12px; font-weight: 700; color: #334155;">Tên mô hình AI (Model):</label>
-          <input type="text" id="cfgAiModel" class="upd-input" placeholder="gemini-2.5-flash" style="font-size: 12.5px;">
+          <input type="text" id="cfgAiModel" class="upd-input" placeholder="ag/gemini-3.7-flash-high" style="font-size: 12.5px;">
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="ag/gemini-3.7-flash-high">ag/gemini-3.7-flash-high</button>
             <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="gemini-2.5-flash">gemini-2.5-flash</button>
             <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="gpt-4o-mini">gpt-4o-mini</button>
             <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="claude-3-5-sonnet">claude-3-5-sonnet</button>
@@ -12689,11 +12690,13 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           btnSaveCfg.addEventListener('click', function() {
             var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
             if (!aiOpt) return;
-            var endpoint = (document.getElementById('cfgAiEndpoint').value || '').trim();
+            var endpointInput = document.getElementById('cfgAiEndpoint');
+            var rawEndpoint = (endpointInput.value || '').trim();
             var model = (document.getElementById('cfgAiModel').value || '').trim();
             var apiKey = (document.getElementById('cfgAiApiKey').value || '').trim();
 
-            aiOpt.setEndpoint(endpoint || aiOpt.DEFAULT_ENDPOINT);
+            var normalizedEndpoint = aiOpt.setEndpoint(rawEndpoint || aiOpt.DEFAULT_ENDPOINT);
+            if (endpointInput) endpointInput.value = normalizedEndpoint;
             aiOpt.setModel(model || aiOpt.DEFAULT_MODEL);
             aiOpt.setApiKey(apiKey);
 
@@ -12709,10 +12712,13 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
             if (!aiOpt) return;
 
-            var endpoint = (document.getElementById('cfgAiEndpoint').value || '').trim();
+            var endpointInput = document.getElementById('cfgAiEndpoint');
+            var rawEndpoint = (endpointInput.value || '').trim();
             var model = (document.getElementById('cfgAiModel').value || '').trim();
             var apiKey = (document.getElementById('cfgAiApiKey').value || '').trim();
-            aiOpt.setEndpoint(endpoint || aiOpt.DEFAULT_ENDPOINT);
+
+            var normalizedEndpoint = aiOpt.setEndpoint(rawEndpoint || aiOpt.DEFAULT_ENDPOINT);
+            if (endpointInput) endpointInput.value = normalizedEndpoint;
             aiOpt.setModel(model || aiOpt.DEFAULT_MODEL);
             aiOpt.setApiKey(apiKey);
 

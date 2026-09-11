@@ -2886,6 +2886,7 @@ function setupDesktopAiRouteModal() {
         model: inputModel.value.trim(),
         apiKey: inputApiKey.value.trim()
       });
+      if (inputEndpoint) inputEndpoint.value = aiOpt.getEndpoint();
 
       const res = await aiOpt.testConnection();
       btnTestConn.disabled = false;
@@ -2913,6 +2914,7 @@ function setupDesktopAiRouteModal() {
         model: inputModel.value.trim(),
         apiKey: inputApiKey.value.trim()
       });
+      if (inputEndpoint) inputEndpoint.value = aiOpt.getEndpoint();
       showToast('Đã lưu cấu hình 9Router!', 'success');
     });
   }

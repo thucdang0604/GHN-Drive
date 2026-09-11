@@ -22,46 +22,90 @@
   var DEFAULT_ENDPOINT = 'http://localhost:20128/v1/chat/completions';
   var DEFAULT_MODEL = 'gemini-2.5-flash';
 
+  var _inMemoryEndpoint = DEFAULT_ENDPOINT;
+  var _inMemoryModel = DEFAULT_MODEL;
+  var _inMemoryApiKey = '';
+
+  /**
+   * Chuẩn hóa URL endpoint OpenAI-compatible
+   * Tự động bổ sung /v1/chat/completions nếu người dùng chỉ nhập domain hoặc /v1
+   */
+  function normalizeEndpointUrl(url) {
+    if (!url) return DEFAULT_ENDPOINT;
+    var clean = url.trim().replace(/\/+$/, '');
+    if (!clean) return DEFAULT_ENDPOINT;
+    if (/\/chat\/completions$/i.test(clean)) {
+      return clean;
+    }
+    if (/\/v1$/i.test(clean)) {
+      return clean + '/chat/completions';
+    }
+    return clean + '/v1/chat/completions';
+  }
+
   function getEndpoint() {
     try {
-      return localStorage.getItem(STORAGE_KEY_ENDPOINT) || DEFAULT_ENDPOINT;
+      if (typeof localStorage !== 'undefined') {
+        var saved = localStorage.getItem(STORAGE_KEY_ENDPOINT);
+        if (saved) return normalizeEndpointUrl(saved);
+      }
+      return normalizeEndpointUrl(_inMemoryEndpoint);
     } catch(e) {
-      return DEFAULT_ENDPOINT;
+      return normalizeEndpointUrl(_inMemoryEndpoint);
     }
   }
 
   function setEndpoint(url) {
+    var norm = normalizeEndpointUrl(url);
+    _inMemoryEndpoint = norm;
     try {
-      localStorage.setItem(STORAGE_KEY_ENDPOINT, (url || '').trim());
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_ENDPOINT, norm);
+      }
     } catch(e) {}
+    return norm;
   }
 
   function getModel() {
     try {
-      return localStorage.getItem(STORAGE_KEY_MODEL) || DEFAULT_MODEL;
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(STORAGE_KEY_MODEL) || _inMemoryModel;
+      }
+      return _inMemoryModel;
     } catch(e) {
-      return DEFAULT_MODEL;
+      return _inMemoryModel;
     }
   }
 
   function setModel(m) {
+    _inMemoryModel = (m || '').trim();
     try {
-      localStorage.setItem(STORAGE_KEY_MODEL, (m || '').trim());
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_MODEL, _inMemoryModel);
+      }
     } catch(e) {}
+    return _inMemoryModel;
   }
 
   function getApiKey() {
     try {
-      return localStorage.getItem(STORAGE_KEY_API_KEY) || '';
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(STORAGE_KEY_API_KEY) || _inMemoryApiKey;
+      }
+      return _inMemoryApiKey;
     } catch(e) {
-      return '';
+      return _inMemoryApiKey;
     }
   }
 
   function setApiKey(k) {
+    _inMemoryApiKey = (k || '').trim();
     try {
-      localStorage.setItem(STORAGE_KEY_API_KEY, (k || '').trim());
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_API_KEY, _inMemoryApiKey);
+      }
     } catch(e) {}
+    return _inMemoryApiKey;
   }
 
   /**
@@ -116,7 +160,30 @@
     }).then(function(res) {
       if (timeoutId) clearTimeout(timeoutId);
       if (!res.ok) {
-        throw new Error('Mã phản hồi HTTP: ' + res.status + ' (' + res.statusText + ')');
+        return res.text().then(function(errText) {
+          var detail = '';
+          try {
+            var parsed = JSON.parse(errText);
+            if (parsed && parsed.error) {
+              detail = typeof parsed.error === 'string' ? parsed.error : (parsed.error.message || JSON.stringify(parsed.error));
+            }
+          } catch(e) {
+            detail = errText ? errText.slice(0, 150) : '';
+          }
+
+          var msg = 'Mã phản hồi HTTP: ' + res.status;
+          if (res.status === 405) {
+            msg += ' (Method Not Allowed) - Đường dẫn endpoint cần có đuôi /v1/chat/completions';
+          } else if (res.status === 401) {
+            msg += ' (Unauthorized) - Cần có API Key hợp lệ cho 9Router';
+          } else if (res.status === 404) {
+            msg += ' (Not Found) - Không tìm thấy route hoặc model AI';
+          }
+          if (detail) {
+            msg += ' [' + detail + ']';
+          }
+          throw new Error(msg);
+        });
       }
       return res.json();
     }).then(function(data) {
@@ -410,7 +477,21 @@
       signal: controller ? controller.signal : undefined
     }).then(function(res) {
       if (timeoutId) clearTimeout(timeoutId);
-      if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + res.statusText);
+      if (!res.ok) {
+        return res.text().then(function(errText) {
+          var detail = '';
+          try {
+            var parsed = JSON.parse(errText);
+            if (parsed && parsed.error) {
+              detail = typeof parsed.error === 'string' ? parsed.error : (parsed.error.message || JSON.stringify(parsed.error));
+            }
+          } catch(e) {
+            detail = errText ? errText.slice(0, 150) : '';
+          }
+          var msg = 'HTTP ' + res.status + (detail ? ': ' + detail : (res.statusText ? ': ' + res.statusText : ''));
+          throw new Error(msg);
+        });
+      }
       return res.json();
     }).then(function(data) {
       var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
