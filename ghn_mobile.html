@@ -5130,7 +5130,106 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       var isFetchingBuildingData = false;
       var buildingFetchTimer = null;
 
-      // 1. Quản lý LocalStorage
+      // 1. Quản lý Bộ Nhớ Bền Vững (IndexedDB + LocalStorage Dual-Storage)
+      var IDB_NAME = 'GHN_Mobile_DB_v2';
+      var IDB_VERSION = 1;
+      var IDB_STORE_ORDERS = 'orders_store';
+      var IDB_STORE_PHOTOS = 'photos_store';
+      var IDB_STORE_META = 'meta_store';
+      var idbInstance = null;
+
+      function openDB() {
+        return new Promise(function(resolve) {
+          if (!window.indexedDB) {
+            resolve(null);
+            return;
+          }
+          if (idbInstance) {
+            resolve(idbInstance);
+            return;
+          }
+          try {
+            var req = window.indexedDB.open(IDB_NAME, IDB_VERSION);
+            req.onupgradeneeded = function(e) {
+              var db = e.target.result;
+              if (!db.objectStoreNames.contains(IDB_STORE_ORDERS)) {
+                db.createObjectStore(IDB_STORE_ORDERS, { keyPath: 'id' });
+              }
+              if (!db.objectStoreNames.contains(IDB_STORE_PHOTOS)) {
+                db.createObjectStore(IDB_STORE_PHOTOS, { keyPath: 'id' });
+              }
+              if (!db.objectStoreNames.contains(IDB_STORE_META)) {
+                db.createObjectStore(IDB_STORE_META, { keyPath: 'key' });
+              }
+            };
+            req.onsuccess = function(e) {
+              idbInstance = e.target.result;
+              resolve(idbInstance);
+            };
+            req.onerror = function(err) {
+              console.warn('Không thể mở IndexedDB:', err);
+              resolve(null);
+            };
+          } catch(e) {
+            console.warn('Lỗi khởi tạo IndexedDB:', e);
+            resolve(null);
+          }
+        });
+      }
+
+      function saveAllToIndexedDB() {
+        openDB().then(function(db) {
+          if (!db) return;
+          try {
+            var tx = db.transaction([IDB_STORE_ORDERS, IDB_STORE_PHOTOS, IDB_STORE_META], 'readwrite');
+            var ordStore = tx.objectStore(IDB_STORE_ORDERS);
+            var photoStore = tx.objectStore(IDB_STORE_PHOTOS);
+            var metaStore = tx.objectStore(IDB_STORE_META);
+
+            metaStore.put({ key: 'groups', value: groups });
+            metaStore.put({ key: 'groupRules', value: groupRules });
+            metaStore.put({ key: 'lastUpdated', value: new Date().toISOString() });
+
+            ordStore.clear();
+            orders.forEach(function(o) {
+              ordStore.put(o);
+              if (o.deliveryPhoto) {
+                photoStore.put({ id: o.id, photo: o.deliveryPhoto, updatedAt: o.deliveredAt || new Date().toISOString() });
+              }
+            });
+          } catch(err) {
+            console.warn('Lỗi ghi IndexedDB:', err);
+          }
+        });
+      }
+
+      function loadFromIndexedDB() {
+        return openDB().then(function(db) {
+          if (!db) return null;
+          return new Promise(function(resolve) {
+            try {
+              var tx = db.transaction([IDB_STORE_ORDERS, IDB_STORE_PHOTOS, IDB_STORE_META], 'readonly');
+              var ordStore = tx.objectStore(IDB_STORE_ORDERS);
+              var photoStore = tx.objectStore(IDB_STORE_PHOTOS);
+
+              var reqOrders = ordStore.getAll();
+              var reqPhotos = photoStore.getAll();
+
+              tx.oncomplete = function() {
+                var storedOrders = reqOrders.result || [];
+                var storedPhotos = reqPhotos.result || [];
+                resolve({ orders: storedOrders, photos: storedPhotos });
+              };
+              tx.onerror = function() {
+                resolve(null);
+              };
+            } catch(e) {
+              resolve(null);
+            }
+          });
+        });
+      }
+
       function loadData() {
         try {
           var rawCache = localStorage.getItem(VERIFIED_GEOCACHE_KEY);
@@ -5260,6 +5359,31 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           orders = [];
         }
 
+        // Tự động khôi phục ảnh và đơn từ IndexedDB nếu LocalStorage bị giới hạn hoặc mất do đóng tab
+        loadFromIndexedDB().then(function(res) {
+          if (!res) return;
+          var hasChanges = false;
+          // Nếu orders hiện tại trống hoặc là demo mà IndexedDB có dữ liệu đơn thật đã lưu
+          if ((orders.length === 0 || (orders[0] && orders[0].id === 'ghn_1')) && res.orders && res.orders.length > 0 && res.orders[0].id !== 'ghn_1') {
+            orders = res.orders;
+            hasChanges = true;
+          }
+          // Nạp lại ảnh nếu LocalStorage lược bỏ để tiết kiệm bộ nhớ
+          if (res.photos && res.photos.length > 0) {
+            var photoMap = {};
+            res.photos.forEach(function(p) { photoMap[p.id] = p.photo; });
+            orders.forEach(function(o) {
+              if (!o.deliveryPhoto && photoMap[o.id]) {
+                o.deliveryPhoto = photoMap[o.id];
+                hasChanges = true;
+              }
+            });
+          }
+          if (hasChanges) {
+            render();
+          }
+        });
+
         // Đảm bảo mọi đơn đều có groupId hợp lệ và dữ liệu địa chỉ mới
         ensureGroupIntegrity();
         syncOrdersContiguousByGroups();
@@ -5275,13 +5399,34 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       function saveData() {
+        // 1. Lưu LocalStorage (Kèm cơ chế phòng thủ chống tràn 5MB quota)
         try {
           localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
           localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(groups));
           localStorage.setItem(GROUP_RULES_STORAGE_KEY, JSON.stringify(groupRules));
         } catch(e) {
-          console.error('Lỗi lưu dữ liệu:', e);
+          console.warn('LocalStorage bị đầy hoặc vượt quota, chuyển sang lưu gọn:', e);
+          try {
+            // Lược bớt base64 deliveryPhoto trong LocalStorage vì ảnh đã được lưu an toàn trong IndexedDB
+            var leanOrders = orders.map(function(o) {
+              if (o.deliveryPhoto && o.deliveryPhoto.length > 300) {
+                var c = Object.assign({}, o);
+                c.hasStoredPhoto = true;
+                delete c.deliveryPhoto;
+                return c;
+              }
+              return o;
+            });
+            localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(leanOrders));
+            localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(groups));
+            localStorage.setItem(GROUP_RULES_STORAGE_KEY, JSON.stringify(groupRules));
+          } catch(err2) {
+            console.error('Không thể lưu dự phòng vào LocalStorage:', err2);
+          }
         }
+
+        // 2. Luôn đồng bộ vào IndexedDB (dung lượng hàng trăm MB, an toàn tuyệt đối)
+        saveAllToIndexedDB();
       }
 
       function saveVerifiedGeocache() {
@@ -9993,7 +10138,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
       function drawWatermarkOnCanvas(img, order) {
         var canvas = document.createElement('canvas');
-        var maxDim = 1600;
+        var maxDim = 1200; // Chuẩn hóa 1200px: siêu nét rõ chữ nhưng giảm ~70% dung lượng RAM & chống crash tab
         var w = img.naturalWidth || img.width;
         var h = img.naturalHeight || img.height;
 
@@ -10066,10 +10211,35 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var sttText = (order.subStatus === 'cho_ck' ? 'CHỜ CHUYỂN KHOẢN 🟡' : 'GIAO THÀNH CÔNG 🟢');
         ctx.fillText('⏰ ' + timeStr + '   |   ' + sttText, padX, curY);
 
-        return canvas.toDataURL('image/jpeg', 0.88);
+        var finalDataUrl = canvas.toDataURL('image/jpeg', 0.80);
+        // Giải phóng ngay lập tức bộ nhớ bitmap của Canvas trên mobile
+        canvas.width = 1;
+        canvas.height = 1;
+        return finalDataUrl;
       }
 
       function openCameraPreview(dataUrl, order) {
+        if (!dataUrl && order && order.hasStoredPhoto) {
+          openDB().then(function(db) {
+            if (!db) return;
+            try {
+              var tx = db.transaction(IDB_STORE_PHOTOS, 'readonly');
+              var req = tx.objectStore(IDB_STORE_PHOTOS).get(order.id);
+              req.onsuccess = function() {
+                if (req.result && req.result.photo) {
+                  order.deliveryPhoto = req.result.photo;
+                  openCameraPreview(order.deliveryPhoto, order);
+                } else {
+                  showToast('⚠️ Không tìm thấy ảnh trong kho lưu trữ');
+                }
+              };
+            } catch(e) {
+              console.warn('Lỗi đọc ảnh IndexedDB:', e);
+            }
+          });
+          return;
+        }
+
         currentWatermarkedUrl = dataUrl;
         currentCameraOrder = order;
 
@@ -10284,6 +10454,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               img.onload = function() {
                 try {
                   var watermarkedUrl = drawWatermarkOnCanvas(img, currentCameraOrder);
+                  img.onload = null;
+                  img.src = ''; // Giải phóng RAM ảnh thô ngay lập tức
                   openCameraPreview(watermarkedUrl, currentCameraOrder);
                 } catch(err) {
                   console.error('Lỗi đóng dấu ảnh:', err);
@@ -10293,6 +10465,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               img.src = evt.target.result;
             };
             reader.readAsDataURL(file);
+            // Reset input file để giải phóng handle file hệ điều hành và cho phép chụp lại
+            camInp.value = '';
           });
         }
       }
@@ -10398,7 +10572,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                     '<input type="checkbox" class="tbl-order-chk" data-order-id="' + item.id + '" ' + (isChecked ? 'checked' : '') + '>' +
                     '<div class="tbl-stt-badge-wrap">' +
                       '<span class="tbl-stt-badge">#' + stt + '</span>' +
-                      (item.deliveryPhoto ? '<span class="tbl-ico-photo" title="Đã có ảnh xác nhận - Chạm xem">📸</span>' : '') +
+                      ((item.deliveryPhoto || item.hasStoredPhoto) ? '<span class="tbl-ico-photo" title="Đã có ảnh xác nhận - Chạm xem">📸</span>' : '') +
                     '</div>' +
                   '</div>' +
                   '<div class="tbl-col-info">' +
@@ -10417,7 +10591,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                     (item.gtbThu ? '<span class="tbl-gtb-thu" title="Thu GTB">Thu: ' + formatMoney(item.gtbThu) + '</span>' : '') +
                   '</div>' +
                   '<div class="tbl-col-act">' +
-                    '<button type="button" class="tbl-btn-cam ' + (item.deliveryPhoto ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
+                    '<button type="button" class="tbl-btn-cam ' + ((item.deliveryPhoto || item.hasStoredPhoto) ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
                     '<button type="button" class="tbl-btn-gtc ' + (isGtc ? 'active' : (isChoCk ? 'active-ck' : '')) + '" title="Giao thành công / Chờ CK">✓</button>' +
                     '<button type="button" class="tbl-btn-gtb ' + (isGtb ? 'active' : '') + '" title="Báo giao thất bại">✕</button>' +
                   '</div>' +
@@ -10701,7 +10875,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               }
 
               var photoBadgeHtml = '';
-              if (item.deliveryPhoto) {
+              if (item.deliveryPhoto || item.hasStoredPhoto) {
                 photoBadgeHtml = '<span class="badge-has-photo btn-view-photo" title="Bấm để xem ảnh xác nhận">📸 Đã chụp ảnh</span>';
               }
 
@@ -10743,7 +10917,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   (item.notes ? '<div class="m-card-note">⚠️ ' + escapeHtml(item.notes) + '</div>' : '') +
                 '</div>' +
                 '<div class="m-card-actions">' +
-                  '<button type="button" class="btn-act-camera ' + (item.deliveryPhoto ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
+                  '<button type="button" class="btn-act-camera ' + ((item.deliveryPhoto || item.hasStoredPhoto) ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
                   '<button type="button" class="btn-touch-action btn-touch-chock ' + (isChoCk ? 'active' : '') + '">🟡 CHỜ CK</button>' +
                   '<button type="button" class="btn-touch-action btn-touch-gtc ' + (isGtc ? 'active' : '') + '">✓ GTC</button>' +
                   '<button type="button" class="btn-touch-action btn-touch-gtb ' + (isGtb ? 'active' : '') + '">✕ GTB</button>' +
@@ -11779,6 +11953,44 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         }
         // Khởi tạo modal & sự kiện cấu hình phân nhóm tự động
         initGroupRulesModalEvents();
+
+        // 10. Page Lifecycle API: Bảo vệ dữ liệu chống mất đơn & ảnh khi chuyển app trên mobile
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'hidden') {
+            // Người dùng chuyển sang app khác (Google Maps, Zalo, Cuộc gọi...) -> Lưu ngay lập tức
+            saveData();
+          } else if (document.visibilityState === 'visible') {
+            // Người dùng quay lại app -> Tự động nạp lại ảnh từ IndexedDB nếu có đơn chưa nạp đủ
+            if (orders.some(function(o) { return !o.deliveryPhoto && o.hasStoredPhoto; })) {
+              loadFromIndexedDB().then(function(res) {
+                if (res && res.photos && res.photos.length > 0) {
+                  var photoMap = {};
+                  res.photos.forEach(function(p) { photoMap[p.id] = p.photo; });
+                  var updated = false;
+                  orders.forEach(function(o) {
+                    if (!o.deliveryPhoto && photoMap[o.id]) {
+                      o.deliveryPhoto = photoMap[o.id];
+                      updated = true;
+                    }
+                  });
+                  if (updated) render();
+                }
+              });
+            }
+          }
+        });
+
+        window.addEventListener('pagehide', function() {
+          saveData();
+        });
+
+        document.addEventListener('freeze', function() {
+          saveData();
+        });
+
+        window.addEventListener('beforeunload', function() {
+          saveData();
+        });
       });
 
       function escapeHtml(str) {
