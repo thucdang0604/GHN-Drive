@@ -2788,6 +2788,8 @@ function setupDesktopAiRouteModal() {
   const depotAddrEl = document.getElementById('aiDepotAddressDesktop');
   const startOriginSelect = document.getElementById('aiStartOriginSelectDesktop');
   const chkReturnToDepot = document.getElementById('aiReturnToDepotDesktop');
+  const boxStartDist = document.getElementById('aiBoxStartDistanceDesktop');
+  const resStartDist = document.getElementById('aiResStartDistanceDesktop');
   const boxReturnDist = document.getElementById('aiBoxReturnDistanceDesktop');
   const resReturnDist = document.getElementById('aiResReturnDistanceDesktop');
   const resDistLabel = document.getElementById('aiResDistLabelDesktop');
@@ -3049,13 +3051,21 @@ function setupDesktopAiRouteModal() {
         // Render preview
         if (resultBox) resultBox.style.display = 'block';
         if (resStops) resStops.textContent = result.orderedOrders.length;
+        if (boxStartDist && resStartDist) {
+          if (result.startDistance != null && result.startDistance > 0) {
+            boxStartDist.style.display = 'block';
+            resStartDist.textContent = '+' + (result.startDistance / 1000).toFixed(1) + ' km';
+          } else {
+            boxStartDist.style.display = 'none';
+          }
+        }
         if (resDist) {
           const totalMeters = result.roundTripDistance != null ? result.roundTripDistance : (result.totalDistance || 0);
           const km = (totalMeters / 1000).toFixed(1);
           resDist.textContent = km + ' km';
         }
         if (resDistLabel) {
-          resDistLabel.textContent = result.returnToDepot ? 'Tổng chu trình (về BC)' : 'Ước tính lộ trình';
+          resDistLabel.textContent = result.returnToDepot ? 'Tổng ca (khép kín)' : 'Ước tính lộ trình';
         }
         if (boxReturnDist && resReturnDist) {
           if (result.returnToDepot && result.returnDistance != null) {
@@ -3076,6 +3086,26 @@ function setupDesktopAiRouteModal() {
 
         if (previewList) {
           previewList.innerHTML = '';
+
+          // Hiển thị chặng xuất phát từ Bưu cục đến điểm #1
+          if (result.depot) {
+            const startRow = document.createElement('div');
+            startRow.className = 'ai-stop-row';
+            startRow.style.background = '#f0fdf4';
+            startRow.style.borderColor = '#bbf7d0';
+            const startKm = (result.startDistance != null && result.startDistance > 0) ? ` (+${(result.startDistance / 1000).toFixed(1)} km)` : ' (<50m)';
+            startRow.innerHTML = `
+              <span class="ai-stop-badge" style="background: #16a34a;">🏢</span>
+              <div style="flex: 1; min-width: 0;">
+                <strong style="color: #166534;">Xuất phát: ${escapeHtml(result.depot.name)} ➜ Điểm #1</strong>
+                <span style="color: #15803d; font-size: 11px; margin-left: 4px; font-weight: 600;">${startKm}</span>
+                <div style="color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📍 ${escapeHtml(result.depot.address || '')}</div>
+              </div>
+              <span style="font-weight: 700; color: #16a34a; font-size: 11px;">Gần nhất</span>
+            `;
+            previewList.appendChild(startRow);
+          }
+
           result.orderedOrders.forEach((item, idx) => {
             const stopNum = idx + 1;
             const row = document.createElement('div');
@@ -3098,13 +3128,13 @@ function setupDesktopAiRouteModal() {
             retRow.className = 'ai-stop-row';
             retRow.style.background = '#eff6ff';
             retRow.style.borderColor = '#bfdbfe';
-            const retKm = (result.returnDistance != null && result.returnDistance > 0) ? ` (+${(result.returnDistance / 1000).toFixed(1)} km)` : '';
+            const retKm = (result.returnDistance != null && result.returnDistance > 0) ? ` (+${(result.returnDistance / 1000).toFixed(1)} km)` : ' (<50m)';
             retRow.innerHTML = `
               <span class="ai-stop-badge" style="background: #2563eb;">🏁</span>
               <div style="flex: 1; min-width: 0;">
-                <strong style="color: #1e40af;">Quay về Bưu cục (BC) kết thúc ca giao</strong>
+                <strong style="color: #1e40af;">Điểm #${result.orderedOrders.length} ➜ Quay về ${escapeHtml(result.depot.name)}</strong>
                 <span style="color: #2563eb; font-size: 11px; margin-left: 4px; font-weight: 600;">${retKm}</span>
-                <div style="color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📍 ${escapeHtml(result.depot.name)} (${escapeHtml(result.depot.address || '')})</div>
+                <div style="color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📍 ${escapeHtml(result.depot.address || '')}</div>
               </div>
               <span style="font-weight: 700; color: #2563eb; font-size: 11px;">🔄 Khép kín</span>
             `;

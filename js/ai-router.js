@@ -426,16 +426,31 @@
    */
   function finalizeResult(res) {
     if (!res) return res;
-    res.totalDistance = computeTotalDistance(res.orderedOrders || []);
+    res.deliveryDistance = computeTotalDistance(res.orderedOrders || []);
+    res.totalDistance = res.deliveryDistance;
     res.isAIEngine = (res.source === '9router_ai');
 
+    // 1. Quãng đường từ Bưu cục / GPS xuất phát đến đơn hàng đầu tiên (#1)
+    if (res.startOrigin && res.startOrigin.lat != null && res.orderedOrders && res.orderedOrders.length > 0) {
+      var firstOrd = res.orderedOrders[0];
+      if (firstOrd && firstOrd.lat != null && firstOrd.lng != null) {
+        res.startDistance = Math.round(calculateDistance(res.startOrigin.lat, res.startOrigin.lng, firstOrd.lat, firstOrd.lng));
+      }
+    }
+
+    // 2. Quãng đường từ đơn hàng cuối cùng (#N) quay về Bưu cục
     if (res.returnToDepot && res.startOrigin && res.startOrigin.lat != null && res.orderedOrders && res.orderedOrders.length > 0) {
       var lastOrd = res.orderedOrders[res.orderedOrders.length - 1];
       if (lastOrd && lastOrd.lat != null && lastOrd.lng != null) {
         res.returnDistance = Math.round(calculateDistance(lastOrd.lat, lastOrd.lng, res.startOrigin.lat, res.startOrigin.lng));
-        res.roundTripDistance = (res.totalDistance || 0) + res.returnDistance;
       }
     }
+
+    // 3. Tổng toàn bộ chu trình = (BC -> Đơn #1) + (Giao giữa các đơn) + (Đơn #N -> BC)
+    var startD = res.startDistance || 0;
+    var delivD = res.deliveryDistance || 0;
+    var retD = res.returnToDepot ? (res.returnDistance || 0) : 0;
+    res.roundTripDistance = startD + delivD + retD;
 
     res.explanation = res.summary || 'Đã tối ưu hóa thứ tự lộ trình giao hàng.';
     return res;
@@ -864,11 +879,13 @@
       var parts = clean.split(',');
       if (parts.length > 0) {
         var firstPart = parts[0].trim();
-        var withoutNum = firstPart.replace(/^[\d/a-zA-Z\s-]+/, '').trim();
-        if (withoutNum.length > 2) {
+        var withoutNum = firstPart.replace(/^\s*[\d/]+[a-zA-Z]?(?:\s*-\s*[\d/]+[a-zA-Z]?)?\s+/, '').trim();
+        if (withoutNum.length > 2 && withoutNum !== firstPart) {
           street = withoutNum;
         } else if (parts.length > 1) {
           street = parts[1].trim();
+        } else {
+          street = withoutNum;
         }
       }
     }
@@ -1045,12 +1062,29 @@
   }
 
   /**
+   * Tính hoán vị mảng (dùng cho số lượng phần tử nhỏ <= 7)
+   */
+  function permuteArray(arr) {
+    if (arr.length <= 1) return [arr];
+    var res = [];
+    for (var i = 0; i < arr.length; i++) {
+      var rest = arr.slice(0, i).concat(arr.slice(i + 1));
+      var subs = permuteArray(rest);
+      for (var s = 0; s < subs.length; s++) {
+        res.push([arr[i]].concat(subs[s]));
+      }
+    }
+    return res;
+  }
+
+  /**
    * Thuật toán Offline Heuristic sắp xếp lộ trình khi không có 9Router
+   * Tối ưu hóa chu trình khép kín: Điểm đầu tiên gần Bưu cục nhất và điểm cuối cùng quay về Bưu cục ngắn nhất
    */
   function fallbackOfflineOptimization(orders, groups, groupRules, options) {
     options = options || {};
     var scenario = options.scenario || 'respect_groups';
-    var startOrigin = options.startOrigin; // { lat, lng }
+    var startOrigin = options.startOrigin || (options.depot || getDepot());
 
     var list = orders.slice();
     if (list.length <= 1) {
@@ -1060,11 +1094,16 @@
         summary: 'Đã tối ưu thứ tự đơn hàng (Offline Heuristic)',
         orderedIndices: list.map(function(_, i) { return i; }),
         orderedOrders: list,
-        stops: []
+        stops: [],
+        startOrigin: startOrigin,
+        returnToDepot: options.returnToDepot === true,
+        depot: options.depot || getDepot()
       });
     }
 
-    // Nếu là Kịch bản 1: Có cấu hình nhóm hoặc giữ nguyên nhóm
+    var allOneWays = (options.strictOneWay !== false) ? getAllOneWayStreets(options.customOneWayStreets, options.mapOneWays) : [];
+
+    // KỊCH BẢN 1: TÔN TRỌNG PHÂN NHÓM (CÓ CẤU HÌNH NHÓM)
     if (scenario === 'respect_groups' && groups && groups.length > 0) {
       var groupMap = {};
       groups.forEach(function(g, idx) {
@@ -1080,87 +1119,158 @@
         groupMap[gId].items.push({ order: ord, origIdx: origIdx });
       });
 
-      // Sắp xếp các đơn bên trong mỗi nhóm theo số nhà (số chẵn trước, số lẻ sau hoặc tăng dần)
-      var sortedResult = [];
-      groups.concat([{ id: 'group_ungrouped' }]).forEach(function(g) {
-        var pack = groupMap[g.id];
-        if (!pack || pack.items.length === 0) return;
-
-        var items = pack.items;
-        // Phân tách chẵn / lẻ
-        var evens = [];
-        var odds = [];
-        items.forEach(function(it) {
-          var num = extractHouseNumberNum(it.order.address);
-          if (num > 0) {
-            if (num % 2 === 0) evens.push({ it: it, num: num });
-            else odds.push({ it: it, num: num });
-          } else {
-            odds.push({ it: it, num: 99999 });
-          }
-        });
-
-        evens.sort(function(a, b) { return a.num - b.num; });
-        odds.sort(function(a, b) { return a.num - b.num; });
-
-        var groupSorted = evens.concat(odds).map(function(wrapper) { return wrapper.it; });
-        sortedResult = sortedResult.concat(groupSorted);
+      var activeGroupIds = Object.keys(groupMap).filter(function(id) {
+        return groupMap[id] && groupMap[id].items.length > 0;
       });
 
-      var orderedIndices = sortedResult.map(function(it) { return it.origIdx; });
-      if (options.strictOneWay !== false) {
-        var allOneWays = getAllOneWayStreets(options.customOneWayStreets, options.mapOneWays);
-        orderedIndices = enforceOneWayTrafficCompliance(orderedIndices, orders, allOneWays);
+      if (activeGroupIds.length === 0) {
+        activeGroupIds = ['group_ungrouped'];
       }
+
+      // Tối ưu hóa thứ tự các nhóm sao cho:
+      // 1. Nhóm đầu tiên gần Bưu cục (startOrigin) nhất
+      // 2. Nối tiếp giữa các nhóm theo chu trình liên hoàn
+      // 3. Nhóm cuối cùng quay về Bưu cục ngắn nhất
+      var perms = (activeGroupIds.length <= 7) ? permuteArray(activeGroupIds) : [activeGroupIds];
+      var bestIndices = null;
+      var bestCost = Infinity;
+
+      for (var p = 0; p < perms.length; p++) {
+        var perm = perms[p];
+        var candidateIndices = [];
+        var curPt = startOrigin;
+
+        for (var gIdx = 0; gIdx < perm.length; gIdx++) {
+          var gId = perm[gIdx];
+          var pack = groupMap[gId];
+          if (!pack || pack.items.length === 0) continue;
+
+          var items = pack.items.slice();
+          var groupSorted = [];
+          var cur = curPt;
+
+          // Sắp xếp các đơn trong nhóm: ưu tiên hướng nối tiếp từ cur
+          while (items.length > 0) {
+            var bestIdx = 0;
+            var minDist = Infinity;
+            for (var i = 0; i < items.length; i++) {
+              var cand = items[i].order;
+              var d = (cand.lat != null && cand.lng != null && cur && cur.lat != null)
+                ? calculateDistance(cur.lat, cur.lng, cand.lat, cand.lng)
+                : 99999 + i;
+              if (d < minDist) {
+                minDist = d;
+                bestIdx = i;
+              }
+            }
+            var chosen = items.splice(bestIdx, 1)[0];
+            groupSorted.push(chosen);
+            if (chosen.order.lat != null && chosen.order.lng != null) {
+              cur = chosen.order;
+            }
+          }
+
+          var groupOrigIndices = groupSorted.map(function(it) { return it.origIdx; });
+          if (options.strictOneWay !== false && allOneWays.length > 0) {
+            groupOrigIndices = enforceOneWayTrafficCompliance(groupOrigIndices, orders, allOneWays);
+          }
+          candidateIndices = candidateIndices.concat(groupOrigIndices);
+          var lastInGroup = orders[candidateIndices[candidateIndices.length - 1]];
+          if (lastInGroup && lastInGroup.lat != null) {
+            curPt = lastInGroup;
+          }
+        }
+
+        // Tính tổng chi phí chu trình: startOrigin -> #1 ... -> #N -> startOrigin
+        var cost = 0;
+        var prevNode = startOrigin;
+        for (var c = 0; c < candidateIndices.length; c++) {
+          var o = orders[candidateIndices[c]];
+          if (o && o.lat != null && prevNode && prevNode.lat != null) {
+            cost += calculateDistance(prevNode.lat, prevNode.lng, o.lat, o.lng);
+          }
+          prevNode = o;
+        }
+        if (prevNode && prevNode.lat != null && startOrigin && startOrigin.lat != null) {
+          cost += calculateDistance(prevNode.lat, prevNode.lng, startOrigin.lat, startOrigin.lng);
+        }
+
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestIndices = candidateIndices;
+        }
+      }
+
+      var orderedIndices = bestIndices || list.map(function(_, i) { return i; });
       var orderedOrders = orderedIndices.map(function(idx) { return orders[idx]; });
 
       return finalizeResult({
         success: true,
         source: 'offline_heuristic',
-        summary: 'Đã tối ưu thứ tự theo từng nhóm (Ưu tiên chẵn / lẻ, tuân thủ đường 1 chiều bản đồ)',
+        summary: 'Đã tối ưu thứ tự chu trình các nhóm: Nhóm gần Bưu cục giao đầu tiên, chặng cuối quay về Bưu cục ngắn nhất.',
         orderedIndices: orderedIndices,
         orderedOrders: orderedOrders,
-        stops: []
+        stops: [],
+        startOrigin: startOrigin,
+        returnToDepot: options.returnToDepot === true,
+        depot: options.depot || getDepot()
       });
     }
 
-    // Kịch bản 2 hoặc tự do: TSP Nearest Neighbor theo tọa độ GPS
-    var remaining = list.map(function(ord, i) { return { order: ord, origIdx: i }; });
+    // KỊCH BẢN 2 HOẶC TỰ DO: STREET-CONTINUOUS TSP + 2-OPT CIRCUIT
+    var remaining = list.map(function(ord, i) {
+      var info = extractStreetAndNum(ord.address || '');
+      return { order: ord, origIdx: i, street: info.street || '' };
+    });
     var route = [];
-
-    var currentLat = startOrigin && startOrigin.lat != null ? startOrigin.lat : (remaining[0].order.lat || 10.7769);
-    var currentLng = startOrigin && startOrigin.lng != null ? startOrigin.lng : (remaining[0].order.lng || 106.7009);
+    var currentPt = startOrigin || (remaining[0].order);
+    var curStreet = null;
 
     while (remaining.length > 0) {
-      var nearestIdx = 0;
-      var minDist = Infinity;
-
-      for (var i = 0; i < remaining.length; i++) {
-        var cand = remaining[i].order;
-        var dist;
-        if (cand.lat != null && cand.lng != null) {
-          dist = calculateDistance(currentLat, currentLng, cand.lat, cand.lng);
-        } else {
-          dist = 50000 + i; // đơn không có GPS xếp sau
-        }
-        if (dist < minDist) {
-          minDist = dist;
-          nearestIdx = i;
+      // 1. Ưu tiên các đơn còn lại trên CÙNG trục đường với đơn vừa giao (để đi hết đường xuôi chiều)
+      var sameStreetIdx = -1;
+      var minSameDist = Infinity;
+      if (curStreet) {
+        for (var s = 0; s < remaining.length; s++) {
+          if (remaining[s].street && remaining[s].street.toLowerCase() === curStreet.toLowerCase()) {
+            var dSame = (currentPt && currentPt.lat != null && remaining[s].order.lat != null)
+              ? calculateDistance(currentPt.lat, currentPt.lng, remaining[s].order.lat, remaining[s].order.lng)
+              : 99999 + s;
+            if (dSame < minSameDist) {
+              minSameDist = dSame;
+              sameStreetIdx = s;
+            }
+          }
         }
       }
 
-      var chosen = remaining.splice(nearestIdx, 1)[0];
+      var chosenIdx = sameStreetIdx;
+      if (chosenIdx === -1) {
+        // 2. Nếu đã hết đơn trên đường này hoặc mới bắt đầu từ Bưu cục: chọn điểm lân cận gần nhất
+        var minDist = Infinity;
+        for (var i = 0; i < remaining.length; i++) {
+          var cand = remaining[i].order;
+          var dist = (cand.lat != null && cand.lng != null && currentPt && currentPt.lat != null)
+            ? calculateDistance(currentPt.lat, currentPt.lng, cand.lat, cand.lng)
+            : 50000 + i;
+          if (dist < minDist) {
+            minDist = dist;
+            chosenIdx = i;
+          }
+        }
+      }
+
+      var chosen = remaining.splice(chosenIdx, 1)[0];
       route.push(chosen);
       if (chosen.order.lat != null && chosen.order.lng != null) {
-        currentLat = chosen.order.lat;
-        currentLng = chosen.order.lng;
+        currentPt = chosen.order;
+        curStreet = chosen.street;
       }
     }
 
     var orderedIndices2 = route.map(function(it) { return it.origIdx; });
-    var allOneWays2 = (options.strictOneWay !== false) ? getAllOneWayStreets(options.customOneWayStreets, options.mapOneWays) : [];
-    if (options.strictOneWay !== false && allOneWays2.length > 0) {
-      orderedIndices2 = enforceOneWayTrafficCompliance(orderedIndices2, orders, allOneWays2);
+    if (options.strictOneWay !== false && allOneWays.length > 0) {
+      orderedIndices2 = enforceOneWayTrafficCompliance(orderedIndices2, orders, allOneWays);
     }
 
     // 2-Opt TSP Chu trình khép kín quay về điểm xuất phát (Bưu cục / Kho GHN)
@@ -1168,10 +1278,23 @@
       var computeCircuitLength = function(indices) {
         var len = 0;
         var pPrev = startOrigin;
+        var prevStreet = null;
+        var streetVisited = {};
+
         for (var idx = 0; idx < indices.length; idx++) {
           var o = orders[indices[idx]];
           if (o && o.lat != null && o.lng != null && pPrev && pPrev.lat != null) {
             len += calculateDistance(pPrev.lat, pPrev.lng, o.lat, o.lng);
+          }
+          // Phạt nặng hành vi lượn zíc-zắc quay lại đường cũ chưa giao hết
+          var st = o.streetName || extractStreetAndNum(o.address || '').street;
+          if (st) {
+            var stNorm = st.toLowerCase();
+            if (prevStreet && stNorm !== prevStreet && streetVisited[stNorm]) {
+              len += 600; // Phạt 600m cho mỗi lần quay xe zíc zắc chuyển phố
+            }
+            prevStreet = stNorm;
+            streetVisited[stNorm] = true;
           }
           pPrev = o;
         }
@@ -1181,27 +1304,27 @@
         return len;
       };
 
-      var bestIndices = orderedIndices2.slice();
-      var bestLen = computeCircuitLength(bestIndices);
+      var bestIndices2 = orderedIndices2.slice();
+      var bestLen = computeCircuitLength(bestIndices2);
       var improved = true;
       var iters = 0;
 
       while (improved && iters < 35) {
         improved = false;
         iters++;
-        for (var i = 0; i < bestIndices.length - 1; i++) {
-          for (var k = i + 1; k < bestIndices.length; k++) {
-            var newIndices = bestIndices.slice(0, i)
-              .concat(bestIndices.slice(i, k + 1).reverse())
-              .concat(bestIndices.slice(k + 1));
+        for (var i = 0; i < bestIndices2.length - 1; i++) {
+          for (var k = i + 1; k < bestIndices2.length; k++) {
+            var newIndices = bestIndices2.slice(0, i)
+              .concat(bestIndices2.slice(i, k + 1).reverse())
+              .concat(bestIndices2.slice(k + 1));
 
-            if (options.strictOneWay !== false && allOneWays2.length > 0) {
-              newIndices = enforceOneWayTrafficCompliance(newIndices, orders, allOneWays2);
+            if (options.strictOneWay !== false && allOneWays.length > 0) {
+              newIndices = enforceOneWayTrafficCompliance(newIndices, orders, allOneWays);
             }
             var newLen = computeCircuitLength(newIndices);
             if (newLen < bestLen - 5) {
               bestLen = newLen;
-              bestIndices = newIndices;
+              bestIndices2 = newIndices;
               improved = true;
               break;
             }
@@ -1209,13 +1332,13 @@
           if (improved) break;
         }
       }
-      orderedIndices2 = bestIndices;
+      orderedIndices2 = bestIndices2;
     }
 
     var orderedOrders2 = orderedIndices2.map(function(idx) { return orders[idx]; });
 
     var summaryText2 = options.returnToDepot
-      ? ('Đã tối ưu chu trình khép kín: Xuất phát từ ' + (startOrigin && startOrigin.name ? startOrigin.name : 'Bưu cục') + ', giao liên tục các tuyến và quay về Bưu cục ngắn nhất.')
+      ? ('Đã tối ưu chu trình khép kín: Điểm đầu tiên gần ' + (startOrigin && startOrigin.name ? startOrigin.name : 'Bưu cục') + ' nhất, giao liên tục các tuyến và điểm cuối quay về Bưu cục ngắn nhất.')
       : 'Đã tối ưu lộ trình liên tục từ vị trí xuất phát qua các điểm lân cận ngắn nhất (Tuân thủ đường 1 chiều bản đồ)';
 
     return finalizeResult({
@@ -1341,8 +1464,17 @@
         '',
         'KỊCH BẢN YÊU CẦU: ' + (scenario === 'respect_groups' ? 'KỊCH BẢN 1 (TÔN TRỌNG PHÂN NHÓM HIỆN TẠI)' : 'KỊCH BẢN 2 (NHÂN VIÊN MỚI - AI TỰ GOM CỤM TOÀN TUYẾN)'),
         scenario === 'respect_groups'
-          ? '- Tôn trọng các nhóm (K1, K2, K3...): Giao hết các đơn của một nhóm khu vực rồi mới chuyển sang nhóm kế tiếp theo hướng di chuyển hợp lý.\n- Trong từng nhóm: Sắp xếp theo trục đường và số nhà (ví dụ giao một bên số chẵn rồi sang số lẻ, hoặc đi từ số nhỏ đến số lớn) để tránh lượn qua lượn lại.'
+          ? '- Tôn trọng các nhóm (K1, K2, K3...): Giao trọn vẹn toàn bộ các đơn của một nhóm khu vực rồi mới chuyển sang nhóm kế tiếp.\n- THỨ TỰ CÁC NHÓM (GROUP SEQUENCE TSP): Các nhóm KHÔNG CẦN CỐ ĐỊNH theo thứ tự K1, K2, K3 mà PHẢI được sắp xếp theo chu trình tối ưu: Bắt đầu từ nhóm có điểm gần Bưu cục xuất phát nhất ➜ đi tiếp các nhóm liền kề liên tục ➜ kết thúc tại nhóm có điểm quay về Bưu cục ngắn nhất.\n- Trong từng nhóm: Sắp xếp theo trục đường và số nhà (ví dụ giao một bên số chẵn rồi sang số lẻ, hoặc đi từ số nhỏ đến số lớn theo chiều lưu thông) để tránh lượn qua lượn lại.'
           : '- AI tự phân tích địa chỉ, nhận diện các tòa nhà, chung cư, ngõ ngách.\n- Tự động gom các đơn cùng một địa chỉ hoặc cùng tòa nhà lại gần nhau.\n- Sắp xếp thứ tự tuần tự từ điểm bắt đầu qua các cụm địa lý gần nhau nhất.',
+        '',
+        '=== 🏢 NGUYÊN TẮC BẮT BUỘC: TỐI ƯU QUÃNG ĐƯỜNG TỪ BƯU CỤC ĐẾN ĐIỂM #1 VÀ TỪ #N VỀ LẠI BƯU CỤC ===',
+        '1. ĐIỂM GIAO ĐẦU TIÊN (POINT #1):',
+        '- Điểm đầu tiên (#1, phần tử đầu trong orderedIndices) BẮT BUỘC PHẢI LÀ ĐIỂM NẰM GẦN BƯU CỤC (DEPOT) NHẤT trong toàn bộ danh sách, hoặc thuộc tuyến đường tự nhiên bắt đầu rời bưu cục.',
+        '- Tuyệt đối KHÔNG ĐƯỢC chọn điểm đầu tiên nằm tít xa bưu cục (ví dụ bưu cục ở Võ Thị Sáu mà chọn điểm đầu tiên ở xa tít CMT8/Minh Khai là SAI).',
+        '',
+        '2. ĐIỂM GIAO CUỐI CÙNG (POINT #N):',
+        '- Điểm cuối cùng (#N, phần tử cuối trong orderedIndices) BẮT BUỘC PHẢI LÀ ĐIỂM KẾT THÚC SAO CHO QUÃNG ĐƯỜNG QUAY VỀ BƯU CỤC (DEPOT) LÀ NGẮN NHẤT.',
+        '- Điểm #N nên nằm trên trục đường có chiều lưu thông dẫn thẳng hoặc rất gần về Bưu cục.',
         '',
         '=== 🚦 NGUYÊN TẮC BẮT BUỘC: TUÂN THỦ DỮ LIỆU ĐƯỜNG 1 CHIỀU BẢN ĐỒ (OPENSTREETMAP) ===',
         '1. ĐẶC BIỆT LƯU Ý ĐƯỜNG 1 CHIỀU ĐƯỢC LỌC TỪ BẢN ĐỒ (TUYỆT ĐỐI KHÔNG GỢI Ý ĐI NGƯỢC CHIỀU):',
@@ -1363,7 +1495,7 @@
         '',
         'BẮT BUỘC TRẢ VỀ ĐỊNH DẠNG JSON DUY NHẤT (không markdown, không giải thích ngoài JSON):',
         '{',
-        '  "summary": "Tóm tắt lộ trình (ngắn gọn 1-2 câu, ghi rõ tuân thủ đường 1 chiều bản đồ và chu trình bưu cục)",',
+        '  "summary": "Tóm tắt lộ trình (ngắn gọn 1-2 câu, ghi rõ điểm xuất phát từ bưu cục đến #1, các tuyến đường liên hoàn và điểm #N về bưu cục ngắn nhất)",',
         '  "orderedIndices": [chỉ số ban đầu i của các đơn theo thứ tự giao từ đầu đến cuối],',
         '  "stops": [',
         '    { "name": "Tên điểm/tòa nhà/đường", "indices": [chỉ số đơn], "tip": "Lưu ý nếu có" }',

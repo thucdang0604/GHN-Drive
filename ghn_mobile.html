@@ -13373,7 +13373,21 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               var stopsListEl = document.getElementById('aiResultStopsList');
 
               if (resPanel) resPanel.style.display = 'flex';
-              if (summaryEl) summaryEl.textContent = result.summary || 'Đã tối ưu thứ tự giao hàng.';
+              if (summaryEl) {
+                var startKmStr = result.startDistance != null ? ((result.startDistance / 1000).toFixed(1) + ' km') : '0 km';
+                var delivKmStr = result.deliveryDistance != null ? ((result.deliveryDistance / 1000).toFixed(1) + ' km') : '0 km';
+                var retKmStr = result.returnDistance != null ? ((result.returnDistance / 1000).toFixed(1) + ' km') : '0 km';
+                var totalKmStr = result.roundTripDistance != null ? ((result.roundTripDistance / 1000).toFixed(1) + ' km') : delivKmStr;
+
+                var metricBadges = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; font-size:11px;">' +
+                  '<span style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:2px 6px; border-radius:4px;">🏢 <strong>BC ➜ #1:</strong> ' + startKmStr + '</span>' +
+                  '<span style="background:#f8fafc; border:1px solid #e2e8f0; color:#334155; padding:2px 6px; border-radius:4px;">🚚 <strong>Giao hàng:</strong> ' + delivKmStr + '</span>' +
+                  (result.returnToDepot ? ('<span style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:2px 6px; border-radius:4px;">🏁 <strong>#N ➜ BC:</strong> ' + retKmStr + '</span>') : '') +
+                  '<span style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; padding:2px 6px; border-radius:4px; font-weight:700;">🔄 <strong>Tổng ca:</strong> ' + totalKmStr + '</span>' +
+                  '</div>';
+
+                summaryEl.innerHTML = '<div style="margin-bottom:4px;">' + escapeHtml(result.summary || 'Đã tối ưu thứ tự giao hàng.') + '</div>' + metricBadges;
+              }
               if (badgeEl) {
                 badgeEl.textContent = result.source === '9router_ai' ? ('9Router (' + (result.model || 'AI') + ')') : 'Offline Heuristic';
                 badgeEl.style.background = result.source === '9router_ai' ? '#e0e7ff' : '#fef3c7';
@@ -13382,6 +13396,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
               if (stopsListEl) {
                 stopsListEl.innerHTML = '';
+
+                // Nếu có bưu cục / vị trí xuất phát: hiển thị chặng đầu tiên từ Bưu cục đến đơn #1
+                if (result.depot) {
+                  var startDiv = document.createElement('div');
+                  startDiv.style.cssText = 'background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:6px; padding:6px 8px; font-size:11px; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;';
+                  var startKm = (result.startDistance != null && result.startDistance > 0) ? (' (+' + (result.startDistance / 1000).toFixed(1) + ' km)') : ' (<50m)';
+                  startDiv.innerHTML = '<span style="color:#166534;"><strong>🏢 Xuất phát:</strong> ' + escapeHtml(result.depot.name || 'Bưu cục') + ' ➜ Điểm #1' + startKm + '</span>' +
+                                        '<span style="font-size:10px; font-weight:700; color:#15803d; background:#dcfce7; padding:2px 6px; border-radius:4px;">Gần nhất</span>';
+                  stopsListEl.appendChild(startDiv);
+                }
+
                 var stops = result.stops || [];
                 if (stops.length > 0) {
                   stops.forEach(function(s, sIdx) {
@@ -13392,16 +13417,16 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                     stopsListEl.appendChild(div);
                   });
                 } else {
-                  stopsListEl.innerHTML = '<div style="font-size:11px; color:#64748b;">Đã sắp xếp lại toàn bộ ' + result.orderedOrders.length + ' đơn theo thứ tự tối ưu.</div>';
+                  stopsListEl.innerHTML += '<div style="font-size:11px; color:#64748b; padding:4px 0;">Đã sắp xếp lại toàn bộ ' + result.orderedOrders.length + ' đơn theo thứ tự tối ưu.</div>';
                 }
 
                 // Nếu có chế độ khép kín: hiển thị chặng cuối quay về Bưu cục
                 if (result.returnToDepot && result.depot) {
                   var returnDiv = document.createElement('div');
-                  returnDiv.style.cssText = 'background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:6px; padding:6px 8px; font-size:11px; display:flex; justify-content:space-between; align-items:center; margin-top:5px;';
-                  var returnKm = (result.returnDistance != null && result.returnDistance > 0) ? (' (+' + (result.returnDistance / 1000).toFixed(1) + ' km)') : '';
+                  returnDiv.style.cssText = 'background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:6px; padding:6px 8px; font-size:11px; display:flex; justify-content:space-between; align-items:center; margin-top:4px;';
+                  var returnKm = (result.returnDistance != null && result.returnDistance > 0) ? (' (+' + (result.returnDistance / 1000).toFixed(1) + ' km)') : ' (<50m)';
                   var roundTripKm = (result.roundTripDistance != null && result.roundTripDistance > 0) ? (' • Tổng: ' + (result.roundTripDistance / 1000).toFixed(1) + ' km') : '';
-                  returnDiv.innerHTML = '<span style="color:#1e40af;"><strong>🏁 Kết thúc:</strong> Quay về ' + escapeHtml(result.depot.name || 'Bưu cục') + returnKm + '</span>' +
+                  returnDiv.innerHTML = '<span style="color:#1e40af;"><strong>🏁 Kết thúc:</strong> Điểm #' + result.orderedOrders.length + ' ➜ ' + escapeHtml(result.depot.name || 'Bưu cục') + returnKm + '</span>' +
                                         '<span style="font-size:10px; font-weight:700; color:#2563eb; background:#dbeafe; padding:2px 6px; border-radius:4px;">🔄 Khép kín' + roundTripKm + '</span>';
                   stopsListEl.appendChild(returnDiv);
                 }
@@ -13435,11 +13460,6 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var finishedOrders = orders.filter(function(o) { return o.status !== 'pending' && o.status !== 'cho_ck'; });
             orders = optimizedPending.concat(finishedOrders);
 
-            // Chỉ đồng bộ gom nhóm contiguous nếu kịch bản là Giữ nguyên nhóm (respect_groups)
-            var radRespect = document.getElementById('optScenarioRespect');
-            if (radRespect && radRespect.checked) {
-              syncOrdersContiguousByGroups();
-            }
             saveData();
             render();
             if (mobileMap) renderMap(orders);
