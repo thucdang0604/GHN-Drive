@@ -111,14 +111,21 @@
   var STORAGE_KEY_DEPOT = 'GHN_AI_DEPOT_CONFIG_V1';
 
   var DEFAULT_DEPOT = {
-    id: 'bc_q3',
-    name: 'Bưu cục GHN Quận 3',
-    address: '141 Võ Thị Sáu, P.Võ Thị Sáu, Quận 3, TP.HCM',
-    lat: 10.7818,
-    lng: 106.6908
+    id: 'bc_xuanhoa',
+    name: 'Bưu cục GHN Xuân Hòa',
+    address: '195B Lý Chính Thắng, P.Võ Thị Sáu, Quận 3, TP.HCM',
+    lat: 10.7825,
+    lng: 106.6835
   };
 
   var PRESET_DEPOTS = [
+    {
+      id: 'bc_xuanhoa',
+      name: 'Bưu cục GHN Xuân Hòa',
+      address: '195B Lý Chính Thắng, P.Võ Thị Sáu, Quận 3, TP.HCM',
+      lat: 10.7825,
+      lng: 106.6835
+    },
     {
       id: 'bc_q3',
       name: 'Bưu cục GHN Quận 3',
@@ -158,21 +165,61 @@
 
   var _inMemoryDepot = DEFAULT_DEPOT;
 
+  /**
+   * Tự động nhận diện và gán tọa độ chuẩn cho Bưu cục nếu bị thiếu lat/lng
+   */
+  function resolveDepotCoordinates(depot) {
+    if (!depot) return DEFAULT_DEPOT;
+    if (depot.lat != null && depot.lng != null && !isNaN(depot.lat) && !isNaN(depot.lng) && depot.lat !== 0) {
+      return depot;
+    }
+    var text = removeVietnameseTones((depot.name || '') + ' ' + (depot.address || '')).toLowerCase();
+    if (text.indexOf('xuan hoa') !== -1 || text.indexOf('ly chinh thang') !== -1 || text.indexOf('195b') !== -1) {
+      depot.lat = 10.7825;
+      depot.lng = 106.6835;
+      if (!depot.address) depot.address = '195B Lý Chính Thắng, P.Võ Thị Sáu, Quận 3, TP.HCM';
+    } else if (text.indexOf('vo thi sau') !== -1 || text.indexOf('141') !== -1) {
+      depot.lat = 10.7818;
+      depot.lng = 106.6908;
+    } else if (text.indexOf('ban co') !== -1 || text.indexOf('nguyen dinh chieu') !== -1 || text.indexOf('364') !== -1) {
+      depot.lat = 10.7712;
+      depot.lng = 106.6830;
+    } else if (text.indexOf('minh khai') !== -1 || text.indexOf('250') !== -1) {
+      depot.lat = 10.7735;
+      depot.lng = 106.6890;
+    } else if (text.indexOf('da kao') !== -1 || text.indexOf('dien bien phu') !== -1 || text.indexOf('85') !== -1) {
+      depot.lat = 10.7895;
+      depot.lng = 106.6978;
+    } else if (text.indexOf('dong da') !== -1 || text.indexOf('thai thinh') !== -1 || text.indexOf('119') !== -1) {
+      depot.lat = 21.0118;
+      depot.lng = 105.8175;
+    } else {
+      // Mặc định bưu cục GHN Xuân Hòa (195B Lý Chính Thắng)
+      depot.lat = 10.7825;
+      depot.lng = 106.6835;
+      if (!depot.address) depot.address = '195B Lý Chính Thắng, P.Võ Thị Sáu, Quận 3, TP.HCM';
+    }
+    return depot;
+  }
+
   function getDepot() {
     try {
       if (typeof localStorage !== 'undefined') {
         var saved = localStorage.getItem(STORAGE_KEY_DEPOT);
         if (saved) {
           var parsed = JSON.parse(saved);
-          if (parsed && (parsed.lat != null || parsed.name)) return parsed;
+          if (parsed && (parsed.lat != null || parsed.name)) {
+            return resolveDepotCoordinates(parsed);
+          }
         }
       }
     } catch(e) {}
-    return _inMemoryDepot || DEFAULT_DEPOT;
+    return resolveDepotCoordinates(_inMemoryDepot || DEFAULT_DEPOT);
   }
 
   function saveDepot(depot) {
     if (!depot) return;
+    depot = resolveDepotCoordinates(depot);
     _inMemoryDepot = depot;
     try {
       if (typeof localStorage !== 'undefined') {
@@ -966,6 +1013,20 @@
       var info = extractStreetAndNum(ord.address);
       var matchedOw = matchOneWayStreet(info.street, ord.address, allOneWays, info.num, ord.lat, ord.lng);
 
+      // Nếu không khớp phân đoạn (ví dụ số nhà nằm ở đoạn 2 chiều nối tiếp vào đoạn 1 chiều):
+      // Ghép nối để toàn bộ trục đường lưu thông liên tục theo một hướng thống nhất, tránh quay xe zíc zắc
+      if (!matchedOw && info.street) {
+        var normSt = removeVietnameseTones(info.street);
+        for (var w1 = 0; w1 < allOneWays.length; w1++) {
+          var candOw1 = allOneWays[w1];
+          var normCand1 = removeVietnameseTones(candOw1.street);
+          if (normSt && (normSt.indexOf(normCand1) !== -1 || normCand1.indexOf(normSt) !== -1)) {
+            matchedOw = candOw1;
+            break;
+          }
+        }
+      }
+
       // Nếu không khớp tên đường, kiểm tra xem vị trí GPS có nằm sát trục đường 1 chiều nào từ bản đồ không
       if (!matchedOw && ord.lat != null && ord.lng != null) {
         for (var w = 0; w < allOneWays.length; w++) {
@@ -1489,7 +1550,14 @@
         '',
         '=== 🔄 NGUYÊN TẮC LIÊN HOÀN TRỤC ĐƯỜNG & CHU TRÌNH BƯU CỤC (CIRCUIT LOOP) ===',
         '- Bắt đầu từ Bưu cục / Vị trí xuất phát và tối ưu lộ trình liên hoàn theo chu trình khép kín, tránh tuyệt đối việc đi zíc zắc hoặc quay đầu xe xa hàng km.',
-        '- LIÊN KẾT MƯỢT MÀ CÁC TRỤC ĐƯỜNG SONG SONG: Khi giao một trục đường (ví dụ Võ Văn Tần số nhỏ ➜ lớn), đến cuối đường (khu vực Cao Thắng/CMT8) hãy rẽ ngay sang đầu của trục đường song song hoặc lân cận (ví dụ đoạn số lớn Nguyễn Thị Minh Khai [đoạn 2 chiều 250->116] rồi xuôi tiếp về đoạn 1 chiều [110->72]). Tuyệt đối không giao hết số lớn một đường rồi bắt shipper chạy ngược 2-3km về số nhỏ đường kia!',
+        '- LIÊN KẾT MƯỢT MÀ CÁC TRỤC ĐƯỜNG SONG SONG & HƯỚNG VÒNG CHU TRÌNH TỐI ƯU:',
+        '  + TRƯỜNG HỢP 1: Nếu Bưu cục / Vị trí xuất phát nằm ở phía đường Cách Mạng Tháng 8 / Ngã 6 Dân Chủ / Lý Chính Thắng (như Bưu cục Xuân Hòa 195B Lý Chính Thắng):',
+        '    * BẮT ĐẦU từ đầu số lớn Nguyễn Thị Minh Khai (ví dụ: 262A -> 250 -> 140 NTMK), chạy xuôi theo chiều lưu thông NTMK về phía số nhỏ (100 -> 70 NTMK).',
+        '    * Từ 70 NTMK vòng nhẹ qua Hồ Con Rùa (Công Trường Quốc Tế) rẽ ngay vào đầu đường Võ Văn Tần (số 1 -> 5 VVT).',
+        '    * Chạy xuôi theo đường 1 chiều Võ Văn Tần từ số nhỏ lên số lớn (5 -> 14 -> 72 -> 120 -> 154 VVT).',
+        '    * Điểm cuối cùng tại 154 VVT (ngay góc Cách Mạng Tháng 8), rẽ phải vào CMT8 chạy thẳng một mạch về lại Bưu cục 195B Lý Chính Thắng cực kỳ gần và thẳng!',
+        '  + TRƯỜNG HỢP 2: Nếu Bưu cục / Vị trí xuất phát nằm ở phía Hồ Con Rùa / Hai Bà Trưng (như 141 Võ Thị Sáu):',
+        '    * Đi Võ Văn Tần (số nhỏ ➜ lớn: 5 -> 154 VVT) -> rẽ sang NTMK (số lớn ➜ nhỏ: 250 -> 70 NTMK) -> quay về Bưu cục.',
         '- ĐOẠN 2 CHIỀU CỦA ĐƯỜNG HỖN HỢP: Những đơn có oneWay: null hoặc nằm ở đoạn 2 chiều (ví dụ 116-250 Nguyễn Thị Minh Khai) có thể đi 2 chiều linh hoạt, hãy chọn hướng đi thuận tiện nhất để nối tiếp trục đường trước và sau.',
         (options.returnToDepot ? '- QUAY VỀ BƯU CỤC (RETURN TO DEPOT): Sau khi giao hết đơn, điểm giao cuối cùng trong danh sách BẮT BUỘC phải nằm gần Bưu cục xuất phát nhất để shipper quay về Bưu cục ngắn nhất.' : ''),
         '',
@@ -1727,6 +1795,8 @@
     getDepot: getDepot,
     saveDepot: saveDepot,
     getPresetDepots: getPresetDepots,
+    resolveDepotCoordinates: resolveDepotCoordinates,
+    extractStreetAndNum: extractStreetAndNum,
     testConnection: testConnection,
     optimizeRoute: optimizeRoute,
     fallbackOfflineOptimization: fallbackOfflineOptimization,

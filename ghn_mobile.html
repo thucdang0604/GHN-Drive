@@ -12836,17 +12836,21 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               return;
             }
             if (aiOpt && aiOpt.saveDepot) {
-              aiOpt.saveDepot({
+              var newDepot = {
                 name: nameVal,
                 address: addrVal || nameVal,
                 lat: null,
                 lng: null
-              });
+              };
+              if (aiOpt.resolveDepotCoordinates) {
+                newDepot = aiOpt.resolveDepotCoordinates(newDepot);
+              }
+              aiOpt.saveDepot(newDepot);
               renderMobileDepotUI();
               if (modalDepot) modalDepot.style.display = 'none';
               if (inpName) inpName.value = '';
               if (inpAddr) inpAddr.value = '';
-              showToast('✓ Đã lưu bưu cục: ' + nameVal);
+              showToast('✓ Đã lưu bưu cục: ' + nameVal + (newDepot.lat ? ' (Đã định vị GPS)' : ''));
             }
           });
         }
@@ -13270,7 +13274,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var scenario = radCluster && radCluster.checked ? 'auto_cluster' : 'respect_groups';
             var startOriginRad = document.querySelector('input[name="aiStartOrigin"]:checked');
             var startOriginType = startOriginRad ? startOriginRad.value : 'depot';
-            var currentDepot = (aiOpt.getDepot ? aiOpt.getDepot() : null) || { name: 'Bưu cục GHN Quận 3', lat: 10.7852, lng: 106.6912 };
+            var currentDepot = (aiOpt.getDepot ? aiOpt.getDepot() : null) || { name: 'Bưu cục GHN Xuân Hòa', address: '195B Lý Chính Thắng, P.Võ Thị Sáu, Quận 3', lat: 10.7825, lng: 106.6835 };
 
             var chkReturn = document.getElementById('chkReturnToDepotMobile');
             var returnToDepot = chkReturn ? chkReturn.checked : true;
