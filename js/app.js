@@ -2784,6 +2784,14 @@ function setupDesktopAiRouteModal() {
   const ruleCountEl = document.getElementById('aiRuleCountDesktop');
 
   const modeSelect = document.getElementById('aiModeSelectDesktop');
+  const depotSelect = document.getElementById('aiDepotSelectDesktop');
+  const depotAddrEl = document.getElementById('aiDepotAddressDesktop');
+  const startOriginSelect = document.getElementById('aiStartOriginSelectDesktop');
+  const chkReturnToDepot = document.getElementById('aiReturnToDepotDesktop');
+  const boxReturnDist = document.getElementById('aiBoxReturnDistanceDesktop');
+  const resReturnDist = document.getElementById('aiResReturnDistanceDesktop');
+  const resDistLabel = document.getElementById('aiResDistLabelDesktop');
+
   const chkAvoidUTurn = document.getElementById('aiAvoidUTurnDesktop');
   const chkClusterBuildings = document.getElementById('aiClusterBuildingsDesktop');
 
@@ -2810,6 +2818,42 @@ function setupDesktopAiRouteModal() {
   const connStatus = document.getElementById('aiConnectionStatusDesktop');
 
   let lastOptimizedResult = null;
+
+  function loadDesktopDepotUI() {
+    const aiOpt = window.AIRouteOptimizer;
+    if (!aiOpt || !depotSelect) return;
+    const presets = aiOpt.getPresetDepots ? aiOpt.getPresetDepots() : [];
+    const currentDepot = aiOpt.getDepot ? aiOpt.getDepot() : null;
+
+    depotSelect.innerHTML = '';
+    presets.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      opt.textContent = '🏢 ' + p.name;
+      if (currentDepot && currentDepot.name === p.name) {
+        opt.selected = true;
+      }
+      depotSelect.appendChild(opt);
+    });
+
+    if (currentDepot && depotAddrEl) {
+      depotAddrEl.textContent = currentDepot.address || '';
+    }
+  }
+
+  if (depotSelect) {
+    depotSelect.addEventListener('change', () => {
+      const aiOpt = window.AIRouteOptimizer;
+      if (!aiOpt || !aiOpt.getPresetDepots) return;
+      const presets = aiOpt.getPresetDepots();
+      const chosen = presets.find(p => p.name === depotSelect.value);
+      if (chosen) {
+        aiOpt.saveDepot(chosen);
+        if (depotAddrEl) depotAddrEl.textContent = chosen.address || '';
+        showToast('Đã chọn bưu cục: ' + chosen.name, 'success');
+      }
+    });
+  }
 
   // Tab switching
   if (tabBtnOptimize && tabBtnConfig) {
@@ -2840,6 +2884,7 @@ function setupDesktopAiRouteModal() {
 
   function openModal() {
     loadAiConfig();
+    loadDesktopDepotUI();
     const activeOrders = typeof getActiveTripOrders === 'function' ? getActiveTripOrders() : currentOrders;
     const pending = activeOrders.filter(o => o.status === 'pending');
     const rules = StorageService.getGroupRules ? StorageService.getGroupRules() : [];
@@ -2942,6 +2987,20 @@ function setupDesktopAiRouteModal() {
       const chkStrictOneWay = document.getElementById('aiStrictOneWayDesktop');
       const strictOneWay = chkStrictOneWay ? chkStrictOneWay.checked : true;
 
+      const originType = startOriginSelect ? startOriginSelect.value : 'depot';
+      const currentDepot = aiOpt.getDepot ? aiOpt.getDepot() : null;
+      let startOrigin = null;
+      if (originType === 'depot' && currentDepot) {
+        startOrigin = {
+          lat: currentDepot.lat,
+          lng: currentDepot.lng,
+          name: currentDepot.name,
+          address: currentDepot.address,
+          isDepot: true
+        };
+      }
+      const returnToDepot = chkReturnToDepot ? chkReturnToDepot.checked : true;
+
       btnRun.disabled = true;
       if (runBtnText) runBtnText.textContent = 'Đang phân tích & tối ưu...';
       if (runStatus) {
@@ -2968,6 +3027,9 @@ function setupDesktopAiRouteModal() {
       try {
         const result = await aiOpt.optimizeRoute(pending, currentGroups, rules, {
           scenario: mode,
+          startOrigin: startOrigin,
+          depot: currentDepot,
+          returnToDepot: returnToDepot,
           avoidUTurn: avoidUTurn,
           clusterBuildings: clusterBuildings,
           strictOneWay: strictOneWay,
@@ -2988,8 +3050,20 @@ function setupDesktopAiRouteModal() {
         if (resultBox) resultBox.style.display = 'block';
         if (resStops) resStops.textContent = result.orderedOrders.length;
         if (resDist) {
-          const km = (result.totalDistance / 1000).toFixed(1);
+          const totalMeters = result.roundTripDistance != null ? result.roundTripDistance : (result.totalDistance || 0);
+          const km = (totalMeters / 1000).toFixed(1);
           resDist.textContent = km + ' km';
+        }
+        if (resDistLabel) {
+          resDistLabel.textContent = result.returnToDepot ? 'Tổng chu trình (về BC)' : 'Ước tính lộ trình';
+        }
+        if (boxReturnDist && resReturnDist) {
+          if (result.returnToDepot && result.returnDistance != null) {
+            boxReturnDist.style.display = 'block';
+            resReturnDist.textContent = '+' + (result.returnDistance / 1000).toFixed(1) + ' km';
+          } else {
+            boxReturnDist.style.display = 'none';
+          }
         }
         if (resEngine) {
           resEngine.textContent = result.isAIEngine ? '🤖 9Router AI' : '⚡ Thuật toán Offline';
@@ -2997,7 +3071,7 @@ function setupDesktopAiRouteModal() {
         }
 
         if (expEl) {
-          expEl.innerHTML = `<strong>Chiến lược:</strong> ${escapeHtml(result.explanation || 'Đã sắp xếp lộ trình theo trình tự di chuyển tối ưu.')}`;
+          expEl.innerHTML = `<strong>Chiến lược:</strong> ${escapeHtml(result.explanation || result.summary || 'Đã sắp xếp lộ trình theo trình tự di chuyển tối ưu.')}`;
         }
 
         if (previewList) {
@@ -3017,6 +3091,25 @@ function setupDesktopAiRouteModal() {
             `;
             previewList.appendChild(row);
           });
+
+          // Hiển thị chặng quay về Bưu cục nếu bật lộ trình khép kín
+          if (result.returnToDepot && result.depot) {
+            const retRow = document.createElement('div');
+            retRow.className = 'ai-stop-row';
+            retRow.style.background = '#eff6ff';
+            retRow.style.borderColor = '#bfdbfe';
+            const retKm = (result.returnDistance != null && result.returnDistance > 0) ? ` (+${(result.returnDistance / 1000).toFixed(1)} km)` : '';
+            retRow.innerHTML = `
+              <span class="ai-stop-badge" style="background: #2563eb;">🏁</span>
+              <div style="flex: 1; min-width: 0;">
+                <strong style="color: #1e40af;">Quay về Bưu cục (BC) kết thúc ca giao</strong>
+                <span style="color: #2563eb; font-size: 11px; margin-left: 4px; font-weight: 600;">${retKm}</span>
+                <div style="color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📍 ${escapeHtml(result.depot.name)} (${escapeHtml(result.depot.address || '')})</div>
+              </div>
+              <span style="font-weight: 700; color: #2563eb; font-size: 11px;">🔄 Khép kín</span>
+            `;
+            previewList.appendChild(retRow);
+          }
         }
 
         showToast('Đã tính toán xong lộ trình tối ưu!', 'success');

@@ -5323,16 +5323,66 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           </div>
         </div>
 
-        <!-- Điểm xuất phát -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; font-size: 12px;">
-          <span style="font-weight: 700; color: #1e293b;">🎯 Điểm xuất phát tính lộ trình:</span>
-          <div style="display: flex; gap: 14px; margin-top: 6px;">
-            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
-              <input type="radio" name="aiStartOrigin" value="gps" checked style="accent-color: #6366f1;"> GPS hiện tại của tôi
+        <!-- Điểm xuất phát & Bưu cục (BC) -->
+        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 700; color: #1e293b;">🎯 Điểm xuất phát tính lộ trình:</span>
+            <button type="button" id="btnChangeDepotMobile" style="background: #e0e7ff; border: 1px solid #c7d2fe; color: #4338ca; font-size: 10.5px; font-weight: 700; cursor: pointer; padding: 2px 7px; border-radius: 6px;" title="Cài đặt Bưu cục / Kho tập kết">
+              ⚙️ Đổi Bưu Cục (BC)
+            </button>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 8px;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="radio" name="aiStartOrigin" value="depot" checked style="accent-color: #6366f1;">
+              <span>🏢 <strong>Bưu cục (BC):</strong> <span id="aiDepotNameMobile" style="color: #4338ca; font-weight: 600;">Bưu cục GHN Quận 3</span></span>
             </label>
-            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
-              <input type="radio" name="aiStartOrigin" value="first" style="accent-color: #6366f1;"> Đơn đầu tiên (#1)
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="radio" name="aiStartOrigin" value="gps" style="accent-color: #6366f1;">
+              <span>📍 <strong>Vị trí GPS hiện tại</strong> của shipper</span>
             </label>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="radio" name="aiStartOrigin" value="first" style="accent-color: #6366f1;">
+              <span>📌 <strong>Đơn hàng đầu tiên (#1)</strong></span>
+            </label>
+          </div>
+
+          <!-- Lộ trình khép kín: Quay về BC sau khi giao xong -->
+          <label style="display: flex; align-items: flex-start; gap: 6px; cursor: pointer; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+            <input type="checkbox" id="chkReturnToDepotMobile" checked style="accent-color: #6366f1; width: 16px; height: 16px; margin-top: 2px;">
+            <div>
+              <strong style="color: #1e293b; font-size: 11.5px;">🔄 Lộ trình khép kín: Quay về Bưu cục (BC) sau khi giao xong</strong>
+              <div style="font-size: 10.5px; color: #64748b; line-height: 1.35; margin-top: 1px;">
+                Tối ưu chu trình khép kín: BC ➜ giao hết đơn theo các trục đường thuận chiều ➜ trở về lại BC với tổng quãng đường ngắn nhất.
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Modal chọn Bưu cục GHN Mobile -->
+        <div id="modalSelectDepotMobile" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 16px;">
+          <div style="background: #ffffff; width: 100%; max-width: 420px; border-radius: 14px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column;">
+            <div style="padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+              <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: #1e293b;">🏢 Cài Đặt Bưu Cục GHN (BC)</h3>
+              <button type="button" id="btnCloseDepotMobile" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+            <div style="padding: 14px 16px; font-size: 12px; max-height: 70vh; overflow-y: auto;">
+              <div style="font-weight: 700; color: #334155; margin-bottom: 6px;">Chọn bưu cục / kho tập kết mẫu:</div>
+              <div id="depotPresetListMobile" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;"></div>
+              
+              <div style="border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px;">
+                <div style="font-weight: 700; color: #334155; margin-bottom: 6px;">Hoặc nhập bưu cục tùy chỉnh:</div>
+                <input type="text" id="inputCustomDepotName" placeholder="Tên bưu cục (VD: BC GHN Quận 3)" style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; margin-bottom: 6px; box-sizing: border-box;">
+                <input type="text" id="inputCustomDepotAddress" placeholder="Địa chỉ bưu cục (VD: 141 Võ Thị Sáu, Q.3)" style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; margin-bottom: 8px; box-sizing: border-box;">
+                <div style="display: flex; gap: 6px;">
+                  <button type="button" id="btnUseCurrentGpsAsDepot" style="flex: 1; background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 7px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                    📍 Lấy GPS hiện tại làm BC
+                  </button>
+                  <button type="button" id="btnSaveCustomDepot" style="background: #4f46e5; color: #ffffff; border: none; padding: 7px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                    Lưu Bưu Cục
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -12666,6 +12716,50 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       // ==========================================================
       var latestAiOptimizedResult = null;
 
+      function renderMobileDepotUI() {
+        var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+        if (!aiOpt || !aiOpt.getDepot) return;
+        var depot = aiOpt.getDepot();
+        var labelEl = document.getElementById('aiDepotNameMobile');
+        if (labelEl && depot) {
+          labelEl.textContent = depot.name || 'Bưu cục GHN';
+          labelEl.title = depot.address || '';
+        }
+      }
+
+      function openSelectDepotModalMobile() {
+        var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+        if (!aiOpt) return;
+        var modal = document.getElementById('modalSelectDepotMobile');
+        if (!modal) return;
+
+        var currentDepot = aiOpt.getDepot ? aiOpt.getDepot() : null;
+        var presetListEl = document.getElementById('depotPresetListMobile');
+        if (presetListEl && aiOpt.getPresetDepots) {
+          presetListEl.innerHTML = '';
+          var presets = aiOpt.getPresetDepots();
+          presets.forEach(function(p) {
+            var isCurrent = currentDepot && (currentDepot.name === p.name);
+            var item = document.createElement('div');
+            item.style.cssText = 'padding:8px 10px; border-radius:8px; border:1.5px solid ' + (isCurrent ? '#6366f1' : '#e2e8f0') + '; background:' + (isCurrent ? '#eef2ff' : '#ffffff') + '; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition: all 0.15s ease;';
+            item.innerHTML = '<div style="flex: 1; min-width: 0;">' +
+                               '<div style="font-weight:700; font-size:12px; color:' + (isCurrent ? '#4338ca' : '#1e293b') + ';">🏢 ' + escapeHtml(p.name) + (isCurrent ? ' <span style="font-size:10px; color:#6366f1;">(Đang chọn)</span>' : '') + '</div>' +
+                               '<div style="font-size:10.5px; color:#64748b; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📍 ' + escapeHtml(p.address || '') + '</div>' +
+                             '</div>' +
+                             (isCurrent ? '<span style="color:#6366f1; font-weight:700; margin-left:8px;">✓</span>' : '');
+            item.addEventListener('click', function() {
+              aiOpt.saveDepot(p);
+              renderMobileDepotUI();
+              modal.style.display = 'none';
+              showToast('✓ Đã chọn: ' + p.name);
+            });
+            presetListEl.appendChild(item);
+          });
+        }
+
+        modal.style.display = 'flex';
+      }
+
       function openAiRouteModal() {
         var modal = document.getElementById('aiRouteModal');
         if (!modal) return;
@@ -12685,6 +12779,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (cfgModel) cfgModel.value = aiOpt.getModel();
           if (cfgApiKey) cfgApiKey.value = aiOpt.getApiKey();
         }
+
+        // Cập nhật tên bưu cục hiện tại
+        renderMobileDepotUI();
 
         // Cập nhật danh sách đường 1 chiều
         if (typeof renderAiOneWayList === 'function') renderAiOneWayList();
@@ -12708,6 +12805,74 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         if (modal) {
           modal.addEventListener('click', function(e) {
             if (e.target === modal) closeAiRouteModal();
+          });
+        }
+
+        // Sự kiện đổi / cài đặt Bưu cục (BC)
+        var btnChangeDepot = document.getElementById('btnChangeDepotMobile');
+        if (btnChangeDepot) btnChangeDepot.addEventListener('click', openSelectDepotModalMobile);
+
+        var btnCloseDepot = document.getElementById('btnCloseDepotMobile');
+        var modalDepot = document.getElementById('modalSelectDepotMobile');
+        if (btnCloseDepot && modalDepot) {
+          btnCloseDepot.addEventListener('click', function() { modalDepot.style.display = 'none'; });
+        }
+        if (modalDepot) {
+          modalDepot.addEventListener('click', function(e) {
+            if (e.target === modalDepot) modalDepot.style.display = 'none';
+          });
+        }
+
+        var btnSaveCustomDepot = document.getElementById('btnSaveCustomDepot');
+        if (btnSaveCustomDepot) {
+          btnSaveCustomDepot.addEventListener('click', function() {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            var inpName = document.getElementById('inputCustomDepotName');
+            var inpAddr = document.getElementById('inputCustomDepotAddress');
+            var nameVal = inpName ? inpName.value.trim() : '';
+            var addrVal = inpAddr ? inpAddr.value.trim() : '';
+            if (!nameVal) {
+              showToast('Vui lòng nhập tên bưu cục!');
+              return;
+            }
+            if (aiOpt && aiOpt.saveDepot) {
+              aiOpt.saveDepot({
+                name: nameVal,
+                address: addrVal || nameVal,
+                lat: null,
+                lng: null
+              });
+              renderMobileDepotUI();
+              if (modalDepot) modalDepot.style.display = 'none';
+              if (inpName) inpName.value = '';
+              if (inpAddr) inpAddr.value = '';
+              showToast('✓ Đã lưu bưu cục: ' + nameVal);
+            }
+          });
+        }
+
+        var btnGpsDepot = document.getElementById('btnUseCurrentGpsAsDepot');
+        if (btnGpsDepot) {
+          btnGpsDepot.addEventListener('click', async function() {
+            var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
+            btnGpsDepot.disabled = true;
+            btnGpsDepot.textContent = '⏳ Đang lấy GPS...';
+            var pos = await getDeviceGpsLocation(3500);
+            btnGpsDepot.disabled = false;
+            btnGpsDepot.textContent = '📍 Lấy GPS hiện tại làm BC';
+            if (pos && aiOpt && aiOpt.saveDepot) {
+              aiOpt.saveDepot({
+                name: 'Vị trí GPS của tôi',
+                address: 'Tọa độ GPS ' + pos.lat.toFixed(4) + ', ' + pos.lng.toFixed(4),
+                lat: pos.lat,
+                lng: pos.lng
+              });
+              renderMobileDepotUI();
+              if (modalDepot) modalDepot.style.display = 'none';
+              showToast('✓ Đã chọn vị trí GPS hiện tại làm Bưu cục!');
+            } else {
+              showToast('Không thể lấy tọa độ GPS hiện tại');
+            }
           });
         }
 
@@ -13104,7 +13269,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
             var scenario = radCluster && radCluster.checked ? 'auto_cluster' : 'respect_groups';
             var startOriginRad = document.querySelector('input[name="aiStartOrigin"]:checked');
-            var useGps = startOriginRad && startOriginRad.value === 'gps';
+            var startOriginType = startOriginRad ? startOriginRad.value : 'depot';
+            var currentDepot = (aiOpt.getDepot ? aiOpt.getDepot() : null) || { name: 'Bưu cục GHN Quận 3', lat: 10.7852, lng: 106.6912 };
+
+            var chkReturn = document.getElementById('chkReturnToDepotMobile');
+            var returnToDepot = chkReturn ? chkReturn.checked : true;
 
             var chkStrictOw = document.getElementById('chkStrictOneWay');
             var strictOneWay = chkStrictOw ? chkStrictOw.checked : true;
@@ -13120,21 +13289,41 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
             try {
               var origin = null;
-              if (useGps) {
+              if (startOriginType === 'depot') {
+                origin = {
+                  lat: currentDepot.lat,
+                  lng: currentDepot.lng,
+                  name: currentDepot.name,
+                  address: currentDepot.address,
+                  isDepot: true
+                };
+                updateAiProgressUI(18, '✓ Điểm xuất phát: ' + (currentDepot.name || 'Bưu cục'), '🏢 Xuất phát từ Bưu cục: ' + (currentDepot.name || 'Mặc định'));
+              } else if (startOriginType === 'gps') {
                 updateAiProgressUI(10, '📍 Đang lấy vị trí GPS hiện tại của bạn...');
                 var pos = await getDeviceGpsLocation(3500);
                 if (pos) {
                   origin = pos;
                   updateAiProgressUI(18, '✓ Đã lấy GPS xuất phát thành công.', '📍 Vị trí GPS: ' + pos.lat.toFixed(4) + ', ' + pos.lng.toFixed(4));
                 } else {
-                  updateAiProgressUI(18, 'ℹ️ Không lấy được GPS, bắt đầu từ đơn đầu tiên (#1).', '⚠️ Không có GPS (sử dụng đơn đầu tiên #1 làm gốc)');
+                  updateAiProgressUI(18, 'ℹ️ Không lấy được GPS, bắt đầu từ Bưu cục / Đơn đầu tiên.', '⚠️ Không có GPS (sử dụng Bưu cục làm gốc)');
+                  origin = {
+                    lat: currentDepot.lat,
+                    lng: currentDepot.lng,
+                    name: currentDepot.name,
+                    address: currentDepot.address,
+                    isDepot: true
+                  };
                 }
               } else {
                 updateAiProgressUI(18, '✓ Điểm xuất phát: Đơn đầu tiên (#1)', '📍 Điểm xuất phát: Đơn đầu tiên (#1)');
               }
 
+              if (returnToDepot) {
+                updateAiProgressUI(22, '🔄 Tối ưu chu trình khép kín: Quay về Bưu cục sau khi giao xong', '✓ Chu trình khép kín Bưu cục: BẬT');
+              }
+
               if (strictOneWay) {
-                updateAiProgressUI(24, '🚦 Đang kích hoạt kiểm tra luật giao thông & các tuyến đường 1 chiều...', '✓ Tuân thủ đường 1 chiều: BẬT');
+                updateAiProgressUI(26, '🚦 Đang kích hoạt kiểm tra luật giao thông & các tuyến đường 1 chiều...', '✓ Tuân thủ đường 1 chiều: BẬT');
               }
 
               updateAiProgressUI(30, '📦 Đang chuẩn bị và trích xuất dữ liệu ' + pendingOrders.length + ' đơn hàng...');
@@ -13158,6 +13347,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               var result = await aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
                 scenario: scenario,
                 startOrigin: origin,
+                depot: currentDepot,
+                returnToDepot: returnToDepot,
                 strictOneWay: strictOneWay,
                 bounds: bounds,
                 onProgress: function(info) {
@@ -13202,6 +13393,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   });
                 } else {
                   stopsListEl.innerHTML = '<div style="font-size:11px; color:#64748b;">Đã sắp xếp lại toàn bộ ' + result.orderedOrders.length + ' đơn theo thứ tự tối ưu.</div>';
+                }
+
+                // Nếu có chế độ khép kín: hiển thị chặng cuối quay về Bưu cục
+                if (result.returnToDepot && result.depot) {
+                  var returnDiv = document.createElement('div');
+                  returnDiv.style.cssText = 'background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:6px; padding:6px 8px; font-size:11px; display:flex; justify-content:space-between; align-items:center; margin-top:5px;';
+                  var returnKm = (result.returnDistance != null && result.returnDistance > 0) ? (' (+' + (result.returnDistance / 1000).toFixed(1) + ' km)') : '';
+                  var roundTripKm = (result.roundTripDistance != null && result.roundTripDistance > 0) ? (' • Tổng: ' + (result.roundTripDistance / 1000).toFixed(1) + ' km') : '';
+                  returnDiv.innerHTML = '<span style="color:#1e40af;"><strong>🏁 Kết thúc:</strong> Quay về ' + escapeHtml(result.depot.name || 'Bưu cục') + returnKm + '</span>' +
+                                        '<span style="font-size:10px; font-weight:700; color:#2563eb; background:#dbeafe; padding:2px 6px; border-radius:4px;">🔄 Khép kín' + roundTripKm + '</span>';
+                  stopsListEl.appendChild(returnDiv);
                 }
               }
 

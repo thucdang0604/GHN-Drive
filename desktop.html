@@ -674,6 +674,23 @@ giá tiền: 0 VNĐ."
           <div>📋 Quy tắc đường: <strong id="aiRuleCountDesktop" style="color: #16a34a;">0</strong></div>
         </div>
 
+        <!-- Cài đặt Bưu Cục (BC) & Điểm Xuất Phát -->
+        <div class="ai-form-group" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label for="aiDepotSelectDesktop" style="font-weight: 700; margin: 0; font-size: 12.5px; color: #1e293b;">🏢 Bưu cục / Kho tập kết (BC):</label>
+            <span id="aiDepotAddressDesktop" style="font-size: 11px; color: #64748b;">141 Võ Thị Sáu, P.Võ Thị Sáu, Q.3</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="aiDepotSelectDesktop" class="ai-input" style="flex: 1; font-weight: 600; font-size: 12px; padding: 6px 10px;">
+              <!-- Nạp danh sách preset depots -->
+            </select>
+            <select id="aiStartOriginSelectDesktop" class="ai-input" style="width: 175px; font-size: 12px; padding: 6px 10px; font-weight: 600;">
+              <option value="depot">🏢 Xuất phát từ BC</option>
+              <option value="first">📌 Đơn đầu tiên (#1)</option>
+            </select>
+          </div>
+        </div>
+
         <div class="ai-form-group">
           <label for="aiModeSelectDesktop">Chiến lược tối ưu hóa:</label>
           <select id="aiModeSelectDesktop" class="ai-input" style="font-weight: 600;">
@@ -684,6 +701,10 @@ giá tiền: 0 VNĐ."
         </div>
 
         <div style="margin-bottom: 14px;">
+          <label class="ai-checkbox-label">
+            <input type="checkbox" id="aiReturnToDepotDesktop" checked style="accent-color: #4f46e5; width: 16px; height: 16px;">
+            <span>🔄 <strong>Lộ trình khép kín:</strong> Quay về Bưu cục (BC) sau khi giao xong (chu trình ngắn nhất)</span>
+          </label>
           <label class="ai-checkbox-label">
             <input type="checkbox" id="aiAvoidUTurnDesktop" checked style="accent-color: #4f46e5; width: 16px; height: 16px;">
             <span>Phân tách số nhà Chẵn / Lẻ để đi một bên đường, tránh quay đầu xe</span>
@@ -720,7 +741,11 @@ giá tiền: 0 VNĐ."
             </div>
             <div class="ai-stat-box">
               <div class="val" id="aiResDistanceDesktop">0 km</div>
-              <div class="lbl">Ước tính lộ trình</div>
+              <div class="lbl" id="aiResDistLabelDesktop">Ước tính lộ trình</div>
+            </div>
+            <div class="ai-stat-box" id="aiBoxReturnDistanceDesktop" style="display: none;">
+              <div class="val" id="aiResReturnDistanceDesktop" style="color: #4338ca;">+0 km</div>
+              <div class="lbl">Quay về BC</div>
             </div>
             <div class="ai-stat-box">
               <div class="val" id="aiResEngineDesktop" style="color: #10b981; font-size: 13px;">9Router AI</div>

@@ -108,6 +108,84 @@
     return _inMemoryApiKey;
   }
 
+  var STORAGE_KEY_DEPOT = 'GHN_AI_DEPOT_CONFIG_V1';
+
+  var DEFAULT_DEPOT = {
+    id: 'bc_q3',
+    name: 'Bưu cục GHN Quận 3',
+    address: '141 Võ Thị Sáu, P.Võ Thị Sáu, Quận 3, TP.HCM',
+    lat: 10.7818,
+    lng: 106.6908
+  };
+
+  var PRESET_DEPOTS = [
+    {
+      id: 'bc_q3',
+      name: 'Bưu cục GHN Quận 3',
+      address: '141 Võ Thị Sáu, P.Võ Thị Sáu, Quận 3, TP.HCM',
+      lat: 10.7818,
+      lng: 106.6908
+    },
+    {
+      id: 'bc_banco',
+      name: 'Bưu cục GHN Bàn Cờ',
+      address: '364 Nguyễn Đình Chiểu, P.4, Quận 3, TP.HCM',
+      lat: 10.7712,
+      lng: 106.6830
+    },
+    {
+      id: 'bc_q1',
+      name: 'Bưu cục GHN Quận 1',
+      address: '250 Nguyễn Thị Minh Khai, P.6, Quận 3, TP.HCM',
+      lat: 10.7735,
+      lng: 106.6890
+    },
+    {
+      id: 'bc_dakao',
+      name: 'Bưu cục GHN Đa Kao',
+      address: '85 Điện Biên Phủ, P.Đa Kao, Quận 1, TP.HCM',
+      lat: 10.7895,
+      lng: 106.6978
+    },
+    {
+      id: 'bc_hn_dongda',
+      name: 'Bưu cục GHN Đống Đa (Hà Nội)',
+      address: '119 Thái Thịnh, P.Thịnh Quang, Q.Đống Đa, Hà Nội',
+      lat: 21.0118,
+      lng: 105.8175
+    }
+  ];
+
+  var _inMemoryDepot = DEFAULT_DEPOT;
+
+  function getDepot() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        var saved = localStorage.getItem(STORAGE_KEY_DEPOT);
+        if (saved) {
+          var parsed = JSON.parse(saved);
+          if (parsed && (parsed.lat != null || parsed.name)) return parsed;
+        }
+      }
+    } catch(e) {}
+    return _inMemoryDepot || DEFAULT_DEPOT;
+  }
+
+  function saveDepot(depot) {
+    if (!depot) return;
+    _inMemoryDepot = depot;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_DEPOT, JSON.stringify(depot));
+      }
+    } catch(e) {}
+    return _inMemoryDepot;
+  }
+
+  function getPresetDepots() {
+    return PRESET_DEPOTS;
+  }
+
   /**
    * Tính khoảng cách Haversine giữa 2 tọa độ (mét)
    */
@@ -350,6 +428,15 @@
     if (!res) return res;
     res.totalDistance = computeTotalDistance(res.orderedOrders || []);
     res.isAIEngine = (res.source === '9router_ai');
+
+    if (res.returnToDepot && res.startOrigin && res.startOrigin.lat != null && res.orderedOrders && res.orderedOrders.length > 0) {
+      var lastOrd = res.orderedOrders[res.orderedOrders.length - 1];
+      if (lastOrd && lastOrd.lat != null && lastOrd.lng != null) {
+        res.returnDistance = Math.round(calculateDistance(lastOrd.lat, lastOrd.lng, res.startOrigin.lat, res.startOrigin.lng));
+        res.roundTripDistance = (res.totalDistance || 0) + res.returnDistance;
+      }
+    }
+
     res.explanation = res.summary || 'Đã tối ưu hóa thứ tự lộ trình giao hàng.';
     return res;
   }
@@ -360,9 +447,16 @@
   // Thư viện dự phòng tối thiểu khi hoàn toàn mất mạng (offline 100%) và chưa từng quét bản đồ
   var BUILTIN_ONE_WAY_STREETS = [
     { street: 'Võ Văn Tần', direction: 'asc', note: 'Từ Hồ Con Rùa về Cao Thắng (số nhỏ ➜ lớn)' },
-    { street: 'Nguyễn Thị Minh Khai', direction: 'asc', note: 'Từ ngã 6 Cộng Hòa về Cầu Thị Nghè (số nhỏ ➜ lớn)' },
+    {
+      street: 'Nguyễn Thị Minh Khai',
+      direction: 'desc',
+      oneWayMinNum: 1,
+      oneWayMaxNum: 112,
+      note: 'Đoạn từ Trương Định/NKKN về Cầu Thị Nghè là 1 chiều (số lớn ➜ nhỏ 110 -> 1). Đoạn 116-250 về Ngã 6 Cộng Hòa là 2 chiều.'
+    },
     { street: 'Nguyễn Đình Chiểu', direction: 'asc', note: 'Từ Cầu Thị Nghè về Lý Thái Tổ (số nhỏ ➜ lớn)' },
-    { street: 'Điện Biên Phủ', direction: 'asc', note: 'Từ Đinh Tiên Hoàng về Vòng xoay Lý Thái Tổ (số nhỏ ➜ lớn)' },
+    { street: 'Điện Biên Phủ', direction: 'asc', oneWayMaxNum: 550, note: 'Từ Đinh Tiên Hoàng về Vòng xoay Lý Thái Tổ (số nhỏ ➜ lớn)' },
+    { street: 'Võ Thị Sáu', direction: 'asc', note: 'Từ Đinh Tiên Hoàng về Vòng xoay Dân Chủ (số nhỏ ➜ lớn)' },
     { street: 'Pasteur', direction: 'asc', note: 'Từ Hàm Nghi về Võ Thị Sáu (số nhỏ ➜ lớn)' },
     { street: 'Nam Kỳ Khởi Nghĩa', direction: 'desc', note: 'Từ Cầu Công Lý về Bến Bạch Đằng (số lớn ➜ nhỏ)' },
     { street: 'Lý Tự Trọng', direction: 'asc', note: 'Từ Tôn Đức Thắng về Ngã 6 Phù Đổng (số nhỏ ➜ lớn)' },
@@ -690,12 +784,21 @@
     if (mapCache && mapCache.length > 0) {
       mapCache.forEach(function(item) {
         var key = removeVietnameseTones(item.street);
+        var builtinMatch = null;
+        for (var b = 0; b < BUILTIN_ONE_WAY_STREETS.length; b++) {
+          if (removeVietnameseTones(BUILTIN_ONE_WAY_STREETS[b].street) === key) {
+            builtinMatch = BUILTIN_ONE_WAY_STREETS[b];
+            break;
+          }
+        }
         map[key] = {
           street: item.street,
           fullName: item.fullName || ('Đường ' + item.street),
-          direction: item.direction || 'asc',
+          direction: item.direction || (builtinMatch ? builtinMatch.direction : 'asc'),
+          oneWayMinNum: item.oneWayMinNum != null ? item.oneWayMinNum : (builtinMatch ? builtinMatch.oneWayMinNum : null),
+          oneWayMaxNum: item.oneWayMaxNum != null ? item.oneWayMaxNum : (builtinMatch ? builtinMatch.oneWayMaxNum : null),
           ways: item.ways || [],
-          note: 'Trích xuất từ Bản đồ OSM (' + (item.ways ? item.ways.length : 1) + ' đoạn)',
+          note: item.note || (builtinMatch ? builtinMatch.note : ('Trích xuất từ Bản đồ OSM (' + (item.ways ? item.ways.length : 1) + ' đoạn)')),
           isMapDerived: true,
           isBuiltin: false
         };
@@ -706,6 +809,8 @@
         map[removeVietnameseTones(item.street)] = {
           street: item.street,
           direction: item.direction || 'asc',
+          oneWayMinNum: item.oneWayMinNum,
+          oneWayMaxNum: item.oneWayMaxNum,
           note: item.note || '',
           isBuiltin: true,
           isMapDerived: false
@@ -720,6 +825,8 @@
       map[key] = {
         street: item.street.trim(),
         direction: item.direction || 'asc',
+        oneWayMinNum: item.oneWayMinNum,
+        oneWayMaxNum: item.oneWayMaxNum,
         note: item.note || 'Tùy chỉnh shipper',
         isBuiltin: false,
         isCustom: true
@@ -771,20 +878,53 @@
 
   /**
    * So khớp xem địa chỉ/tên đường có thuộc danh sách đường 1 chiều không
+   * Hỗ trợ kiểm tra khoảng số nhà (đoạn 1 chiều vs đoạn 2 chiều) và khoảng cách GPS tới tim đường
    */
-  function matchOneWayStreet(streetName, addr, allOneWays) {
+  function matchOneWayStreet(streetName, addr, allOneWays, houseNum, lat, lng) {
     if (!allOneWays || allOneWays.length === 0) return null;
     var normStreet = removeVietnameseTones(streetName || '');
     var normAddr = removeVietnameseTones(addr || '');
+
+    var num = (typeof houseNum === 'number' && houseNum > 0) ? houseNum : extractHouseNumberNum(addr);
 
     for (var i = 0; i < allOneWays.length; i++) {
       var ow = allOneWays[i];
       var normOw = removeVietnameseTones(ow.street);
       if (!normOw) continue;
+
+      var isNameMatch = false;
       if (normStreet && (normStreet.indexOf(normOw) !== -1 || normOw.indexOf(normStreet) !== -1)) {
-        return ow;
+        isNameMatch = true;
+      } else if (normAddr && normAddr.indexOf(normOw) !== -1) {
+        isNameMatch = true;
       }
-      if (normAddr && normAddr.indexOf(normOw) !== -1) {
+
+      if (isNameMatch) {
+        // Kiểm tra phân đoạn số nhà (nếu đường vừa có đoạn 1 chiều vừa có đoạn 2 chiều)
+        if (num > 0) {
+          if (ow.oneWayMinNum != null && num < ow.oneWayMinNum) {
+            // Nằm ngoài đoạn 1 chiều -> là đoạn 2 chiều!
+            continue;
+          }
+          if (ow.oneWayMaxNum != null && num > ow.oneWayMaxNum) {
+            // Nằm ngoài đoạn 1 chiều -> là đoạn 2 chiều!
+            continue;
+          }
+        }
+
+        // Nếu có GPS và đường có polyline OSM ways
+        if (lat != null && lng != null && ow.ways && ow.ways.length > 0) {
+          var minDist = 999999;
+          for (var w = 0; w < ow.ways.length; w++) {
+            var proj = projectPointOnPolyline(lat, lng, ow.ways[w]);
+            if (proj.dist < minDist) minDist = proj.dist;
+          }
+          // Nếu vị trí đơn hàng cách xa đoạn 1 chiều hơn 80m -> coi là đoạn 2 chiều
+          if (minDist > 80) {
+            continue;
+          }
+        }
+
         return ow;
       }
     }
@@ -807,7 +947,7 @@
       var ord = orders[origIdx];
       if (!ord) return;
       var info = extractStreetAndNum(ord.address);
-      var matchedOw = matchOneWayStreet(info.street, ord.address, allOneWays);
+      var matchedOw = matchOneWayStreet(info.street, ord.address, allOneWays, info.num, ord.lat, ord.lng);
 
       // Nếu không khớp tên đường, kiểm tra xem vị trí GPS có nằm sát trục đường 1 chiều nào từ bản đồ không
       if (!matchedOw && ord.lat != null && ord.lng != null) {
@@ -1018,19 +1158,76 @@
     }
 
     var orderedIndices2 = route.map(function(it) { return it.origIdx; });
-    if (options.strictOneWay !== false) {
-      var allOneWays2 = getAllOneWayStreets(options.customOneWayStreets, options.mapOneWays);
+    var allOneWays2 = (options.strictOneWay !== false) ? getAllOneWayStreets(options.customOneWayStreets, options.mapOneWays) : [];
+    if (options.strictOneWay !== false && allOneWays2.length > 0) {
       orderedIndices2 = enforceOneWayTrafficCompliance(orderedIndices2, orders, allOneWays2);
     }
+
+    // 2-Opt TSP Chu trình khép kín quay về điểm xuất phát (Bưu cục / Kho GHN)
+    if (orderedIndices2.length >= 4 && options.returnToDepot === true && startOrigin && startOrigin.lat != null) {
+      var computeCircuitLength = function(indices) {
+        var len = 0;
+        var pPrev = startOrigin;
+        for (var idx = 0; idx < indices.length; idx++) {
+          var o = orders[indices[idx]];
+          if (o && o.lat != null && o.lng != null && pPrev && pPrev.lat != null) {
+            len += calculateDistance(pPrev.lat, pPrev.lng, o.lat, o.lng);
+          }
+          pPrev = o;
+        }
+        if (pPrev && pPrev.lat != null && startOrigin && startOrigin.lat != null) {
+          len += calculateDistance(pPrev.lat, pPrev.lng, startOrigin.lat, startOrigin.lng);
+        }
+        return len;
+      };
+
+      var bestIndices = orderedIndices2.slice();
+      var bestLen = computeCircuitLength(bestIndices);
+      var improved = true;
+      var iters = 0;
+
+      while (improved && iters < 35) {
+        improved = false;
+        iters++;
+        for (var i = 0; i < bestIndices.length - 1; i++) {
+          for (var k = i + 1; k < bestIndices.length; k++) {
+            var newIndices = bestIndices.slice(0, i)
+              .concat(bestIndices.slice(i, k + 1).reverse())
+              .concat(bestIndices.slice(k + 1));
+
+            if (options.strictOneWay !== false && allOneWays2.length > 0) {
+              newIndices = enforceOneWayTrafficCompliance(newIndices, orders, allOneWays2);
+            }
+            var newLen = computeCircuitLength(newIndices);
+            if (newLen < bestLen - 5) {
+              bestLen = newLen;
+              bestIndices = newIndices;
+              improved = true;
+              break;
+            }
+          }
+          if (improved) break;
+        }
+      }
+      orderedIndices2 = bestIndices;
+    }
+
     var orderedOrders2 = orderedIndices2.map(function(idx) { return orders[idx]; });
+
+    var summaryText2 = options.returnToDepot
+      ? ('Đã tối ưu chu trình khép kín: Xuất phát từ ' + (startOrigin && startOrigin.name ? startOrigin.name : 'Bưu cục') + ', giao liên tục các tuyến và quay về Bưu cục ngắn nhất.')
+      : 'Đã tối ưu lộ trình liên tục từ vị trí xuất phát qua các điểm lân cận ngắn nhất (Tuân thủ đường 1 chiều bản đồ)';
 
     return finalizeResult({
       success: true,
       source: 'offline_heuristic',
-      summary: 'Đã tối ưu lộ trình liên tục từ vị trí xuất phát qua các điểm lân cận ngắn nhất (Tuân thủ đường 1 chiều bản đồ)',
+      summary: summaryText2,
       orderedIndices: orderedIndices2,
       orderedOrders: orderedOrders2,
-      stops: []
+      stops: [],
+      startOrigin: startOrigin,
+      returnToDepot: options.returnToDepot === true,
+      depot: options.depot || getDepot()
     });
   }
 
@@ -1106,7 +1303,7 @@
       var compactList = orders.map(function(o, idx) {
         var addrStr = o.address || '';
         var info = extractStreetAndNum(addrStr);
-        var matchedOw = matchOneWayStreet(info.street, addrStr, allOneWays);
+        var matchedOw = matchOneWayStreet(info.street, addrStr, allOneWays, info.num, o.lat, o.lng);
         return {
           i: idx,
           code: o.trackingCode || '',
@@ -1136,6 +1333,8 @@
         };
       });
 
+      var currentDepot = options.depot || getDepot();
+
       var systemPrompt = [
         'Bạn là chuyên gia điều phối và tối ưu lộ trình giao hàng GHN Express tại Việt Nam.',
         'Nhiệm vụ của bạn là sắp xếp thứ tự giao hàng tối ưu nhất để shipper giao nhanh nhất, tốn ít xăng nhất và không phải quay đầu xe nhiều lần.',
@@ -1156,9 +1355,15 @@
         '2. ĐƯỜNG CÓ DẢI PHÂN CÁCH CỨNG (TRÁNH QUAY ĐẦU NGUY HIỂM):',
         '- Trên các trục đường lớn có dải phân cách: giao hết một bên dãy số Chẵn theo chiều đi, sau đó quay đầu tại giao lộ hợp lệ để giao dãy số Lẻ theo chiều về (hoặc ngược lại).',
         '',
+        '=== 🔄 NGUYÊN TẮC LIÊN HOÀN TRỤC ĐƯỜNG & CHU TRÌNH BƯU CỤC (CIRCUIT LOOP) ===',
+        '- Bắt đầu từ Bưu cục / Vị trí xuất phát và tối ưu lộ trình liên hoàn theo chu trình khép kín, tránh tuyệt đối việc đi zíc zắc hoặc quay đầu xe xa hàng km.',
+        '- LIÊN KẾT MƯỢT MÀ CÁC TRỤC ĐƯỜNG SONG SONG: Khi giao một trục đường (ví dụ Võ Văn Tần số nhỏ ➜ lớn), đến cuối đường (khu vực Cao Thắng/CMT8) hãy rẽ ngay sang đầu của trục đường song song hoặc lân cận (ví dụ đoạn số lớn Nguyễn Thị Minh Khai [đoạn 2 chiều 250->116] rồi xuôi tiếp về đoạn 1 chiều [110->72]). Tuyệt đối không giao hết số lớn một đường rồi bắt shipper chạy ngược 2-3km về số nhỏ đường kia!',
+        '- ĐOẠN 2 CHIỀU CỦA ĐƯỜNG HỖN HỢP: Những đơn có oneWay: null hoặc nằm ở đoạn 2 chiều (ví dụ 116-250 Nguyễn Thị Minh Khai) có thể đi 2 chiều linh hoạt, hãy chọn hướng đi thuận tiện nhất để nối tiếp trục đường trước và sau.',
+        (options.returnToDepot ? '- QUAY VỀ BƯU CỤC (RETURN TO DEPOT): Sau khi giao hết đơn, điểm giao cuối cùng trong danh sách BẮT BUỘC phải nằm gần Bưu cục xuất phát nhất để shipper quay về Bưu cục ngắn nhất.' : ''),
+        '',
         'BẮT BUỘC TRẢ VỀ ĐỊNH DẠNG JSON DUY NHẤT (không markdown, không giải thích ngoài JSON):',
         '{',
-        '  "summary": "Tóm tắt lộ trình (ngắn gọn 1-2 câu, ghi rõ tuân thủ đường 1 chiều bản đồ)",',
+        '  "summary": "Tóm tắt lộ trình (ngắn gọn 1-2 câu, ghi rõ tuân thủ đường 1 chiều bản đồ và chu trình bưu cục)",',
         '  "orderedIndices": [chỉ số ban đầu i của các đơn theo thứ tự giao từ đầu đến cuối],',
         '  "stops": [',
         '    { "name": "Tên điểm/tòa nhà/đường", "indices": [chỉ số đơn], "tip": "Lưu ý nếu có" }',
@@ -1169,7 +1374,9 @@
 
       var userContent = JSON.stringify({
         scenario: scenario,
+        depot: currentDepot,
         startOrigin: startOrigin,
+        returnToDepot: options.returnToDepot === true,
         trafficRules: {
           strictOneWay: options.strictOneWay !== false,
           dataSource: 'OpenStreetMap Live Map Filter',
@@ -1177,6 +1384,8 @@
             return {
               street: ow.street,
               direction: ow.direction,
+              oneWayMinNum: ow.oneWayMinNum,
+              oneWayMaxNum: ow.oneWayMaxNum,
               source: ow.isMapDerived ? 'Bản đồ OpenStreetMap' : 'Shipper custom',
               note: ow.note
             };
@@ -1339,11 +1548,14 @@
           success: true,
           source: '9router_ai',
           model: model,
-          summary: parsed.summary || 'Đã tối ưu lộ trình thành công bằng AI (Tuân thủ dữ liệu đường 1 chiều từ bản đồ)',
+          summary: parsed.summary || 'Đã tối ưu lộ trình thành công bằng AI (Tuân thủ dữ liệu đường 1 chiều bản đồ & chu trình bưu cục)',
           orderedIndices: validIndices,
           orderedOrders: orderedOrders,
           stops: stops,
-          mapOneWaysCount: allOneWays.length
+          mapOneWaysCount: allOneWays.length,
+          startOrigin: startOrigin,
+          returnToDepot: options.returnToDepot === true,
+          depot: currentDepot
         });
       });
     }).catch(function(err) {
@@ -1369,6 +1581,8 @@
   return {
     DEFAULT_ENDPOINT: DEFAULT_ENDPOINT,
     DEFAULT_MODEL: DEFAULT_MODEL,
+    DEFAULT_DEPOT: DEFAULT_DEPOT,
+    PRESET_DEPOTS: PRESET_DEPOTS,
     BUILTIN_ONE_WAY_STREETS: BUILTIN_ONE_WAY_STREETS,
     getEndpoint: getEndpoint,
     setEndpoint: setEndpoint,
@@ -1378,6 +1592,9 @@
     setApiKey: setApiKey,
     getConfig: getConfig,
     saveConfig: saveConfig,
+    getDepot: getDepot,
+    saveDepot: saveDepot,
+    getPresetDepots: getPresetDepots,
     testConnection: testConnection,
     optimizeRoute: optimizeRoute,
     fallbackOfflineOptimization: fallbackOfflineOptimization,
