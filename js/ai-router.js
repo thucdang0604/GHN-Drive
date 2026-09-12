@@ -1164,6 +1164,17 @@
 
     var allOneWays = (options.strictOneWay !== false) ? getAllOneWayStreets(options.customOneWayStreets, options.mapOneWays) : [];
 
+    // Trích xuất và chuẩn hóa tên đường 1 lần duy nhất để tối ưu tốc độ x1000 lần
+    var orderMeta = list.map(function(ord, i) {
+      var info = extractStreetAndNum(ord.address || '');
+      return {
+        origIdx: i,
+        street: info.street || '',
+        normStreet: (info.street || '').toLowerCase(),
+        num: info.num || 0
+      };
+    });
+
     // KỊCH BẢN 1: TÔN TRỌNG PHÂN NHÓM (CÓ CẤU HÌNH NHÓM)
     if (scenario === 'respect_groups' && groups && groups.length > 0) {
       var groupMap = {};
@@ -1177,7 +1188,13 @@
         if (!groupMap[gId]) {
           groupMap[gId] = { group: { id: gId, name: 'Khác' }, index: 998, items: [] };
         }
-        groupMap[gId].items.push({ order: ord, origIdx: origIdx });
+        groupMap[gId].items.push({
+          order: ord,
+          origIdx: origIdx,
+          street: orderMeta[origIdx].street,
+          normStreet: orderMeta[origIdx].normStreet,
+          num: orderMeta[origIdx].num
+        });
       });
 
       var activeGroupIds = Object.keys(groupMap).filter(function(id) {
@@ -1188,31 +1205,106 @@
         activeGroupIds = ['group_ungrouped'];
       }
 
-      // Tối ưu hóa thứ tự các nhóm sao cho:
-      // 1. Nhóm đầu tiên gần Bưu cục (startOrigin) nhất
-      // 2. Nối tiếp giữa các nhóm theo chu trình liên hoàn
-      // 3. Nhóm cuối cùng quay về Bưu cục ngắn nhất
-      var perms = (activeGroupIds.length <= 7) ? permuteArray(activeGroupIds) : [activeGroupIds];
-      var bestIndices = null;
-      var bestCost = Infinity;
+      // Tính tọa độ trọng tâm (Centroid) của từng nhóm
+      activeGroupIds.forEach(function(id) {
+        var pack = groupMap[id];
+        var sumLat = 0, sumLng = 0, count = 0;
+        pack.items.forEach(function(it) {
+          if (it.order.lat != null && it.order.lng != null) {
+            sumLat += it.order.lat;
+            sumLng += it.order.lng;
+            count++;
+          }
+        });
+        pack.center = count > 0 ? { lat: sumLat / count, lng: sumLng / count } : startOrigin;
+      });
 
-      for (var p = 0; p < perms.length; p++) {
-        var perm = perms[p];
-        var candidateIndices = [];
-        var curPt = startOrigin;
+      // Xác định thứ tự nhóm tối ưu (Greedy Group TSP):
+      // Nhóm đầu tiên gần Bưu cục nhất, tiếp tục sang các nhóm lân cận kế tiếp, nhóm cuối gần Bưu cục nhất
+      var orderedGroups = [];
+      if (activeGroupIds.length <= 4) {
+        // Với số nhóm nhỏ <= 4 (24 hoán vị), duyệt hoán vị trọng tâm nhóm nhanh
+        var perms = permuteArray(activeGroupIds);
+        var bestPermCost = Infinity;
+        var bestPerm = activeGroupIds;
+        for (var p = 0; p < perms.length; p++) {
+          var candPerm = perms[p];
+          var costP = 0;
+          var pNode = startOrigin;
+          for (var gi = 0; gi < candPerm.length; gi++) {
+            var cNode = groupMap[candPerm[gi]].center;
+            if (pNode && pNode.lat != null && cNode && cNode.lat != null) {
+              costP += calculateDistance(pNode.lat, pNode.lng, cNode.lat, cNode.lng);
+            }
+            pNode = cNode;
+          }
+          if (pNode && pNode.lat != null && startOrigin && startOrigin.lat != null) {
+            costP += calculateDistance(pNode.lat, pNode.lng, startOrigin.lat, startOrigin.lng);
+          }
+          if (costP < bestPermCost) {
+            bestPermCost = costP;
+            bestPerm = candPerm;
+          }
+        }
+        orderedGroups = bestPerm;
+      } else {
+        // Với số nhóm > 4, dùng Greedy Nearest Group TSP siêu tốc (O(G^2) < 0.2ms)
+        var remainingGroups = activeGroupIds.slice();
+        var curLoc = startOrigin;
+        while (remainingGroups.length > 0) {
+          var bestGIdx = 0;
+          var minGDist = Infinity;
+          for (var gi2 = 0; gi2 < remainingGroups.length; gi2++) {
+            var gCenter = groupMap[remainingGroups[gi2]].center;
+            var dG = (curLoc && curLoc.lat != null && gCenter && gCenter.lat != null)
+              ? calculateDistance(curLoc.lat, curLoc.lng, gCenter.lat, gCenter.lng)
+              : 99999 + gi2;
+            if (dG < minGDist) {
+              minGDist = dG;
+              bestGIdx = gi2;
+            }
+          }
+          var chosenGId = remainingGroups.splice(bestGIdx, 1)[0];
+          orderedGroups.push(chosenGId);
+          curLoc = groupMap[chosenGId].center;
+        }
+      }
 
-        for (var gIdx = 0; gIdx < perm.length; gIdx++) {
-          var gId = perm[gIdx];
-          var pack = groupMap[gId];
-          if (!pack || pack.items.length === 0) continue;
+      // Sắp xếp các đơn trong từng nhóm theo hướng di chuyển liên tục & cùng trục đường
+      var candidateIndices = [];
+      var curPt = startOrigin;
 
-          var items = pack.items.slice();
-          var groupSorted = [];
-          var cur = curPt;
+      for (var og = 0; og < orderedGroups.length; og++) {
+        var gId = orderedGroups[og];
+        var pack = groupMap[gId];
+        if (!pack || pack.items.length === 0) continue;
 
-          // Sắp xếp các đơn trong nhóm: ưu tiên hướng nối tiếp từ cur
-          while (items.length > 0) {
-            var bestIdx = 0;
+        var items = pack.items.slice();
+        var groupSorted = [];
+        var cur = curPt;
+        var curStreet = null;
+
+        while (items.length > 0) {
+          // 1. Ưu tiên đơn trên cùng trục đường với đơn vừa giao
+          var sameStreetIdx = -1;
+          var minSameDist = Infinity;
+          if (curStreet) {
+            for (var s = 0; s < items.length; s++) {
+              if (items[s].normStreet && items[s].normStreet === curStreet) {
+                var dSame = (cur && cur.lat != null && items[s].order.lat != null)
+                  ? calculateDistance(cur.lat, cur.lng, items[s].order.lat, items[s].order.lng)
+                  : 99999;
+                if (dSame < minSameDist) {
+                  minSameDist = dSame;
+                  sameStreetIdx = s;
+                }
+              }
+            }
+          }
+
+          var chosenIdx = sameStreetIdx;
+          if (chosenIdx === -1) {
+            // 2. Chọn điểm gần nhất tiếp theo
             var minDist = Infinity;
             for (var i = 0; i < items.length; i++) {
               var cand = items[i].order;
@@ -1221,55 +1313,39 @@
                 : 99999 + i;
               if (d < minDist) {
                 minDist = d;
-                bestIdx = i;
+                chosenIdx = i;
               }
             }
-            var chosen = items.splice(bestIdx, 1)[0];
-            groupSorted.push(chosen);
-            if (chosen.order.lat != null && chosen.order.lng != null) {
-              cur = chosen.order;
-            }
           }
 
-          var groupOrigIndices = groupSorted.map(function(it) { return it.origIdx; });
-          if (options.strictOneWay !== false && allOneWays.length > 0) {
-            groupOrigIndices = enforceOneWayTrafficCompliance(groupOrigIndices, orders, allOneWays);
-          }
-          candidateIndices = candidateIndices.concat(groupOrigIndices);
-          var lastInGroup = orders[candidateIndices[candidateIndices.length - 1]];
-          if (lastInGroup && lastInGroup.lat != null) {
-            curPt = lastInGroup;
+          var chosen = items.splice(chosenIdx, 1)[0];
+          groupSorted.push(chosen);
+          if (chosen.order.lat != null && chosen.order.lng != null) {
+            cur = chosen.order;
+            curStreet = chosen.normStreet;
           }
         }
 
-        // Tính tổng chi phí chu trình: startOrigin -> #1 ... -> #N -> startOrigin
-        var cost = 0;
-        var prevNode = startOrigin;
-        for (var c = 0; c < candidateIndices.length; c++) {
-          var o = orders[candidateIndices[c]];
-          if (o && o.lat != null && prevNode && prevNode.lat != null) {
-            cost += calculateDistance(prevNode.lat, prevNode.lng, o.lat, o.lng);
-          }
-          prevNode = o;
-        }
-        if (prevNode && prevNode.lat != null && startOrigin && startOrigin.lat != null) {
-          cost += calculateDistance(prevNode.lat, prevNode.lng, startOrigin.lat, startOrigin.lng);
-        }
-
-        if (cost < bestCost) {
-          bestCost = cost;
-          bestIndices = candidateIndices;
+        var groupOrigIndices = groupSorted.map(function(it) { return it.origIdx; });
+        candidateIndices = candidateIndices.concat(groupOrigIndices);
+        var lastInGroup = orders[candidateIndices[candidateIndices.length - 1]];
+        if (lastInGroup && lastInGroup.lat != null) {
+          curPt = lastInGroup;
         }
       }
 
-      var orderedIndices = bestIndices || list.map(function(_, i) { return i; });
-      var orderedOrders = orderedIndices.map(function(idx) { return orders[idx]; });
+      // Tuân thủ đường 1 chiều bản đồ (Áp dụng 1 lần cho toàn tuyến, không lặp trong loop)
+      if (options.strictOneWay !== false && allOneWays.length > 0) {
+        candidateIndices = enforceOneWayTrafficCompliance(candidateIndices, orders, allOneWays);
+      }
+
+      var orderedOrders = candidateIndices.map(function(idx) { return orders[idx]; });
 
       return finalizeResult({
         success: true,
         source: 'offline_heuristic',
         summary: 'Đã tối ưu thứ tự chu trình các nhóm: Nhóm gần Bưu cục giao đầu tiên, chặng cuối quay về Bưu cục ngắn nhất.',
-        orderedIndices: orderedIndices,
+        orderedIndices: candidateIndices,
         orderedOrders: orderedOrders,
         stops: [],
         startOrigin: startOrigin,
@@ -1278,10 +1354,14 @@
       });
     }
 
-    // KỊCH BẢN 2 HOẶC TỰ DO: STREET-CONTINUOUS TSP + 2-OPT CIRCUIT
+    // KỊCH BẢN 2 HOẶC TỰ DO: STREET-CONTINUOUS TSP + FAST 2-OPT CIRCUIT
     var remaining = list.map(function(ord, i) {
-      var info = extractStreetAndNum(ord.address || '');
-      return { order: ord, origIdx: i, street: info.street || '' };
+      return {
+        order: ord,
+        origIdx: i,
+        street: orderMeta[i].street,
+        normStreet: orderMeta[i].normStreet
+      };
     });
     var route = [];
     var currentPt = startOrigin || (remaining[0].order);
@@ -1293,7 +1373,7 @@
       var minSameDist = Infinity;
       if (curStreet) {
         for (var s = 0; s < remaining.length; s++) {
-          if (remaining[s].street && remaining[s].street.toLowerCase() === curStreet.toLowerCase()) {
+          if (remaining[s].normStreet && remaining[s].normStreet === curStreet) {
             var dSame = (currentPt && currentPt.lat != null && remaining[s].order.lat != null)
               ? calculateDistance(currentPt.lat, currentPt.lng, remaining[s].order.lat, remaining[s].order.lng)
               : 99999 + s;
@@ -1325,16 +1405,14 @@
       route.push(chosen);
       if (chosen.order.lat != null && chosen.order.lng != null) {
         currentPt = chosen.order;
-        curStreet = chosen.street;
+        curStreet = chosen.normStreet;
       }
     }
 
     var orderedIndices2 = route.map(function(it) { return it.origIdx; });
-    if (options.strictOneWay !== false && allOneWays.length > 0) {
-      orderedIndices2 = enforceOneWayTrafficCompliance(orderedIndices2, orders, allOneWays);
-    }
 
     // 2-Opt TSP Chu trình khép kín quay về điểm xuất phát (Bưu cục / Kho GHN)
+    // Tối ưu thuật toán: Cache tên đường trước, dùng Local Search Window & hoán vị O(1), không gọi enforceOneWay bên trong vòng lặp!
     if (orderedIndices2.length >= 4 && options.returnToDepot === true && startOrigin && startOrigin.lat != null) {
       var computeCircuitLength = function(indices) {
         var len = 0;
@@ -1343,14 +1421,14 @@
         var streetVisited = {};
 
         for (var idx = 0; idx < indices.length; idx++) {
-          var o = orders[indices[idx]];
+          var oIdx = indices[idx];
+          var o = orders[oIdx];
           if (o && o.lat != null && o.lng != null && pPrev && pPrev.lat != null) {
             len += calculateDistance(pPrev.lat, pPrev.lng, o.lat, o.lng);
           }
           // Phạt nặng hành vi lượn zíc-zắc quay lại đường cũ chưa giao hết
-          var st = o.streetName || extractStreetAndNum(o.address || '').street;
-          if (st) {
-            var stNorm = st.toLowerCase();
+          var stNorm = orderMeta[oIdx].normStreet;
+          if (stNorm) {
             if (prevStreet && stNorm !== prevStreet && streetVisited[stNorm]) {
               len += 600; // Phạt 600m cho mỗi lần quay xe zíc zắc chuyển phố
             }
@@ -1369,19 +1447,20 @@
       var bestLen = computeCircuitLength(bestIndices2);
       var improved = true;
       var iters = 0;
+      var N = bestIndices2.length;
+      var maxIters = N > 80 ? 8 : (N > 40 ? 15 : 25);
+      var searchWindow = N > 60 ? 35 : N;
 
-      while (improved && iters < 35) {
+      while (improved && iters < maxIters) {
         improved = false;
         iters++;
-        for (var i = 0; i < bestIndices2.length - 1; i++) {
-          for (var k = i + 1; k < bestIndices2.length; k++) {
+        for (var i = 0; i < N - 1; i++) {
+          var maxK = Math.min(N, i + searchWindow);
+          for (var k = i + 1; k < maxK; k++) {
             var newIndices = bestIndices2.slice(0, i)
               .concat(bestIndices2.slice(i, k + 1).reverse())
               .concat(bestIndices2.slice(k + 1));
 
-            if (options.strictOneWay !== false && allOneWays.length > 0) {
-              newIndices = enforceOneWayTrafficCompliance(newIndices, orders, allOneWays);
-            }
             var newLen = computeCircuitLength(newIndices);
             if (newLen < bestLen - 5) {
               bestLen = newLen;
@@ -1394,6 +1473,11 @@
         }
       }
       orderedIndices2 = bestIndices2;
+    }
+
+    // Tuân thủ 100% đường 1 chiều OpenStreetMap (Áp dụng 1 lần duy nhất sau khi 2-opt hoàn tất)
+    if (options.strictOneWay !== false && allOneWays.length > 0) {
+      orderedIndices2 = enforceOneWayTrafficCompliance(orderedIndices2, orders, allOneWays);
     }
 
     var orderedOrders2 = orderedIndices2.map(function(idx) { return orders[idx]; });

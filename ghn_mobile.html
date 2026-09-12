@@ -13348,6 +13348,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 e: mobileMap.getBounds().getEast()
               } : null;
 
+              // Cho phép UI render frame cập nhật trạng thái trước khi tính toán
+              await new Promise(function(resolve) { setTimeout(resolve, 60); });
+
               var result = await aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
                 scenario: scenario,
                 startOrigin: origin,

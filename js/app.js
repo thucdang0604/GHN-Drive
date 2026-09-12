@@ -3026,6 +3026,9 @@ function setupDesktopAiRouteModal() {
         e: desktopMap.getBounds().getEast()
       } : null;
 
+      // Cho phép UI render trạng thái trước khi tính toán
+      await new Promise(resolve => setTimeout(resolve, 60));
+
       try {
         const result = await aiOpt.optimizeRoute(pending, currentGroups, rules, {
           scenario: mode,
