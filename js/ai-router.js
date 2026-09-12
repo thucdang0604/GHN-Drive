@@ -1527,7 +1527,7 @@
     var endpoint = getEndpoint();
     var model = getModel();
     var apiKey = getApiKey();
-    var timeoutMs = options.timeoutMs || Math.min(60000, Math.max(30000, orders.length * 350));
+    var timeoutMs = options.timeoutMs || Math.min(30000, Math.max(15000, orders.length * 150));
     var timeoutId = null;
 
     if (onProgress) {

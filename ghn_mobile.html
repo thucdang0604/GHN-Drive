@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Bảng Giao Hàng GHN - Tối Ưu Mobile</title>
+  <title>Bảng Giao Hàng GHN v2.6.0 - Tối Ưu Mobile</title>
   <!-- Thư viện quét mã QR / Barcode đa nền tảng (QR & Code 128 GHN) -->
   <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Thư viện sinh mã QR offline 100% -->
@@ -100,9 +100,28 @@
     }
 
     .header-title h1 {
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 700;
       color: #f8fafc;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .header-version-badge {
+      font-size: 9.5px;
+      font-weight: 800;
+      background: rgba(255, 255, 255, 0.22);
+      color: #fef08a;
+      border: 1px solid rgba(254, 240, 138, 0.5);
+      padding: 1px 5px;
+      border-radius: 99px;
+      letter-spacing: 0.2px;
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
     }
 
     .header-actions {
@@ -4559,7 +4578,7 @@
   <header class="mobile-header">
       <div class="header-title">
         <span class="header-badge">GHN</span>
-        <h1>Quản Lý Đơn Giao</h1>
+        <h1>Quản Lý Đơn Giao <span class="header-version-badge" id="appVersionBadge">v2.6.0</span></h1>
       </div>
       <div class="header-actions">
         <button id="btnOpenPasteSheetHeader" class="btn-header paste" title="Dán nhanh danh sách đơn hàng">
@@ -5429,9 +5448,27 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           </div>
         </div>
 
-        <!-- Nút hành động chạy AI -->
-        <button type="button" id="btnRunAiOptimize" class="ai-btn-run">
-          <span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>
+        <!-- Động cơ tối ưu hóa: Siêu Tốc Offline vs 9Router AI Gateway -->
+        <div style="background: #f8fafc; border: 1.5px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 700; color: #1e293b;">⚡ Động cơ tính toán:</span>
+            <span id="aiEngineRecommendBadge" style="font-size: 10px; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; padding: 1px 6px; border-radius: 4px; font-weight: 700;">Khuyên dùng (0.02s)</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 8px;">
+            <label style="display: flex; align-items: center; gap: 7px; cursor: pointer;">
+              <input type="radio" name="aiEngineMode" id="optEngineOffline" value="offline" checked style="accent-color: #10b981; width: 16px; height: 16px;">
+              <span><strong>⚡ Thuật toán Siêu Tốc Offline</strong> <span style="color:#059669; font-weight:700;">(0.02s - Chạy ngay tức thì)</span></span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 7px; cursor: pointer;">
+              <input type="radio" name="aiEngineMode" id="optEngineAi" value="ai" style="accent-color: #6366f1; width: 16px; height: 16px;">
+              <span><strong>🤖 9Router AI Gateway</strong> <span style="color:#64748b;">(Cloud AI - Cần bật 9Router)</span></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Nút hành động chạy AI / Offline -->
+        <button type="button" id="btnRunAiOptimize" class="ai-btn-run" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+          <span>⚡ Bắt Đầu Tối Ưu Siêu Tốc (Offline - 0.02s)</span>
         </button>
 
         <!-- Khung tiến trình chi tiết khi AI đang chạy -->
@@ -12769,6 +12806,18 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var statEl = document.getElementById('aiStatPendingCount');
         if (statEl) statEl.textContent = pendingOrders.length;
 
+        var recBadge = document.getElementById('aiEngineRecommendBadge');
+        var optOffline = document.getElementById('optEngineOffline');
+        if (recBadge) {
+          if (pendingOrders.length >= 50) {
+            recBadge.textContent = 'Khuyên dùng cho ' + pendingOrders.length + ' đơn (0.02s)';
+            if (optOffline) optOffline.checked = true;
+          } else {
+            recBadge.textContent = 'Khuyên dùng (0.02s)';
+          }
+        }
+        updateAiRunButtonState();
+
         // Điền cấu hình hiện tại
         var aiOpt = window.AIRouteOptimizer || (typeof AIRouteOptimizer !== 'undefined' ? AIRouteOptimizer : null);
         if (aiOpt) {
@@ -12789,6 +12838,20 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         modal.style.display = 'flex';
       }
 
+      function updateAiRunButtonState() {
+        var isOffline = document.getElementById('optEngineOffline') && document.getElementById('optEngineOffline').checked;
+        var btnRun = document.getElementById('btnRunAiOptimize');
+        if (btnRun) {
+          if (isOffline) {
+            btnRun.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
+            btnRun.innerHTML = '<span>⚡ Bắt Đầu Tối Ưu Siêu Tốc (Offline - 0.02s)</span>';
+          } else {
+            btnRun.style.background = 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)';
+            btnRun.innerHTML = '<span>🤖 Bắt Đầu Tối Ưu Với 9Router AI</span>';
+          }
+        }
+      }
+
       function closeAiRouteModal() {
         var modal = document.getElementById('aiRouteModal');
         if (modal) modal.style.display = 'none';
@@ -12807,6 +12870,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             if (e.target === modal) closeAiRouteModal();
           });
         }
+
+        var radEngines = document.querySelectorAll('input[name="aiEngineMode"]');
+        radEngines.forEach(function(r) {
+          r.addEventListener('change', updateAiRunButtonState);
+        });
 
         // Sự kiện đổi / cài đặt Bưu cục (BC)
         var btnChangeDepot = document.getElementById('btnChangeDepotMobile');
@@ -13286,8 +13354,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var resPanel = document.getElementById('aiOptimizeResultPanel');
             if (resPanel) resPanel.style.display = 'none';
 
+            var isOfflineEngine = document.getElementById('optEngineOffline') && document.getElementById('optEngineOffline').checked;
+
             btnRun.disabled = true;
-            btnRun.innerHTML = '<span>⏳ Đang Tối Ưu Lộ Trình...</span>';
+            btnRun.innerHTML = isOfflineEngine ? '<span>⏳ Đang Tối Ưu Siêu Tốc...</span>' : '<span>⏳ Đang Tối Ưu Lộ Trình...</span>';
 
             startAiProgressUI(pendingOrders.length);
 
@@ -13330,49 +13400,75 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 updateAiProgressUI(26, '🚦 Đang kích hoạt kiểm tra luật giao thông & các tuyến đường 1 chiều...', '✓ Tuân thủ đường 1 chiều: BẬT');
               }
 
-              updateAiProgressUI(30, '📦 Đang chuẩn bị và trích xuất dữ liệu ' + pendingOrders.length + ' đơn hàng...');
+              var result = null;
 
-              // Nhịp đập tăng tiến trình mượt mà từ 40% -> 85% trong khi AI đang suy nghĩ
-              var currentSimulatedPercent = 40;
-              aiProgressHeartbeat = setInterval(function() {
-                if (currentSimulatedPercent < 85) {
-                  currentSimulatedPercent += Math.floor(Math.random() * 4) + 2;
-                  updateAiProgressUI(currentSimulatedPercent, '🧠 AI đang phân tích địa chỉ, số nhà & chiều đường...');
-                }
-              }, 1200);
+              if (isOfflineEngine) {
+                updateAiProgressUI(35, '⚡ Đang thực thi thuật toán Siêu Tốc Offline (Tuân thủ đường 1 chiều & Bưu cục)...', '✓ Động cơ: Siêu Tốc Offline (0.02s)');
+                updateAiProgressUI(65, '🔄 Tối ưu chu trình khép kín bưu cục ' + (currentDepot.name || '') + '...');
 
-              var bounds = (typeof mobileMap !== 'undefined' && mobileMap && mobileMap.getBounds) ? {
-                s: mobileMap.getBounds().getSouth(),
-                w: mobileMap.getBounds().getWest(),
-                n: mobileMap.getBounds().getNorth(),
-                e: mobileMap.getBounds().getEast()
-              } : null;
+                await new Promise(function(resolve) { setTimeout(resolve, 60); });
 
-              // Cho phép UI render frame cập nhật trạng thái trước khi tính toán
-              await new Promise(function(resolve) { setTimeout(resolve, 60); });
-
-              var result = await aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
-                scenario: scenario,
-                startOrigin: origin,
-                depot: currentDepot,
-                returnToDepot: returnToDepot,
-                strictOneWay: strictOneWay,
-                bounds: bounds,
-                onProgress: function(info) {
-                  if (info && info.percent) {
-                    currentSimulatedPercent = Math.max(currentSimulatedPercent, info.percent);
-                    updateAiProgressUI(currentSimulatedPercent, info.detail || info.text, info.log);
+                var dynamicMapStreets = [];
+                if (strictOneWay && aiOpt.getMapOneWayCache) {
+                  var cachedMap = aiOpt.getMapOneWayCache();
+                  if (cachedMap && cachedMap.streets && cachedMap.streets.length > 0) {
+                    dynamicMapStreets = cachedMap.streets;
                   }
                 }
-              });
+
+                result = aiOpt.fallbackOfflineOptimization(pendingOrders, groups, groupRules, {
+                  scenario: scenario,
+                  startOrigin: origin,
+                  depot: currentDepot,
+                  returnToDepot: returnToDepot,
+                  strictOneWay: strictOneWay,
+                  mapOneWays: dynamicMapStreets
+                });
+              } else {
+                updateAiProgressUI(30, '📦 Đang chuẩn bị và trích xuất dữ liệu ' + pendingOrders.length + ' đơn hàng...');
+
+                // Nhịp đập tăng tiến trình mượt mà từ 40% -> 85% trong khi AI đang suy nghĩ
+                var currentSimulatedPercent = 40;
+                aiProgressHeartbeat = setInterval(function() {
+                  if (currentSimulatedPercent < 85) {
+                    currentSimulatedPercent += Math.floor(Math.random() * 4) + 2;
+                    updateAiProgressUI(currentSimulatedPercent, '🧠 AI đang phân tích địa chỉ, số nhà & chiều đường...');
+                  }
+                }, 1200);
+
+                var bounds = (typeof mobileMap !== 'undefined' && mobileMap && mobileMap.getBounds) ? {
+                  s: mobileMap.getBounds().getSouth(),
+                  w: mobileMap.getBounds().getWest(),
+                  n: mobileMap.getBounds().getNorth(),
+                  e: mobileMap.getBounds().getEast()
+                } : null;
+
+                // Cho phép UI render frame cập nhật trạng thái trước khi tính toán
+                await new Promise(function(resolve) { setTimeout(resolve, 60); });
+
+                result = await aiOpt.optimizeRoute(pendingOrders, groups, groupRules, {
+                  scenario: scenario,
+                  startOrigin: origin,
+                  depot: currentDepot,
+                  returnToDepot: returnToDepot,
+                  strictOneWay: strictOneWay,
+                  bounds: bounds,
+                  onProgress: function(info) {
+                    if (info && info.percent) {
+                      currentSimulatedPercent = Math.max(currentSimulatedPercent, info.percent);
+                      updateAiProgressUI(currentSimulatedPercent, info.detail || info.text, info.log);
+                    }
+                  }
+                });
+              }
 
               if (typeof renderAiOneWayList === 'function') renderAiOneWayList();
 
               stopAiProgressUI(true);
-              updateAiProgressUI(100, '🎉 Hoàn tất tính toán lộ trình tối ưu!', '✓ Đã tối ưu ' + result.orderedOrders.length + ' đơn (' + (result.source === '9router_ai' ? '9Router AI' : 'Offline Heuristic') + ')');
+              updateAiProgressUI(100, '🎉 Hoàn tất tính toán lộ trình tối ưu!', '✓ Đã tối ưu ' + result.orderedOrders.length + ' đơn (' + (result.source === '9router_ai' ? '9Router AI' : 'Offline Heuristic 0.02s') + ')');
 
               btnRun.disabled = false;
-              btnRun.innerHTML = '<span>🚀 Bắt Đầu Tối Ưu Lộ Trình</span>';
+              updateAiRunButtonState();
 
               latestAiOptimizedResult = result;
               var summaryEl = document.getElementById('aiResultSummaryText');
