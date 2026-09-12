@@ -2814,10 +2814,20 @@ function setupDesktopAiRouteModal() {
   // Config tab elements
   const inputEndpoint = document.getElementById('aiCfgEndpointDesktop');
   const inputModel = document.getElementById('aiCfgModelDesktop');
+  const inputTimeout = document.getElementById('aiCfgTimeoutDesktop');
   const inputApiKey = document.getElementById('aiCfgApiKeyDesktop');
   const btnTestConn = document.getElementById('btnTestAiConnectionDesktop');
   const btnSaveCfg = document.getElementById('btnSaveAiConfigDesktop');
   const connStatus = document.getElementById('aiConnectionStatusDesktop');
+
+  // Quick chip model selection
+  document.querySelectorAll('.btn-desktop-model-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (inputModel && btn.dataset.model) {
+        inputModel.value = btn.dataset.model;
+      }
+    });
+  });
 
   let lastOptimizedResult = null;
 
@@ -2882,6 +2892,7 @@ function setupDesktopAiRouteModal() {
     if (inputEndpoint) inputEndpoint.value = cfg.endpoint || '';
     if (inputModel) inputModel.value = cfg.model || '';
     if (inputApiKey) inputApiKey.value = cfg.apiKey || '';
+    if (inputTimeout && cfg.timeoutMs) inputTimeout.value = String(cfg.timeoutMs);
   }
 
   function openModal() {
@@ -2931,7 +2942,8 @@ function setupDesktopAiRouteModal() {
       aiOpt.saveConfig({
         endpoint: inputEndpoint.value.trim(),
         model: inputModel.value.trim(),
-        apiKey: inputApiKey.value.trim()
+        apiKey: inputApiKey.value.trim(),
+        timeoutMs: inputTimeout ? parseInt(inputTimeout.value, 10) : 90000
       });
       if (inputEndpoint) inputEndpoint.value = aiOpt.getEndpoint();
 
@@ -2959,7 +2971,8 @@ function setupDesktopAiRouteModal() {
       aiOpt.saveConfig({
         endpoint: inputEndpoint.value.trim(),
         model: inputModel.value.trim(),
-        apiKey: inputApiKey.value.trim()
+        apiKey: inputApiKey.value.trim(),
+        timeoutMs: inputTimeout ? parseInt(inputTimeout.value, 10) : 90000
       });
       if (inputEndpoint) inputEndpoint.value = aiOpt.getEndpoint();
       showToast('Đã lưu cấu hình 9Router!', 'success');

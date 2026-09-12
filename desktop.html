@@ -786,12 +786,28 @@ giá tiền: 0 VNĐ."
 
         <div class="ai-form-group">
           <label for="aiCfgModelDesktop">Model AI:</label>
-          <input type="text" id="aiCfgModelDesktop" class="ai-input" placeholder="gemini-2.5-flash">
+          <input type="text" id="aiCfgModelDesktop" class="ai-input" placeholder="ag/gemini-3.7-flash-low">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+            <button type="button" class="btn-desktop-model-chip" data-model="ag/gemini-3.7-flash-low" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #065f46; cursor: pointer; font-weight: 600;">⚡ ag/gemini-3.7-flash-low (~12s)</button>
+            <button type="button" class="btn-desktop-model-chip" data-model="ag/gemini-3-flash" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1e40af; cursor: pointer;">⚡ ag/gemini-3-flash (~10s)</button>
+            <button type="button" class="btn-desktop-model-chip" data-model="ag/gemini-3.7-flash-high" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; cursor: pointer;">🧠 ag/gemini-3.7-flash-high (~35s)</button>
+            <button type="button" class="btn-desktop-model-chip" data-model="gpt-4o-mini" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; cursor: pointer;">gpt-4o-mini</button>
+          </div>
+        </div>
+
+        <div class="ai-form-group">
+          <label for="aiCfgTimeoutDesktop">Thời gian chờ AI tối đa (Timeout):</label>
+          <select id="aiCfgTimeoutDesktop" class="ai-input" style="font-size: 12px;">
+            <option value="90000" selected>90 giây (Khuyên dùng - Đủ thời gian cho AI suy luận)</option>
+            <option value="120000">120 giây (Mô hình suy luận sâu / Trên 100 đơn)</option>
+            <option value="60000">60 giây (Mô hình nhanh / Dưới 60 đơn)</option>
+            <option value="180000">180 giây (Tối đa 3 phút)</option>
+          </select>
         </div>
 
         <div class="ai-form-group">
           <label for="aiCfgApiKeyDesktop">API Key (Tùy chọn):</label>
-          <input type="password" id="aiCfgApiKeyDesktop" class="ai-input" placeholder="sk-9router hoặc để trống">
+          <input type="password" id="aiCfgApiKeyDesktop" class="ai-input" placeholder="sk-9router hoặc để trống (tự động key nội bộ)">
         </div>
 
         <div style="display: flex; gap: 8px; margin-top: 16px;">

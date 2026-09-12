@@ -4578,7 +4578,7 @@
   <header class="mobile-header">
       <div class="header-title">
         <span class="header-badge">GHN</span>
-        <h1>Quản Lý Đơn Giao <span class="header-version-badge" id="appVersionBadge">v2.6.0</span></h1>
+        <h1>Quản Lý Đơn Giao <span class="header-version-badge" id="appVersionBadge">v2.7.0</span></h1>
       </div>
       <div class="header-actions">
         <button id="btnOpenPasteSheetHeader" class="btn-header paste" title="Dán nhanh danh sách đơn hàng">
@@ -5529,14 +5529,26 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         <div style="display: flex; flex-direction: column; gap: 4px;">
           <label style="font-size: 12px; font-weight: 700; color: #334155;">Tên mô hình AI (Model):</label>
-          <input type="text" id="cfgAiModel" class="upd-input" placeholder="ag/gemini-3.7-flash-high" style="font-size: 12.5px;">
+          <input type="text" id="cfgAiModel" class="upd-input" placeholder="ag/gemini-3.7-flash-low" style="font-size: 12.5px;">
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="ag/gemini-3.7-flash-high">ag/gemini-3.7-flash-high</button>
-            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="gemini-2.5-flash">gemini-2.5-flash</button>
+            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="ag/gemini-3.7-flash-low" style="background:#ecfdf5; border-color:#a7f3d0; color:#065f46; font-weight:700;">⚡ ag/gemini-3.7-flash-low (~12s Khuyên dùng)</button>
+            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="ag/gemini-3-flash" style="background:#eff6ff; border-color:#bfdbfe; color:#1e40af;">⚡ ag/gemini-3-flash (~10s)</button>
+            <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="ag/gemini-3.7-flash-high">🧠 ag/gemini-3.7-flash-high (~35s)</button>
             <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="gpt-4o-mini">gpt-4o-mini</button>
             <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="claude-3-5-sonnet">claude-3-5-sonnet</button>
             <button type="button" class="btn-quick-fix-loc btn-chip-model" data-model="deepseek-chat">deepseek-chat</button>
           </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155;">Thời gian chờ AI tối đa (Timeout):</label>
+          <select id="cfgAiTimeout" class="upd-input" style="font-size: 12px;">
+            <option value="90000" selected>90 giây (Khuyên dùng - Đủ thời gian cho AI suy luận)</option>
+            <option value="120000">120 giây (Mô hình suy luận sâu / Trên 100 đơn)</option>
+            <option value="60000">60 giây (Mô hình nhanh / Dưới 60 đơn)</option>
+            <option value="180000">180 giây (Tối đa 3 phút)</option>
+          </select>
+          <span style="font-size: 10.5px; color: #64748b;">Tránh trường hợp bị ngắt kết nối quá sớm khi AI đang phân tích nhiều điểm giao phức tạp.</span>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -12824,9 +12836,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           var cfgEndpoint = document.getElementById('cfgAiEndpoint');
           var cfgModel = document.getElementById('cfgAiModel');
           var cfgApiKey = document.getElementById('cfgAiApiKey');
+          var cfgTimeout = document.getElementById('cfgAiTimeout');
           if (cfgEndpoint) cfgEndpoint.value = aiOpt.getEndpoint();
           if (cfgModel) cfgModel.value = aiOpt.getModel();
           if (cfgApiKey) cfgApiKey.value = aiOpt.getApiKey();
+          if (cfgTimeout && aiOpt.getTimeout) cfgTimeout.value = String(aiOpt.getTimeout() || 90000);
         }
 
         // Cập nhật tên bưu cục hiện tại
@@ -13011,11 +13025,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var rawEndpoint = (endpointInput.value || '').trim();
             var model = (document.getElementById('cfgAiModel').value || '').trim();
             var apiKey = (document.getElementById('cfgAiApiKey').value || '').trim();
+            var timeoutInput = document.getElementById('cfgAiTimeout');
+            var timeoutVal = timeoutInput ? parseInt(timeoutInput.value, 10) : 90000;
 
             var normalizedEndpoint = aiOpt.setEndpoint(rawEndpoint || aiOpt.DEFAULT_ENDPOINT);
             if (endpointInput) endpointInput.value = normalizedEndpoint;
             aiOpt.setModel(model || aiOpt.DEFAULT_MODEL);
             aiOpt.setApiKey(apiKey);
+            if (aiOpt.setTimeoutMs) aiOpt.setTimeoutMs(timeoutVal);
 
             showToast('💾 Đã lưu cấu hình 9Router AI thành công!');
           });
@@ -13033,11 +13050,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var rawEndpoint = (endpointInput.value || '').trim();
             var model = (document.getElementById('cfgAiModel').value || '').trim();
             var apiKey = (document.getElementById('cfgAiApiKey').value || '').trim();
+            var timeoutInput = document.getElementById('cfgAiTimeout');
+            var timeoutVal = timeoutInput ? parseInt(timeoutInput.value, 10) : 90000;
 
             var normalizedEndpoint = aiOpt.setEndpoint(rawEndpoint || aiOpt.DEFAULT_ENDPOINT);
             if (endpointInput) endpointInput.value = normalizedEndpoint;
             aiOpt.setModel(model || aiOpt.DEFAULT_MODEL);
             aiOpt.setApiKey(apiKey);
+            if (aiOpt.setTimeoutMs) aiOpt.setTimeoutMs(timeoutVal);
 
             if (testBox) {
               testBox.style.display = 'block';
@@ -13427,14 +13447,22 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               } else {
                 updateAiProgressUI(30, '📦 Đang chuẩn bị và trích xuất dữ liệu ' + pendingOrders.length + ' đơn hàng...');
 
-                // Nhịp đập tăng tiến trình mượt mà từ 40% -> 85% trong khi AI đang suy nghĩ
+                // Nhịp đập tăng tiến trình mượt mà từ 40% -> 92% trong khi AI đang suy nghĩ
                 var currentSimulatedPercent = 40;
+                var aiStartTime = Date.now();
+                var activeModel = (aiOpt && aiOpt.getModel) ? aiOpt.getModel() : '';
+                var isReasoningModel = /high|thinking|reasoning|opus|r1|gemini-3\.7/i.test(activeModel);
+                var estRange = isReasoningModel ? '~25-45s' : '~10-15s';
                 aiProgressHeartbeat = setInterval(function() {
-                  if (currentSimulatedPercent < 85) {
-                    currentSimulatedPercent += Math.floor(Math.random() * 4) + 2;
-                    updateAiProgressUI(currentSimulatedPercent, '🧠 AI đang phân tích địa chỉ, số nhà & chiều đường...');
+                  var elapsedSec = Math.floor((Date.now() - aiStartTime) / 1000);
+                  if (currentSimulatedPercent < 92) {
+                    currentSimulatedPercent += Math.min(2, Math.floor(Math.random() * 3) + 1);
                   }
-                }, 1200);
+                  updateAiProgressUI(
+                    currentSimulatedPercent,
+                    '🧠 AI Gateway đang suy luận lộ trình (' + elapsedSec + 's / dự kiến ' + estRange + ')...'
+                  );
+                }, 1000);
 
                 var bounds = (typeof mobileMap !== 'undefined' && mobileMap && mobileMap.getBounds) ? {
                   s: mobileMap.getBounds().getSouth(),
@@ -13465,7 +13493,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               if (typeof renderAiOneWayList === 'function') renderAiOneWayList();
 
               stopAiProgressUI(true);
-              updateAiProgressUI(100, '🎉 Hoàn tất tính toán lộ trình tối ưu!', '✓ Đã tối ưu ' + result.orderedOrders.length + ' đơn (' + (result.source === '9router_ai' ? '9Router AI' : 'Offline Heuristic 0.02s') + ')');
+              updateAiProgressUI(100, '🎉 Hoàn tất tính toán lộ trình tối ưu!', '✓ Đã tối ưu ' + result.orderedOrders.length + ' đơn (' + (result.source === '9router_ai' ? ('9Router ' + (result.model || 'AI')) : 'Offline Heuristic 0.02s') + ')');
 
               btnRun.disabled = false;
               updateAiRunButtonState();
@@ -13489,7 +13517,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   '<span style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; padding:2px 6px; border-radius:4px; font-weight:700;">🔄 <strong>Tổng ca:</strong> ' + totalKmStr + '</span>' +
                   '</div>';
 
-                summaryEl.innerHTML = '<div style="margin-bottom:4px;">' + escapeHtml(result.summary || 'Đã tối ưu thứ tự giao hàng.') + '</div>' + metricBadges;
+                var warningHtml = result.warning ? ('<div style="background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:6px 8px; margin-bottom:6px; font-size:11px; color:#b45309; line-height:1.3;">⚠️ ' + escapeHtml(result.warning) + '</div>') : '';
+                summaryEl.innerHTML = warningHtml + '<div style="margin-bottom:4px;">' + escapeHtml(result.summary || 'Đã tối ưu thứ tự giao hàng.') + '</div>' + metricBadges;
               }
               if (badgeEl) {
                 badgeEl.textContent = result.source === '9router_ai' ? ('9Router (' + (result.model || 'AI') + ')') : 'Offline Heuristic';

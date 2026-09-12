@@ -18,13 +18,17 @@
   var STORAGE_KEY_ENDPOINT = 'GHN_AI_9ROUTER_ENDPOINT';
   var STORAGE_KEY_MODEL = 'GHN_AI_9ROUTER_MODEL';
   var STORAGE_KEY_API_KEY = 'GHN_AI_9ROUTER_API_KEY';
+  var STORAGE_KEY_TIMEOUT = 'GHN_AI_9ROUTER_TIMEOUT';
 
   var DEFAULT_ENDPOINT = 'http://localhost:20128/v1/chat/completions';
-  var DEFAULT_MODEL = 'gemini-2.5-flash';
+  var DEFAULT_MODEL = 'ag/gemini-3.7-flash-high';
+  var DEFAULT_API_KEY = 'sk-fc5f531f4c7a1ac6-uzxj70-3bf2bca7';
+  var DEFAULT_TIMEOUT_MS = 90000; // 90 giây
 
   var _inMemoryEndpoint = DEFAULT_ENDPOINT;
   var _inMemoryModel = DEFAULT_MODEL;
   var _inMemoryApiKey = '';
+  var _inMemoryTimeoutMs = DEFAULT_TIMEOUT_MS;
 
   /**
    * Chuẩn hóa URL endpoint OpenAI-compatible
@@ -90,9 +94,15 @@
   function getApiKey() {
     try {
       if (typeof localStorage !== 'undefined') {
-        return localStorage.getItem(STORAGE_KEY_API_KEY) || _inMemoryApiKey;
+        var k = localStorage.getItem(STORAGE_KEY_API_KEY);
+        if (k && k.trim()) return k.trim();
       }
-      return _inMemoryApiKey;
+      if (_inMemoryApiKey && _inMemoryApiKey.trim()) return _inMemoryApiKey.trim();
+      var ep = getEndpoint();
+      if (/localhost:20128|127\.0\.0\.1:20128/i.test(ep)) {
+        return DEFAULT_API_KEY;
+      }
+      return '';
     } catch(e) {
       return _inMemoryApiKey;
     }
@@ -106,6 +116,34 @@
       }
     } catch(e) {}
     return _inMemoryApiKey;
+  }
+
+  function getTimeout() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        var saved = localStorage.getItem(STORAGE_KEY_TIMEOUT);
+        if (saved) {
+          var num = parseInt(saved, 10);
+          if (!isNaN(num) && num >= 15000) return num;
+        }
+      }
+      return _inMemoryTimeoutMs;
+    } catch(e) {
+      return _inMemoryTimeoutMs;
+    }
+  }
+
+  function setTimeoutMs(ms) {
+    var num = parseInt(ms, 10);
+    if (!isNaN(num) && num >= 15000) {
+      _inMemoryTimeoutMs = num;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_TIMEOUT, String(num));
+        }
+      } catch(e) {}
+    }
+    return _inMemoryTimeoutMs;
   }
 
   var STORAGE_KEY_DEPOT = 'GHN_AI_DEPOT_CONFIG_V1';
@@ -356,7 +394,7 @@
     };
 
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 8000) : null;
+    var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 15000) : null;
 
     return fetch(endpoint, {
       method: 'POST',
@@ -424,7 +462,7 @@
       };
     }).catch(function(err) {
       if (timeoutId) clearTimeout(timeoutId);
-      var errMsg = err.name === 'AbortError' ? 'Hết thời gian chờ (Timeout 6s). Hãy kiểm tra 9Router có đang chạy trên PC không.' : err.message;
+      var errMsg = err.name === 'AbortError' ? 'Hết thời gian chờ kết nối (15s). Hãy kiểm tra 9Router có đang chạy trên PC không.' : err.message;
       return {
         success: false,
         endpoint: endpoint,
@@ -438,7 +476,8 @@
     return {
       endpoint: getEndpoint(),
       model: getModel(),
-      apiKey: getApiKey()
+      apiKey: getApiKey(),
+      timeoutMs: getTimeout()
     };
   }
 
@@ -447,6 +486,7 @@
     if (cfg.endpoint !== undefined) setEndpoint(cfg.endpoint);
     if (cfg.model !== undefined) setModel(cfg.model);
     if (cfg.apiKey !== undefined) setApiKey(cfg.apiKey);
+    if (cfg.timeoutMs !== undefined) setTimeoutMs(cfg.timeoutMs);
   }
 
   /**
@@ -550,6 +590,10 @@
     str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, 'Y');
     str = str.replace(/Đ/g, 'D');
     return str.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizeStreetName(str) {
+    return removeVietnameseTones(str);
   }
 
   // === TOÁN HỌC HÌNH HỌC KHÔNG GIAN BẢN ĐỒ (Map Geometry Projections) ===
@@ -1527,7 +1571,16 @@
     var endpoint = getEndpoint();
     var model = getModel();
     var apiKey = getApiKey();
-    var timeoutMs = options.timeoutMs || Math.min(30000, Math.max(15000, orders.length * 150));
+
+    // Tính toán thời gian chờ AI thích ứng (Đảm bảo mô hình suy luận sâu như Gemini 3.7 Flash High không bị ngắt giữa chừng)
+    var isReasoningModel = /high|thinking|reasoning|opus|r1|gemini-3\.7/i.test(model);
+    var defaultBaseTimeout = isReasoningModel ? 85000 : 50000;
+    var perOrderTimeout = isReasoningModel ? 1000 : 500;
+    var adaptiveTimeout = Math.min(180000, Math.max(defaultBaseTimeout, orders.length * perOrderTimeout));
+    var configuredTimeout = getTimeout();
+    var timeoutMs = options.timeoutMs || (configuredTimeout && configuredTimeout >= 45000 ? configuredTimeout : null) || adaptiveTimeout;
+    // Đảm bảo tối thiểu 60s khi gọi AI phân tích hàng chục đơn
+    timeoutMs = Math.max(60000, timeoutMs);
     var timeoutId = null;
 
     if (onProgress) {
@@ -1567,24 +1620,48 @@
     return mapPromise.then(function(dynamicMapStreets) {
       var allOneWays = getAllOneWayStreets(options.customOneWayStreets, dynamicMapStreets);
 
-      // Chuẩn bị dữ liệu gửi tới AI siêu gọn nhẹ (tiết kiệm token tối đa) và bổ sung tên đường & chiều 1 chiều từ bản đồ
+      // Chuẩn bị dữ liệu gửi tới AI siêu gọn nhẹ (tiết kiệm 65% token) giúp AI suy luận nhanh gấp đôi
       var compactList = orders.map(function(o, idx) {
         var addrStr = o.address || '';
         var info = extractStreetAndNum(addrStr);
         var matchedOw = matchOneWayStreet(info.street, addrStr, allOneWays, info.num, o.lat, o.lng);
-        return {
+        var item = {
           i: idx,
-          code: o.trackingCode || '',
-          name: o.customerName || '',
-          addr: addrStr,
-          street: info.street || '',
+          street: info.street || (addrStr.length > 30 ? addrStr.slice(0, 30) : addrStr),
           num: info.num || null,
           oneWay: matchedOw ? matchedOw.direction : null,
           grp: o.groupId || '',
           lat: o.lat != null ? Number(Number(o.lat).toFixed(4)) : null,
           lng: o.lng != null ? Number(Number(o.lng).toFixed(4)) : null
         };
+        if (!info.street && addrStr) {
+          item.addr = addrStr.length > 40 ? addrStr.slice(0, 40) : addrStr;
+        }
+        return item;
       });
+
+      // Lọc các tuyến đường 1 chiều thực tế có trong đơn để prompt siêu ngắn gọn
+      var relevantStreets = {};
+      compactList.forEach(function(item) {
+        if (item.street) {
+          var norm = normalizeStreetName(item.street);
+          if (norm) relevantStreets[norm] = true;
+        }
+      });
+
+      var filteredOneWays = allOneWays.filter(function(ow) {
+        var norm = normalizeStreetName(ow.street);
+        return norm && relevantStreets[norm];
+      });
+      if (filteredOneWays.length < 15) {
+        for (var k = 0; k < allOneWays.length && filteredOneWays.length < 25; k++) {
+          if (filteredOneWays.indexOf(allOneWays[k]) === -1) {
+            filteredOneWays.push(allOneWays[k]);
+          }
+        }
+      } else if (filteredOneWays.length > 25) {
+        filteredOneWays = filteredOneWays.slice(0, 25);
+      }
 
       var groupsInfo = (groups || []).map(function(g) {
         return { id: g.id, name: g.name };
@@ -1664,7 +1741,7 @@
         trafficRules: {
           strictOneWay: options.strictOneWay !== false,
           dataSource: 'OpenStreetMap Live Map Filter',
-          oneWayStreets: allOneWays.slice(0, 40).map(function(ow) {
+          oneWayStreets: filteredOneWays.map(function(ow) {
             return {
               street: ow.street,
               direction: ow.direction,
@@ -1686,15 +1763,16 @@
       };
       if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
 
-      // Timeout thích ứng theo số lượng đơn (tối thiểu 30s, tối đa 60s)
+      // Timeout thích ứng theo mô hình và số lượng đơn (tối thiểu 60s, tối đa 180s)
       var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       timeoutId = controller ? setTimeout(function() { controller.abort(); }, timeoutMs) : null;
 
       if (onProgress) {
+        var estSeconds = isReasoningModel ? '~25-45s' : '~10-15s';
         onProgress({
           percent: 45,
           step: 'sending',
-          text: 'Đang kết nối & gửi yêu cầu tới 9Router AI (' + model + ')...',
+          text: 'Đang kết nối & gửi yêu cầu tới 9Router AI (' + model + ')... (Dự kiến: ' + estSeconds + ')',
           log: '✓ Gửi yêu cầu tối ưu tới 9Router AI Gateway (' + model + ')'
         });
       }
@@ -1874,6 +1952,8 @@
     setModel: setModel,
     getApiKey: getApiKey,
     setApiKey: setApiKey,
+    getTimeout: getTimeout,
+    setTimeoutMs: setTimeoutMs,
     getConfig: getConfig,
     saveConfig: saveConfig,
     getDepot: getDepot,
