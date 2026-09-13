@@ -134,7 +134,7 @@ export function parseRawOrderText(rawText) {
   if (!rawText || !rawText.trim()) return [];
 
   const rawLines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const blocks = [];
+  let blocks = [];
   let curr = [];
 
   for (let i = 0; i < rawLines.length; i++) {

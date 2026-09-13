@@ -1,0 +1,12 @@
+{
+  "name": "web-ghn",
+  "version": "2.7.2",
+  "description": "GHN Logistics Express - Dieu phoi lo trinh & quan ly don hang",
+  "scripts": {
+    "build": "esbuild js/app.js --bundle --outfile=js/app.bundle.js --format=iife",
+    "watch": "esbuild js/app.js --bundle --outfile=js/app.bundle.js --format=iife --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
