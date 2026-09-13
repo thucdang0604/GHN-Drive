@@ -3666,16 +3666,32 @@ function setupDesktopFleetDispatch() {
       return;
     }
 
+    // Đếm số lượng đơn tại cùng địa chỉ / điểm giao trong tuyến này
+    const aiOpt = window.AIRouteOptimizer;
+    const addrCountMap = {};
+    orders.forEach(o => {
+      const cInfo = (aiOpt && aiOpt.canonicalizeAddress) ? aiOpt.canonicalizeAddress(o.address, o.lat, o.lng) : null;
+      const key = (cInfo && cInfo.stopKey) ? cInfo.stopKey : (o.address || '').trim().toLowerCase();
+      o._uiStopKey = key;
+      addrCountMap[key] = (addrCountMap[key] || 0) + 1;
+    });
+
     orders.forEach((o, idx) => {
+      const sameCount = addrCountMap[o._uiStopKey] || 1;
+      const sameBadge = sameCount > 1 
+        ? `<span style="font-size: 10px; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 4px; padding: 1px 5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Tuyến có ${sameCount} đơn giao cùng địa chỉ / tòa nhà này (Giao liền một lượt)">🏢 Cùng điểm (${sameCount} đơn)</span>`
+        : '';
+
       const row = document.createElement('div');
       row.className = 'fleet-order-row';
       row.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
           <span style="font-weight: 800; color: ${r.color}; font-size: 11px; min-width: 22px;">#${idx + 1}</span>
           <div style="flex: 1; min-width: 0;">
-            <div style="display: flex; gap: 6px; align-items: center;">
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
               <strong style="color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${escapeHtml(o.customerName || 'Khách lẻ')}</strong>
               <span style="font-size: 10.5px; color: #64748b;">${escapeHtml(o.trackingCode || '')}</span>
+              ${sameBadge}
             </div>
             <div style="color: #475569; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(o.address || '')}">
               📍 ${escapeHtml(o.address || 'Chưa có địa chỉ')}
@@ -3697,7 +3713,7 @@ function setupDesktopFleetDispatch() {
       if (btnTr) {
         btnTr.addEventListener('click', (e) => {
           e.stopPropagation();
-          showTransferMenu(btnTr, o.id);
+          showTransferMenu(btnTr, o.id, sameCount);
         });
       }
 
@@ -3706,13 +3722,13 @@ function setupDesktopFleetDispatch() {
   }
 
   // Show popup menu to transfer order to another route
-  function showTransferMenu(btnEl, orderId) {
+  function showTransferMenu(btnEl, orderId, sameCount) {
     // Remove existing menus
     document.querySelectorAll('.fleet-transfer-dropdown').forEach(d => d.remove());
 
     const menu = document.createElement('div');
     menu.className = 'fleet-transfer-dropdown';
-    menu.style.cssText = 'position: absolute; right: 0; top: 100%; z-index: 1000; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 4px; min-width: 180px; display: flex; flex-direction: column; gap: 2px;';
+    menu.style.cssText = 'position: absolute; right: 0; top: 100%; z-index: 1000; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 4px; min-width: 220px; display: flex; flex-direction: column; gap: 2px;';
 
     const header = document.createElement('div');
     header.style.cssText = 'font-size: 10.5px; font-weight: 700; color: #64748b; padding: 4px 8px; border-bottom: 1px solid #f1f5f9;';
@@ -3722,26 +3738,68 @@ function setupDesktopFleetDispatch() {
     currentFleetResult.routes.forEach((targetRoute, tIdx) => {
       if (tIdx === activeRouteIndex) return; // Không hiển thị tuyến hiện tại
 
-      const opt = document.createElement('button');
-      opt.type = 'button';
-      opt.style.cssText = 'display: flex; align-items: center; justify-content: space-between; border: none; background: transparent; padding: 6px 8px; border-radius: 5px; font-size: 11.5px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%;';
-      opt.innerHTML = `
-        <span style="display: flex; align-items: center; gap: 6px;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
-          <strong style="color: #1e293b;">${escapeHtml(targetRoute.shipperName)}</strong>
-        </span>
-        <span style="font-size: 10.5px; color: #64748b;">${targetRoute.orderedOrders ? targetRoute.orderedOrders.length : 0} đơn</span>
-      `;
-      opt.addEventListener('mouseenter', () => { opt.style.background = '#f1f5f9'; });
-      opt.addEventListener('mouseleave', () => { opt.style.background = 'transparent'; });
+      if (sameCount && sameCount > 1) {
+        // Tùy chọn 1: Chuyển riêng đơn này
+        const optSingle = document.createElement('button');
+        optSingle.type = 'button';
+        optSingle.style.cssText = 'display: flex; align-items: center; justify-content: space-between; border: none; background: transparent; padding: 6px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%;';
+        optSingle.innerHTML = `
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
+            <strong style="color: #1e293b;">${escapeHtml(targetRoute.shipperName)}</strong>
+          </span>
+          <span style="font-size: 10px; color: #64748b;">(Chỉ 1 đơn này)</span>
+        `;
+        optSingle.addEventListener('mouseenter', () => { optSingle.style.background = '#f1f5f9'; });
+        optSingle.addEventListener('mouseleave', () => { optSingle.style.background = 'transparent'; });
+        optSingle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          menu.remove();
+          executeOrderTransfer(orderId, activeRouteIndex, tIdx, false);
+        });
+        menu.appendChild(optSingle);
 
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        menu.remove();
-        executeOrderTransfer(orderId, activeRouteIndex, tIdx);
-      });
+        // Tùy chọn 2: Chuyển cả cụm cùng địa chỉ
+        const optAll = document.createElement('button');
+        optAll.type = 'button';
+        optAll.style.cssText = 'display: flex; align-items: center; justify-content: space-between; border: none; background: #fffbeb; padding: 6px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%; border: 1px dashed #fde68a; margin-bottom: 3px;';
+        optAll.innerHTML = `
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
+            <strong style="color: #92400e;">${escapeHtml(targetRoute.shipperName)}</strong>
+          </span>
+          <span style="font-size: 10px; font-weight: 700; color: #b45309;">(Cả ${sameCount} đơn cùng địa chỉ)</span>
+        `;
+        optAll.addEventListener('mouseenter', () => { optAll.style.background = '#fef3c7'; });
+        optAll.addEventListener('mouseleave', () => { optAll.style.background = '#fffbeb'; });
+        optAll.addEventListener('click', (e) => {
+          e.stopPropagation();
+          menu.remove();
+          executeOrderTransfer(orderId, activeRouteIndex, tIdx, true);
+        });
+        menu.appendChild(optAll);
+      } else {
+        const opt = document.createElement('button');
+        opt.type = 'button';
+        opt.style.cssText = 'display: flex; align-items: center; justify-content: space-between; border: none; background: transparent; padding: 6px 8px; border-radius: 5px; font-size: 11.5px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%;';
+        opt.innerHTML = `
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
+            <strong style="color: #1e293b;">${escapeHtml(targetRoute.shipperName)}</strong>
+          </span>
+          <span style="font-size: 10.5px; color: #64748b;">${targetRoute.orderedOrders ? targetRoute.orderedOrders.length : 0} đơn</span>
+        `;
+        opt.addEventListener('mouseenter', () => { opt.style.background = '#f1f5f9'; });
+        opt.addEventListener('mouseleave', () => { opt.style.background = 'transparent'; });
 
-      menu.appendChild(opt);
+        opt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          menu.remove();
+          executeOrderTransfer(orderId, activeRouteIndex, tIdx, false);
+        });
+
+        menu.appendChild(opt);
+      }
     });
 
     btnEl.parentElement.appendChild(menu);
@@ -3758,17 +3816,28 @@ function setupDesktopFleetDispatch() {
   }
 
   // Execute Order Transfer between two routes
-  function executeOrderTransfer(orderId, fromIdx, toIdx) {
+  function executeOrderTransfer(orderId, fromIdx, toIdx, transferAllSameAddress) {
     if (!currentFleetResult || !currentFleetResult.routes) return;
     const fromRoute = currentFleetResult.routes[fromIdx];
     const toRoute = currentFleetResult.routes[toIdx];
     if (!fromRoute || !toRoute) return;
 
-    const oIdx = fromRoute.orderedOrders.findIndex(o => o.id === orderId);
-    if (oIdx === -1) return;
+    const targetOrder = fromRoute.orderedOrders.find(o => o.id === orderId);
+    if (!targetOrder) return;
 
-    const [transferredOrder] = fromRoute.orderedOrders.splice(oIdx, 1);
-    toRoute.orderedOrders.push(transferredOrder);
+    let ordersToMove = [];
+    if (transferAllSameAddress && targetOrder._uiStopKey) {
+      ordersToMove = fromRoute.orderedOrders.filter(o => o._uiStopKey === targetOrder._uiStopKey);
+      fromRoute.orderedOrders = fromRoute.orderedOrders.filter(o => o._uiStopKey !== targetOrder._uiStopKey);
+    } else {
+      const oIdx = fromRoute.orderedOrders.findIndex(o => o.id === orderId);
+      if (oIdx !== -1) {
+        ordersToMove = fromRoute.orderedOrders.splice(oIdx, 1);
+      }
+    }
+
+    if (ordersToMove.length === 0) return;
+    ordersToMove.forEach(o => toRoute.orderedOrders.push(o));
 
     // Cập nhật stats
     fromRoute.orderCount = fromRoute.orderedOrders.length;
@@ -3785,7 +3854,7 @@ function setupDesktopFleetDispatch() {
     renderFleetActiveRouteOrders();
     updateFleetMap();
 
-    showToast(`✓ Đã chuyển đơn sang ${toRoute.shipperName} và tự động lưu cấu hình!`, 'success');
+    showToast(`✓ Đã chuyển ${ordersToMove.length} đơn sang ${toRoute.shipperName} và tự động lưu cấu hình!`, 'success');
   }
 
   // Initialize or Update Leaflet Map for Fleet Dispatch

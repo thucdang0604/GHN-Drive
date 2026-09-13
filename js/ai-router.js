@@ -955,33 +955,174 @@
     return m2 ? parseInt(m2[1], 10) : 0;
   }
 
+  var CANONICAL_STREETS = [
+    'Nguyễn Thị Minh Khai', 'Bà Huyện Thanh Quan', 'Công Trường Quốc Tế', 
+    'Nam Kỳ Khởi Nghĩa', 'Cách Mạng Tháng 8', 'Nguyễn Thượng Hiền',
+    'Nguyễn Đình Chiểu', 'Nguyễn Thiện Thuật', 'Phạm Đình Toái',
+    'Trần Quang Diệu', 'Trần Quốc Toản', 'Trần Quốc Thảo', 'Trần Quang Khải',
+    'Nguyễn Gia Thiều', 'Nguyễn Thị Diệu', 'Nguyễn Sơn Hà', 'Nguyễn Thái Học',
+    'Huỳnh Tịnh Của', 'Ngô Thời Nhiệm', 'Võ Thị Sáu', 'Võ Văn Tần',
+    'Điện Biên Phủ', 'Lý Chính Thắng', 'Hai Bà Trưng', 'Hồ Xuân Hương',
+    'Phạm Ngọc Thạch', 'Rạch Bùng Binh', 'Trần Văn Đang', 'Trương Quyền',
+    'Nguyễn Văn Mai', 'Đoàn Công Bửu', 'Trần Cao Vân', 'Đinh Tiên Hoàng',
+    'Phan Chu Trinh', 'Phan Bội Châu', 'Phùng Khắc Khoan', 'Thạch Thị Thanh',
+    'Nguyễn Văn Thủ', 'Nguyễn Bỉnh Khiêm', 'Nguyễn Tri Phương', 'Nguyễn Chí Thanh',
+    'Nguyễn Thông', 'Sư Thiện Chiếu', 'Vườn Chuối', 'Kỳ Đồng', 'Lê Văn Sỹ',
+    'Lý Tự Trọng', 'Tôn Đức Thắng', 'Lê Thánh Tôn', 'Đồng Khởi', 'Nguyễn Huệ',
+    'Lê Duẩn', 'Lê Lợi', 'Hàm Nghi', 'Bến Vân Đồn', 'Nguyễn Du',
+    'Hoàng Sa', 'Trường Sa', 'Cống Quỳnh', 'Bùi Viện', 'Phạm Ngũ Lão',
+    'Đề Thám', 'Trần Hưng Đạo', 'Calmette', 'Ký Con', 'Yersin',
+    'Tô Hiến Thành', 'Thành Thái', 'Sư Vạn Hạnh', 'Ngô Gia Tự', 'Lê Hồng Phong',
+    'Vĩnh Viễn', 'Hùng Vương', 'Hồng Bàng', 'Bạch Đằng', 'Phan Đăng Lưu',
+    'Hoàng Văn Thụ', 'Cộng Hòa', 'Trường Chinh', 'Lạc Long Quân', 'Âu Cơ',
+    'Lê Đại Hành', 'Kha Vạn Cân', 'Phan Xích Long', 'Phan Đình Phùng',
+    'Cao Thắng', 'Lê Quý Đôn', 'Lê Ngô Cát', 'Trương Định', 'Bàn Cờ',
+    'Pasteur', 'Tú Xương', 'Lý Thái Tổ', 'Mai Thị Lựu', '3 Tháng 2'
+  ];
+
+  var ACRONYM_MAP = {
+    'ntmk': 'Nguyễn Thị Minh Khai',
+    'cmt8': 'Cách Mạng Tháng 8',
+    'cach mang thang tam': 'Cách Mạng Tháng 8',
+    'nkkn': 'Nam Kỳ Khởi Nghĩa',
+    'nam ky khoi nghia': 'Nam Kỳ Khởi Nghĩa',
+    'vvt': 'Võ Văn Tần',
+    'vo van tan': 'Võ Văn Tần',
+    'vts': 'Võ Thị Sáu',
+    'vo thi sau': 'Võ Thị Sáu',
+    'ndc': 'Nguyễn Đình Chiểu',
+    'nguyen dinh chieu': 'Nguyễn Đình Chiểu',
+    'lct': 'Lý Chính Thắng',
+    'ly chinh thang': 'Lý Chính Thắng',
+    'dbp': 'Điện Biên Phủ',
+    'dien bien phu': 'Điện Biên Phủ',
+    'hbt': 'Hai Bà Trưng',
+    'hai ba trung': 'Hai Bà Trưng',
+    'pnt': 'Phạm Ngọc Thạch',
+    'pham ngoc thach': 'Phạm Ngọc Thạch',
+    'lvs': 'Lê Văn Sỹ',
+    'le van sy': 'Lê Văn Sỹ',
+    'tqt': 'Trần Quốc Toản',
+    'tran quoc toan': 'Trần Quốc Toản',
+    'tqd': 'Trần Quang Diệu',
+    'tran quang dieu': 'Trần Quang Diệu',
+    'bhtq': 'Bà Huyện Thanh Quan',
+    'ba huyen thanh quan': 'Bà Huyện Thanh Quan',
+    'ntt': 'Nguyễn Thiện Thuật',
+    'nguyen thien thuat': 'Nguyễn Thiện Thuật'
+  };
+
+  var LANDMARK_PATTERNS = [
+    { name: 'Centec Tower', reg: /\b(?:centec|to[aà]\s*nh[aà]\s*centec)\b/i, street: 'Nguyễn Thị Minh Khai', num: 72 },
+    { name: 'Vincom Đồng Khởi', reg: /\b(?:vincom\s*(?:center)?\s*[\w\s]*đồng\s*khởi|vincom\s*đồng\s*khởi)\b/i, street: 'Lê Thánh Tôn', num: 72 },
+    { name: 'Bitexco', reg: /\bbitexco\b/i, street: 'Hải Triều', num: 2 },
+    { name: 'Saigon Centre', reg: /\bsaigon\s*centre\b/i, street: 'Lê Lợi', num: 65 },
+    { name: 'Diamond Plaza', reg: /\bdiamond\s*plaza\b/i, street: 'Lê Duẩn', num: 34 },
+    { name: 'Kumho Asiana', reg: /\bkumho\b/i, street: 'Lê Duẩn', num: 39 },
+    { name: 'Lim Tower', reg: /\blim\s*tower\b/i, street: 'Lê Thánh Tôn', num: 9 }
+  ];
+
+  /**
+   * Chuẩn hóa địa chỉ: trích xuất trục đường chuẩn, số nhà, POI/Tòa nhà và StopKey vật lý bất khả phân
+   */
+  function canonicalizeAddress(rawAddr, lat, lng) {
+    if (!rawAddr) return { street: 'Điểm lẻ', houseNum: 0, landmark: '', stopKey: 'unknown' };
+    var clean = String(rawAddr).trim();
+    clean = clean.replace(/(?:\+?84|0|\(\+?84\)|\(0\d{1,4}\))[\s.-]*\d(?:[\s.-]*\d){4,10}\b/g, ' ');
+    clean = clean.replace(/\([^)]*\)/g, ' ');
+    clean = clean.replace(/^(?:tầng|lầu|phòng|p\.|căn\s*hộ|block|lô|kiosk|quầy)\s*[\d\w-]+\s*,?\s*/gi, '');
+
+    var normClean = removeVietnameseTones(clean).toLowerCase().trim();
+
+    // 1. Landmark POI
+    var matchedLandmark = '';
+    var landmarkStreet = '';
+    var landmarkNum = 0;
+    for (var lIdx = 0; lIdx < LANDMARK_PATTERNS.length; lIdx++) {
+      var lp = LANDMARK_PATTERNS[lIdx];
+      if (lp.reg.test(clean) || lp.reg.test(normClean)) {
+        matchedLandmark = lp.name;
+        landmarkStreet = lp.street;
+        landmarkNum = lp.num;
+        break;
+      }
+    }
+
+    // 2. Canonical Street
+    var foundStreet = landmarkStreet || '';
+    if (!foundStreet) {
+      for (var sIdx = 0; sIdx < CANONICAL_STREETS.length; sIdx++) {
+        var st = CANONICAL_STREETS[sIdx];
+        var normSt = removeVietnameseTones(st).toLowerCase().trim();
+        var reg = new RegExp('(?:^|[^a-z0-9])' + normSt.replace(/\s+/g, '\\s+') + '(?:[^a-z0-9]|$)', 'i');
+        if (reg.test(normClean)) {
+          foundStreet = st;
+          break;
+        }
+      }
+    }
+
+    if (!foundStreet) {
+      for (var acr in ACRONYM_MAP) {
+        var regAcr = new RegExp('(?:^|[^a-z0-9])' + acr.replace(/\s+/g, '\\s+') + '(?:[^a-z0-9]|$)', 'i');
+        if (regAcr.test(normClean)) {
+          foundStreet = ACRONYM_MAP[acr];
+          break;
+        }
+      }
+    }
+
+    if (!foundStreet) {
+      var mSt = clean.match(/(?:đường|đ\.|phố)\s+([^,]+)/i);
+      if (mSt) {
+        foundStreet = mSt[1].trim();
+      } else {
+        var withoutNum = clean.replace(/^\s*[\d/]+[a-zA-Z]?(?:\s*-\s*[\d/]+[a-zA-Z]?)?\s+/, '').trim();
+        var parts = withoutNum.split(',');
+        foundStreet = (parts[0] || withoutNum).trim();
+      }
+      foundStreet = foundStreet.replace(/^(?:phường|p\.|quận|q\.)\s*.*$/i, '').trim();
+      if (!foundStreet || foundStreet.length < 2) foundStreet = 'Điểm lẻ';
+    }
+
+    // 3. House Number
+    var houseNum = landmarkNum || 0;
+    if (!houseNum) {
+      var mNum = clean.match(/(?:số\s*)?(\d+)(?:[\/-]\d+)?/i);
+      if (mNum) {
+        houseNum = parseInt(mNum[1], 10);
+      }
+    }
+
+    // 4. Stop Key: Đảm bảo các đơn cùng địa chỉ/tòa nhà có cùng stopKey
+    var stopKey = '';
+    if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng) && lat !== 0) {
+      var snapLat = Math.round(lat * 2500) / 2500;
+      var snapLng = Math.round(lng * 2500) / 2500;
+      stopKey = 'gps_' + snapLat + '_' + snapLng + '_' + removeVietnameseTones(foundStreet).toLowerCase();
+    } else if (matchedLandmark) {
+      stopKey = 'poi_' + removeVietnameseTones(matchedLandmark).toLowerCase();
+    } else {
+      stopKey = 'addr_' + removeVietnameseTones(foundStreet).toLowerCase() + '_' + houseNum;
+    }
+
+    return {
+      street: foundStreet,
+      houseNum: houseNum,
+      landmark: matchedLandmark,
+      stopKey: stopKey
+    };
+  }
+
   /**
    * Tách tên đường và số nhà từ địa chỉ
    */
   function extractStreetAndNum(addr) {
-    if (!addr) return { street: '', num: 0 };
-    var clean = String(addr).trim();
-    var num = extractHouseNumberNum(clean);
-    var street = '';
-    var mStreet = clean.match(/(?:đường|đ\.|phố)\s+([^,]+)/i);
-    if (mStreet) {
-      street = mStreet[1].trim();
-    } else {
-      var parts = clean.split(',');
-      if (parts.length > 0) {
-        var firstPart = parts[0].trim();
-        var withoutNum = firstPart.replace(/^\s*[\d/]+[a-zA-Z]?(?:\s*-\s*[\d/]+[a-zA-Z]?)?\s+/, '').trim();
-        if (withoutNum.length > 2 && withoutNum !== firstPart) {
-          street = withoutNum;
-        } else if (parts.length > 1) {
-          street = parts[1].trim();
-        } else {
-          street = withoutNum;
-        }
-      }
-    }
-    street = street.replace(/^(?:phường|p\.|quận|q\.)\s*.*$/i, '').trim();
-    return { street: street, num: num };
+    if (!addr) return { street: '', num: 0, landmark: '' };
+    var cInfo = canonicalizeAddress(addr);
+    var street = cInfo.street === 'Điểm lẻ' ? '' : cInfo.street;
+    var num = cInfo.houseNum || extractHouseNumberNum(addr);
+    return { street: street, num: num, landmark: cInfo.landmark || '' };
   }
 
   /**
@@ -2002,32 +2143,90 @@
 
     var allOneWays = (options.strictOneWay !== false) ? getAllOneWayStreets(options.customOneWayStreets, options.mapOneWays) : [];
 
-    // 1. Gom các đơn theo từng trục đường để bảo toàn tính toàn vẹn của con đường
-    var streetPacks = {};
-    orders.forEach(function(o) {
-      var info = extractStreetAndNum(o.address || '');
-      var stName = info.street || 'Điểm lẻ';
-      var normSt = (stName || '').toLowerCase();
-      if (!streetPacks[normSt]) {
-        streetPacks[normSt] = {
-          name: stName,
-          normStreet: normSt,
-          items: []
-        };
-      }
-      streetPacks[normSt].items.push(o);
+    // Step 1: Pre-heal missing coordinates from matching landmark or canonical street
+    var orderCopies = orders.map(function(o) {
+      var copy = Object.assign({}, o);
+      var cInfo = canonicalizeAddress(copy.address, copy.lat, copy.lng);
+      copy._cInfo = cInfo;
+      return copy;
     });
 
-    // 2. Tính trọng tâm, góc rẻ quạt từ Bưu cục và khoảng cách cho từng trục đường
-    var streetList = Object.keys(streetPacks).map(function(k) {
-      var p = streetPacks[k];
+    var landmarkCoords = {};
+    var streetCoords = {};
+    orderCopies.forEach(function(o) {
+      if (o.lat != null && o.lng != null && !isNaN(o.lat) && !isNaN(o.lng) && o.lat !== 0) {
+        if (o._cInfo.landmark && !landmarkCoords[o._cInfo.landmark]) {
+          landmarkCoords[o._cInfo.landmark] = { lat: o.lat, lng: o.lng };
+        }
+        if (o._cInfo.street && o._cInfo.street !== 'Điểm lẻ') {
+          if (!streetCoords[o._cInfo.street]) streetCoords[o._cInfo.street] = [];
+          streetCoords[o._cInfo.street].push({ lat: o.lat, lng: o.lng });
+        }
+      }
+    });
+
+    orderCopies.forEach(function(o) {
+      if (o.lat == null || o.lng == null || isNaN(o.lat) || isNaN(o.lng) || o.lat === 0) {
+        if (o._cInfo.landmark && landmarkCoords[o._cInfo.landmark]) {
+          o.lat = landmarkCoords[o._cInfo.landmark].lat;
+          o.lng = landmarkCoords[o._cInfo.landmark].lng;
+        } else if (o._cInfo.street && streetCoords[o._cInfo.street] && streetCoords[o._cInfo.street].length > 0) {
+          var sc = streetCoords[o._cInfo.street][0];
+          o.lat = sc.lat;
+          o.lng = sc.lng;
+        } else {
+          o.lat = depot.lat;
+          o.lng = depot.lng;
+        }
+        o._cInfo = canonicalizeAddress(o.address, o.lat, o.lng);
+      }
+    });
+
+    // Step 2: Group into Atomic Physical Stops (INDIVISIBLE - Không bao giờ chia cắt cùng địa chỉ)
+    var stopMap = {};
+    orderCopies.forEach(function(o) {
+      var key = o._cInfo.stopKey;
+      if (!stopMap[key]) {
+        stopMap[key] = {
+          key: key,
+          street: o._cInfo.street,
+          houseNum: o._cInfo.houseNum,
+          landmark: o._cInfo.landmark,
+          lat: o.lat,
+          lng: o.lng,
+          orders: []
+        };
+      }
+      stopMap[key].orders.push(o);
+    });
+
+    var stopList = Object.keys(stopMap).map(function(k) { return stopMap[k]; });
+
+    // Step 3: Group Stops into Street Corridors
+    var corridorMap = {};
+    stopList.forEach(function(st) {
+      var sName = st.street || 'Điểm lẻ';
+      if (!corridorMap[sName]) {
+        corridorMap[sName] = {
+          street: sName,
+          stops: [],
+          totalOrders: 0
+        };
+      }
+      corridorMap[sName].stops.push(st);
+      corridorMap[sName].totalOrders += st.orders.length;
+    });
+
+    // Step 4: Calculate Corridor Center and Polar Azimuth from Depot
+    var corridorList = Object.keys(corridorMap).map(function(sName) {
+      var c = corridorMap[sName];
       var sumLat = 0, sumLng = 0, count = 0;
-      p.items.forEach(function(o) {
-        if (o.lat != null && o.lng != null) {
+      c.stops.forEach(function(st) {
+        st.orders.forEach(function(o) {
           sumLat += o.lat;
           sumLng += o.lng;
           count++;
-        }
+        });
       });
       var cLat = count > 0 ? sumLat / count : depot.lat;
       var cLng = count > 0 ? sumLng / count : depot.lng;
@@ -2037,74 +2236,204 @@
       var dist = calculateDistance(depot.lat, depot.lng, cLat, cLng);
 
       return {
-        name: p.name,
-        normStreet: p.normStreet,
-        items: p.items,
-        count: p.items.length,
+        street: c.street,
+        stops: c.stops,
+        totalOrders: c.totalOrders,
         center: { lat: cLat, lng: cLng },
         angle: angle,
         dist: dist
       };
     });
 
-    // 3. Sắp xếp các trục đường theo góc phương vị rẻ quạt từ Bưu cục
-    streetList.sort(function(a, b) { return a.angle - b.angle; });
+    // Sắp xếp các trục đường theo góc phương vị rẻ quạt từ Bưu cục
+    corridorList.sort(function(a, b) { return a.angle - b.angle; });
 
-    // 4. Phân bổ cân bằng vào K phân khu (Sectors)
+    // Step 5: Phân bổ cân bằng vào K phân khu (Sectors) với Lookahead Balancing
     var targetPerShipper = orders.length / numShippers;
     var clusters = [];
     for (var k = 0; k < numShippers; k++) clusters.push([]);
     var clusterCounts = new Array(numShippers).fill(0);
 
-    var curCluster = 0;
-    streetList.forEach(function(stGroup) {
-      if (curCluster < numShippers - 1 && clusterCounts[curCluster] >= targetPerShipper * 0.9) {
-        curCluster++;
-      }
-      clusters[curCluster].push(stGroup);
-      clusterCounts[curCluster] += stGroup.count;
-    });
+    if (corridorList.length <= numShippers) {
+      corridorList.forEach(function(corridor, cIdx) {
+        clusters[cIdx].push(corridor);
+        clusterCounts[cIdx] += corridor.totalOrders;
+      });
+    } else {
+      var curCluster = 0;
+      for (var i = 0; i < corridorList.length; i++) {
+        var corridor = corridorList[i];
+        var remainingCorridors = corridorList.length - i;
+        var remainingClusters = numShippers - curCluster;
 
-    // 5. Tối ưu hóa thứ tự lộ trình nội bộ cho từng shipper
+        if (remainingCorridors <= remainingClusters && curCluster < numShippers - 1) {
+          if (clusters[curCluster].length > 0) {
+            curCluster++;
+          }
+        } else if (curCluster < numShippers - 1 && clusterCounts[curCluster] >= targetPerShipper * 0.9) {
+          curCluster++;
+        }
+
+        clusters[curCluster].push(corridor);
+        clusterCounts[curCluster] += corridor.totalOrders;
+      }
+    }
+
+    // Step 6: Tối ưu hóa thứ tự lộ trình nội bộ cho từng shipper
     var routes = [];
     clusters.forEach(function(cl, cIdx) {
-      var clusterOrders = [];
-      cl.forEach(function(stG) {
-        stG.items.forEach(function(o) { clusterOrders.push(o); });
+      var clusterStops = [];
+      cl.forEach(function(corridor) {
+        corridor.stops.forEach(function(st) {
+          clusterStops.push(st);
+        });
       });
 
-      if (clusterOrders.length === 0) return;
+      if (clusterStops.length === 0) return;
 
       var shipperCfg = shipperList[cIdx] || {};
       var shipperName = shipperCfg.name || (typeof shipperCfg === 'string' ? shipperCfg : ('Shipper ' + (cIdx + 1)));
       var color = shipperCfg.color || FLEET_DEFAULT_COLORS[cIdx % FLEET_DEFAULT_COLORS.length];
 
-      var tspRes = fallbackOfflineOptimization(clusterOrders, [], [], {
-        scenario: 'auto_cluster',
-        startOrigin: depot,
-        depot: depot,
-        returnToDepot: true,
-        strictOneWay: options.strictOneWay !== false
+      // Sắp xếp thứ tự các điểm dừng (stops) bằng Heuristic Nearest Neighbor
+      var orderedStops = [];
+      var remainingStops = clusterStops.slice();
+      var curLoc = depot;
+      var curStName = null;
+
+      while (remainingStops.length > 0) {
+        // 1. Ưu tiên các điểm dừng tiếp theo trên CÙNG trục đường
+        var sameIdx = -1;
+        var minSameD = Infinity;
+        if (curStName) {
+          for (var s = 0; s < remainingStops.length; s++) {
+            if (remainingStops[s].street === curStName) {
+              var dS = (curLoc && curLoc.lat != null && remainingStops[s].lat != null)
+                ? calculateDistance(curLoc.lat, curLoc.lng, remainingStops[s].lat, remainingStops[s].lng)
+                : 99999 + s;
+              if (dS < minSameD) {
+                minSameD = dS;
+                sameIdx = s;
+              }
+            }
+          }
+        }
+
+        var chosenStopIdx = sameIdx;
+        if (chosenStopIdx === -1) {
+          // 2. Chọn điểm dừng gần nhất tiếp theo
+          var minD = Infinity;
+          for (var j = 0; j < remainingStops.length; j++) {
+            var d = (curLoc && curLoc.lat != null && remainingStops[j].lat != null)
+              ? calculateDistance(curLoc.lat, curLoc.lng, remainingStops[j].lat, remainingStops[j].lng)
+              : 99999 + j;
+            if (d < minD) {
+              minD = d;
+              chosenStopIdx = j;
+            }
+          }
+        }
+
+        var pickedStop = remainingStops.splice(chosenStopIdx, 1)[0];
+        orderedStops.push(pickedStop);
+        curLoc = pickedStop;
+        curStName = pickedStop.street;
+      }
+
+      // 2-Opt cho danh sách stops nếu >= 4 điểm
+      if (orderedStops.length >= 4 && options.returnToDepot !== false) {
+        var computeStopDist = function(sList) {
+          var sum = 0;
+          var p = depot;
+          for (var si = 0; si < sList.length; si++) {
+            sum += calculateDistance(p.lat, p.lng, sList[si].lat, sList[si].lng);
+            p = sList[si];
+          }
+          sum += calculateDistance(p.lat, p.lng, depot.lat, depot.lng);
+          return sum;
+        };
+
+        var bestDist = computeStopDist(orderedStops);
+        var improved = true;
+        var iter = 0;
+        while (improved && iter < 30) {
+          improved = false;
+          iter++;
+          for (var i = 0; i < orderedStops.length - 2; i++) {
+            for (var k2 = i + 1; k2 < orderedStops.length - 1; k2++) {
+              var newOrder = orderedStops.slice(0, i + 1)
+                .concat(orderedStops.slice(i + 1, k2 + 1).reverse())
+                .concat(orderedStops.slice(k2 + 1));
+              var newD = computeStopDist(newOrder);
+              if (newD < bestDist - 10) { // Cải thiện ít nhất 10m
+                orderedStops = newOrder;
+                bestDist = newD;
+                improved = true;
+                break;
+              }
+            }
+            if (improved) break;
+          }
+        }
+      }
+
+      // Mở rộng các Stop thành danh sách đơn hàng hoàn chỉnh (Các đơn cùng địa chỉ luôn nằm liền nhau)
+      var orderedOrders = [];
+      orderedStops.forEach(function(st) {
+        st.orders.forEach(function(o) {
+          orderedOrders.push(o);
+        });
       });
 
-      var primaryStreets = cl.map(function(stG) { return stG.name; });
-      var totalCod = clusterOrders.reduce(function(sum, o) { return sum + (o.codAmount || 0); }, 0);
+      // Tuân thủ đường 1 chiều cho chuỗi đơn
+      if (options.strictOneWay !== false && allOneWays.length > 0) {
+        var tempIndices = orderedOrders.map(function(_, idx) { return idx; });
+        var compliedIndices = enforceOneWayTrafficCompliance(tempIndices, orderedOrders, allOneWays);
+        orderedOrders = compliedIndices.map(function(idx) { return orderedOrders[idx]; });
+      }
+
+      // Tính toán các khoảng cách di chuyển
+      var startDist = 0;
+      var deliveryDist = 0;
+      var returnDist = 0;
+      if (orderedOrders.length > 0) {
+        var firstOrd = orderedOrders[0];
+        var lastOrd = orderedOrders[orderedOrders.length - 1];
+        if (depot && depot.lat != null && firstOrd.lat != null) {
+          startDist = calculateDistance(depot.lat, depot.lng, firstOrd.lat, firstOrd.lng);
+        }
+        for (var oi = 0; oi < orderedOrders.length - 1; oi++) {
+          var oA = orderedOrders[oi];
+          var oB = orderedOrders[oi + 1];
+          if (oA.lat != null && oB.lat != null) {
+            deliveryDist += calculateDistance(oA.lat, oA.lng, oB.lat, oB.lng);
+          }
+        }
+        if (depot && depot.lat != null && lastOrd.lat != null) {
+          returnDist = calculateDistance(lastOrd.lat, lastOrd.lng, depot.lat, depot.lng);
+        }
+      }
+
+      var totalDist = startDist + deliveryDist + (options.returnToDepot !== false ? returnDist : 0);
+      var primaryStreets = cl.map(function(corridor) { return corridor.street; }).filter(Boolean);
+      var totalCod = orderedOrders.reduce(function(sum, o) { return sum + (o.codAmount || 0); }, 0);
+      var displayStops = buildStopsFromOrderedOrders(orderedOrders, allOneWays);
 
       routes.push({
         id: 'fleet_route_' + (cIdx + 1),
         shipperId: 'shipper_' + (cIdx + 1),
         shipperName: shipperName,
         color: color,
-        orderCount: clusterOrders.length,
+        orderCount: orderedOrders.length,
         totalCod: totalCod,
-        orderedOrders: tspRes.orderedOrders || clusterOrders,
-        orderedIndices: tspRes.orderedIndices || clusterOrders.map(function(_, i) { return i; }),
-        stops: tspRes.stops || [],
+        orderedOrders: orderedOrders,
+        orderedIndices: orderedOrders.map(function(_, i) { return i; }),
+        stops: displayStops,
         primaryStreets: primaryStreets,
-        startDistance: tspRes.startDistance || 0,
-        deliveryDistance: tspRes.deliveryDistance || 0,
-        returnDistance: tspRes.returnDistance || 0,
-        totalDistance: tspRes.roundTripDistance || 0
+        startDistance: Math.round(startDist),
+        deliveryDistance: Math.round(deliveryDist),
+        returnDistance: Math.round(returnDist),
+        totalDistance: Math.round(totalDist)
       });
     });
 
@@ -2127,6 +2456,10 @@
     PRESET_DEPOTS: PRESET_DEPOTS,
     BUILTIN_ONE_WAY_STREETS: BUILTIN_ONE_WAY_STREETS,
     FLEET_DEFAULT_COLORS: FLEET_DEFAULT_COLORS,
+    CANONICAL_STREETS: CANONICAL_STREETS,
+    ACRONYM_MAP: ACRONYM_MAP,
+    LANDMARK_PATTERNS: LANDMARK_PATTERNS,
+    canonicalizeAddress: canonicalizeAddress,
     getEndpoint: getEndpoint,
     setEndpoint: setEndpoint,
     getModel: getModel,

@@ -4557,16 +4557,27 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         activeOrdersList.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 12px;">Tuy\u1EBFn n\xE0y hi\u1EC7n ch\u01B0a c\xF3 \u0111\u01A1n h\xE0ng n\xE0o.</div>';
         return;
       }
+      const aiOpt = window.AIRouteOptimizer;
+      const addrCountMap = {};
+      orders.forEach((o) => {
+        const cInfo = aiOpt && aiOpt.canonicalizeAddress ? aiOpt.canonicalizeAddress(o.address, o.lat, o.lng) : null;
+        const key = cInfo && cInfo.stopKey ? cInfo.stopKey : (o.address || "").trim().toLowerCase();
+        o._uiStopKey = key;
+        addrCountMap[key] = (addrCountMap[key] || 0) + 1;
+      });
       orders.forEach((o, idx) => {
+        const sameCount = addrCountMap[o._uiStopKey] || 1;
+        const sameBadge = sameCount > 1 ? `<span style="font-size: 10px; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 4px; padding: 1px 5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Tuy\u1EBFn c\xF3 ${sameCount} \u0111\u01A1n giao c\xF9ng \u0111\u1ECBa ch\u1EC9 / t\xF2a nh\xE0 n\xE0y (Giao li\u1EC1n m\u1ED9t l\u01B0\u1EE3t)">\u{1F3E2} C\xF9ng \u0111i\u1EC3m (${sameCount} \u0111\u01A1n)</span>` : "";
         const row = document.createElement("div");
         row.className = "fleet-order-row";
         row.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
           <span style="font-weight: 800; color: ${r.color}; font-size: 11px; min-width: 22px;">#${idx + 1}</span>
           <div style="flex: 1; min-width: 0;">
-            <div style="display: flex; gap: 6px; align-items: center;">
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
               <strong style="color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${escapeHtml(o.customerName || "Kh\xE1ch l\u1EBB")}</strong>
               <span style="font-size: 10.5px; color: #64748b;">${escapeHtml(o.trackingCode || "")}</span>
+              ${sameBadge}
             </div>
             <div style="color: #475569; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(o.address || "")}">
               \u{1F4CD} ${escapeHtml(o.address || "Ch\u01B0a c\xF3 \u0111\u1ECBa ch\u1EC9")}
@@ -4586,45 +4597,92 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         if (btnTr) {
           btnTr.addEventListener("click", (e) => {
             e.stopPropagation();
-            showTransferMenu(btnTr, o.id);
+            showTransferMenu(btnTr, o.id, sameCount);
           });
         }
         activeOrdersList.appendChild(row);
       });
     }
-    function showTransferMenu(btnEl, orderId) {
+    function showTransferMenu(btnEl, orderId, sameCount) {
       document.querySelectorAll(".fleet-transfer-dropdown").forEach((d) => d.remove());
       const menu = document.createElement("div");
       menu.className = "fleet-transfer-dropdown";
-      menu.style.cssText = "position: absolute; right: 0; top: 100%; z-index: 1000; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 4px; min-width: 180px; display: flex; flex-direction: column; gap: 2px;";
+      menu.style.cssText = "position: absolute; right: 0; top: 100%; z-index: 1000; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 4px; min-width: 220px; display: flex; flex-direction: column; gap: 2px;";
       const header = document.createElement("div");
       header.style.cssText = "font-size: 10.5px; font-weight: 700; color: #64748b; padding: 4px 8px; border-bottom: 1px solid #f1f5f9;";
       header.textContent = "Chuy\u1EC3n \u0111\u01A1n sang Shipper:";
       menu.appendChild(header);
       currentFleetResult.routes.forEach((targetRoute, tIdx) => {
         if (tIdx === activeRouteIndex) return;
-        const opt = document.createElement("button");
-        opt.type = "button";
-        opt.style.cssText = "display: flex; align-items: center; justify-content: space-between; border: none; background: transparent; padding: 6px 8px; border-radius: 5px; font-size: 11.5px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%;";
-        opt.innerHTML = `
-        <span style="display: flex; align-items: center; gap: 6px;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
-          <strong style="color: #1e293b;">${escapeHtml(targetRoute.shipperName)}</strong>
-        </span>
-        <span style="font-size: 10.5px; color: #64748b;">${targetRoute.orderedOrders ? targetRoute.orderedOrders.length : 0} \u0111\u01A1n</span>
-      `;
-        opt.addEventListener("mouseenter", () => {
-          opt.style.background = "#f1f5f9";
-        });
-        opt.addEventListener("mouseleave", () => {
-          opt.style.background = "transparent";
-        });
-        opt.addEventListener("click", (e) => {
-          e.stopPropagation();
-          menu.remove();
-          executeOrderTransfer(orderId, activeRouteIndex, tIdx);
-        });
-        menu.appendChild(opt);
+        if (sameCount && sameCount > 1) {
+          const optSingle = document.createElement("button");
+          optSingle.type = "button";
+          optSingle.style.cssText = "display: flex; align-items: center; justify-content: space-between; border: none; background: transparent; padding: 6px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%;";
+          optSingle.innerHTML = `
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
+            <strong style="color: #1e293b;">${escapeHtml(targetRoute.shipperName)}</strong>
+          </span>
+          <span style="font-size: 10px; color: #64748b;">(Ch\u1EC9 1 \u0111\u01A1n n\xE0y)</span>
+        `;
+          optSingle.addEventListener("mouseenter", () => {
+            optSingle.style.background = "#f1f5f9";
+          });
+          optSingle.addEventListener("mouseleave", () => {
+            optSingle.style.background = "transparent";
+          });
+          optSingle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            menu.remove();
+            executeOrderTransfer(orderId, activeRouteIndex, tIdx, false);
+          });
+          menu.appendChild(optSingle);
+          const optAll = document.createElement("button");
+          optAll.type = "button";
+          optAll.style.cssText = "display: flex; align-items: center; justify-content: space-between; border: none; background: #fffbeb; padding: 6px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%; border: 1px dashed #fde68a; margin-bottom: 3px;";
+          optAll.innerHTML = `
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
+            <strong style="color: #92400e;">${escapeHtml(targetRoute.shipperName)}</strong>
+          </span>
+          <span style="font-size: 10px; font-weight: 700; color: #b45309;">(C\u1EA3 ${sameCount} \u0111\u01A1n c\xF9ng \u0111\u1ECBa ch\u1EC9)</span>
+        `;
+          optAll.addEventListener("mouseenter", () => {
+            optAll.style.background = "#fef3c7";
+          });
+          optAll.addEventListener("mouseleave", () => {
+            optAll.style.background = "#fffbeb";
+          });
+          optAll.addEventListener("click", (e) => {
+            e.stopPropagation();
+            menu.remove();
+            executeOrderTransfer(orderId, activeRouteIndex, tIdx, true);
+          });
+          menu.appendChild(optAll);
+        } else {
+          const opt = document.createElement("button");
+          opt.type = "button";
+          opt.style.cssText = "display: flex; align-items: center; justify-content: space-between; border: none; background: transparent; padding: 6px 8px; border-radius: 5px; font-size: 11.5px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%;";
+          opt.innerHTML = `
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
+            <strong style="color: #1e293b;">${escapeHtml(targetRoute.shipperName)}</strong>
+          </span>
+          <span style="font-size: 10.5px; color: #64748b;">${targetRoute.orderedOrders ? targetRoute.orderedOrders.length : 0} \u0111\u01A1n</span>
+        `;
+          opt.addEventListener("mouseenter", () => {
+            opt.style.background = "#f1f5f9";
+          });
+          opt.addEventListener("mouseleave", () => {
+            opt.style.background = "transparent";
+          });
+          opt.addEventListener("click", (e) => {
+            e.stopPropagation();
+            menu.remove();
+            executeOrderTransfer(orderId, activeRouteIndex, tIdx, false);
+          });
+          menu.appendChild(opt);
+        }
       });
       btnEl.parentElement.appendChild(menu);
       const closeHandler = (e) => {
@@ -4637,15 +4695,25 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         window.addEventListener("click", closeHandler);
       }, 50);
     }
-    function executeOrderTransfer(orderId, fromIdx, toIdx) {
+    function executeOrderTransfer(orderId, fromIdx, toIdx, transferAllSameAddress) {
       if (!currentFleetResult || !currentFleetResult.routes) return;
       const fromRoute = currentFleetResult.routes[fromIdx];
       const toRoute = currentFleetResult.routes[toIdx];
       if (!fromRoute || !toRoute) return;
-      const oIdx = fromRoute.orderedOrders.findIndex((o) => o.id === orderId);
-      if (oIdx === -1) return;
-      const [transferredOrder] = fromRoute.orderedOrders.splice(oIdx, 1);
-      toRoute.orderedOrders.push(transferredOrder);
+      const targetOrder = fromRoute.orderedOrders.find((o) => o.id === orderId);
+      if (!targetOrder) return;
+      let ordersToMove = [];
+      if (transferAllSameAddress && targetOrder._uiStopKey) {
+        ordersToMove = fromRoute.orderedOrders.filter((o) => o._uiStopKey === targetOrder._uiStopKey);
+        fromRoute.orderedOrders = fromRoute.orderedOrders.filter((o) => o._uiStopKey !== targetOrder._uiStopKey);
+      } else {
+        const oIdx = fromRoute.orderedOrders.findIndex((o) => o.id === orderId);
+        if (oIdx !== -1) {
+          ordersToMove = fromRoute.orderedOrders.splice(oIdx, 1);
+        }
+      }
+      if (ordersToMove.length === 0) return;
+      ordersToMove.forEach((o) => toRoute.orderedOrders.push(o));
       fromRoute.orderCount = fromRoute.orderedOrders.length;
       fromRoute.totalCod = fromRoute.orderedOrders.reduce((s, o) => s + (o.codAmount || 0), 0);
       toRoute.orderCount = toRoute.orderedOrders.length;
@@ -4655,7 +4723,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
       renderFleetRouteCards();
       renderFleetActiveRouteOrders();
       updateFleetMap();
-      showToast(`\u2713 \u0110\xE3 chuy\u1EC3n \u0111\u01A1n sang ${toRoute.shipperName} v\xE0 t\u1EF1 \u0111\u1ED9ng l\u01B0u c\u1EA5u h\xECnh!`, "success");
+      showToast(`\u2713 \u0110\xE3 chuy\u1EC3n ${ordersToMove.length} \u0111\u01A1n sang ${toRoute.shipperName} v\xE0 t\u1EF1 \u0111\u1ED9ng l\u01B0u c\u1EA5u h\xECnh!`, "success");
     }
     function initOrUpdateFleetMap() {
       if (!mapContainer || typeof L === "undefined") return;
