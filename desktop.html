@@ -54,13 +54,24 @@
           ⚡ Lấy Đơn Mã Chuyến
         </button>
 
-        <!-- Nút AI 9Router Tối Ưu Lộ Trình -->
+        <!-- Nút AI 9Router Tối Ưu Lộ Trình (1 Shipper) -->
         <button id="btnOpenAiRouteDesktop" class="btn btn-trip-header" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border-color: #6366f1; color: #fff;" title="Dùng AI 9Router tối ưu hóa thứ tự lộ trình giao hàng">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path>
             <path d="M12 6v6l4 2"></path>
           </svg>
-          🤖 AI Lộ Trình (9Router)
+          🤖 AI Lộ Trình
+        </button>
+
+        <!-- Nút AI Phân Tuyến Bưu Cục (Chia Tuyến Đội Ngũ Shipper) -->
+        <button id="btnOpenFleetDispatchDesktop" class="btn btn-trip-header" style="background: linear-gradient(135deg, #059669 0%, #0d9488 100%); border-color: #059669; color: #fff;" title="AI Phân Chia Tuyến Giao Hàng Cho Đội Ngũ Shipper (Fleet Dispatcher)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          </svg>
+          🚚 Phân Tuyến Shipper
         </button>
 
         <!-- Nút Đồng Bộ Sang Mobile -->
@@ -820,6 +831,153 @@ giá tiền: 0 VNĐ."
         </div>
 
         <div id="aiConnectionStatusDesktop" style="display: none; margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 600;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AI FLEET DISPATCHER - TRUNG TÂM PHÂN TUYẾN BƯU CỤC (DESKTOP) -->
+  <div id="modalFleetDispatch" class="modal-backdrop" style="display: none;">
+    <div class="modal-box fleet-modal-box">
+      <div class="fleet-modal-header">
+        <h3>
+          <span>🚚</span> AI Phân Tuyến Bưu Cục & Điều Phối Shipper
+        </h3>
+        <button id="btnCloseFleetDispatchModal" class="btn-icon" style="font-size: 1.3rem; background: none; border: none; cursor: pointer; color: #cbd5e1;">✕</button>
+      </div>
+
+      <div class="fleet-modal-body">
+        <!-- Khung Cấu hình Phân Tuyến -->
+        <div class="fleet-config-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; gap: 14px; align-items: center; font-size: 12.5px;">
+              <span>📦 Tổng đơn cần chia: <strong id="fleetTotalPendingCount" style="color: #059669; font-size: 14px;">0</strong> đơn</span>
+              <span>🏢 Bưu cục: <strong id="fleetDepotName">Bưu cục GHN Xuân Hòa</strong></span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <label style="font-size: 12px; font-weight: 700; color: #334155; margin: 0;">Số Shipper:</label>
+              <select id="fleetShipperCountSelect" class="ai-input" style="width: 85px; padding: 4px 8px; font-weight: 700; font-size: 12.5px;">
+                <option value="2">2 người</option>
+                <option value="3">3 người</option>
+                <option value="4" selected>4 người</option>
+                <option value="5">5 người</option>
+                <option value="6">6 người</option>
+                <option value="7">7 người</option>
+                <option value="8">8 người</option>
+              </select>
+              <button type="button" id="btnRunFleetPartition" class="ai-btn-primary" style="background: linear-gradient(135deg, #059669 0%, #0d9488 100%); padding: 6px 14px; font-size: 12.5px; height: auto;">
+                <span>🚀 Bắt Đầu Chia Tuyến</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Danh sách tên Shipper tùy chỉnh (Có thể sửa) -->
+          <div>
+            <label style="font-size: 11.5px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Tên từng nhân viên phụ trách:</label>
+            <div id="fleetShipperNamesRow" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <!-- Render inputs tên shipper -->
+            </div>
+          </div>
+
+          <!-- Cài đặt & Tiêu chí phân tuyến -->
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b; border-top: 1px dashed #e2e8f0; padding-top: 8px; flex-wrap: wrap; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+              <input type="checkbox" id="chkFleetStrictOneWay" checked style="accent-color: #059669; width: 15px; height: 15px;">
+              <span>🚦 Tuân thủ đường 1 chiều và gom trục đường liên hoàn (tránh nhảy cóc đường song song xa nhau)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+              <input type="checkbox" id="chkFleetReturnToDepot" checked style="accent-color: #059669; width: 15px; height: 15px;">
+              <span>🔄 Chu trình khép kín về lại Bưu cục</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Khung Kết Quả Phân Tuyến (Hiển thị khi đã có kết quả hoặc có dữ liệu đã lưu) -->
+        <div id="fleetResultSection" style="display: none; flex-direction: column; gap: 12px;">
+          <!-- Action Bar: Lưu / Áp dụng / Xuất -->
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; flex-wrap: wrap; gap: 8px;">
+            <div id="fleetResultSummaryText" style="font-size: 12.5px; font-weight: 700; color: #0f172a;">
+              🎉 Đã phân chia thành công 4 tuyến
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" id="btnSaveFleetConfig" class="ai-btn-secondary" style="font-size: 11.5px; padding: 5px 12px; height: auto;">
+                💾 Lưu Cấu Hình
+              </button>
+              <button type="button" id="btnApplyFleetToApp" class="ai-btn-primary" style="background: #2563eb; font-size: 11.5px; padding: 5px 14px; height: auto;">
+                ✅ Áp Dụng Thành Các Nhóm Trên Desktop
+              </button>
+            </div>
+          </div>
+
+          <!-- Danh sách Thẻ Tuyến Shipper -->
+          <div class="fleet-routes-grid" id="fleetRoutesGrid">
+            <!-- Render cards of each shipper route -->
+          </div>
+
+          <!-- Chi Tiết Tuyến Được Chọn & Danh Sách Đơn (Có tính năng tinh chỉnh chuyển đơn) -->
+          <div class="fleet-detail-layout">
+            <!-- Cột trái: Danh sách đơn hàng trong tuyến (hỗ trợ chuyển đơn) -->
+            <div class="fleet-detail-panel">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                <div style="font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px;" id="fleetActiveRouteTitle">
+                  <span class="fleet-color-indicator" style="background: #2563eb;"></span>
+                  <span>Chi tiết đơn hàng: Tuyến 1</span>
+                </div>
+                <div style="font-size: 11px; color: #64748b;" id="fleetActiveRouteStats">
+                  30 đơn • 4.500.000đ COD
+                </div>
+              </div>
+
+              <div class="fleet-orders-list" id="fleetActiveOrdersList">
+                <!-- Render order rows -->
+              </div>
+            </div>
+
+            <!-- Cột phải: Bản đồ các tuyến trực quan -->
+            <div class="fleet-detail-panel" style="padding: 0; overflow: hidden; position: relative;">
+              <div id="fleetMapContainer" style="width: 100%; height: 100%; min-height: 350px; background: #e2e8f0;"></div>
+              <div style="position: absolute; bottom: 8px; left: 8px; right: 8px; background: rgba(255,255,255,0.92); backdrop-filter: blur(4px); padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #334155; display: flex; justify-content: space-between; align-items: center; border: 1px solid #cbd5e1; z-index: 1000;">
+                <span>💡 <em>Bấm <strong>"Chuyển tuyến"</strong> tại mỗi đơn để tinh chỉnh di chuyển đơn giữa các Shipper</em></span>
+                <span id="fleetActiveRouteKmBadge" style="font-weight: 700; color: #0284c7;">~8.5 km</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BẮN CHUYẾN CHO TỪNG SHIPPER (FLEET P2P DISPATCH) -->
+  <div id="modalFleetShipperP2P" class="modal-backdrop" style="display: none; z-index: 10050;">
+    <div class="modal-box" style="max-width: 440px; text-align: center; border-radius: 14px; overflow: hidden; padding: 0;">
+      <div class="fleet-modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+        <h3 style="font-size: 14px; font-weight: 700;" id="fleetP2PModalTitle">
+          <span>📱</span> Bắn Chuyến Cho Shipper
+        </h3>
+        <button id="btnCloseFleetShipperP2P" class="btn-icon" style="font-size: 1.3rem; background: none; border: none; cursor: pointer; color: #94a3b8;">✕</button>
+      </div>
+      <div style="padding: 20px 24px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div id="fleetP2PRouteSummary" style="font-size: 12.5px; color: #475569; background: #f1f5f9; padding: 8px 14px; border-radius: 8px; width: 100%;">
+          Tuyến 1 • 30 đơn hàng • 4.500.000đ COD
+        </div>
+
+        <div style="background: #ffffff; padding: 12px; border-radius: 12px; border: 1.5px solid #e2e8f0; display: inline-flex; justify-content: center; align-items: center; min-height: 200px; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);" id="fleetP2PCanvasContainer">
+          <!-- Canvas QR Code rendered here -->
+        </div>
+
+        <div>
+          <div style="font-size: 11.5px; color: #64748b; margin-bottom: 2px;">HOẶC NHẬP MÃ PIN TRÊN ĐIỆN THOẠI:</div>
+          <div id="fleetP2PPinValue" style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; letter-spacing: 6px; color: #0284c7; background: #e0f2fe; padding: 6px 18px; border-radius: 8px; display: inline-block;">
+            ------
+          </div>
+        </div>
+
+        <div id="fleetP2PStatusMsg" style="font-size: 12px; font-weight: 600; color: #059669; background: #f0fdf4; padding: 8px 14px; border-radius: 6px; width: 100%; border: 1px solid #bbf7d0;">
+          ⏳ Đang mở phòng chờ, Shipper vui lòng quét QR hoặc nhập PIN...
+        </div>
+
+        <button type="button" id="btnDoneFleetShipperP2P" class="btn btn-secondary" style="width: 100%; font-size: 13px; font-weight: 600;">
+          Đóng cửa sổ
+        </button>
       </div>
     </div>
   </div>

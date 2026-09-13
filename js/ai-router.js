@@ -1970,12 +1970,163 @@
     });
   }
 
+  var FLEET_DEFAULT_COLORS = ['#2563eb', '#ea580c', '#059669', '#7c3aed', '#dc2626', '#0891b2', '#db2777', '#d97706'];
+
+  /**
+   * PHÂN CHIA TUYẾN GIAO HÀNG CHO ĐỘI NGŨ SHIPPER (AI FLEET DISPATCHER)
+   * Tối ưu hóa đa phương tiện / đa shipper (Capacitated Sector-Corridor VRP)
+   * Nguyên tắc:
+   * 1. Gom cụm không gian theo rẻ quạt & hành lang trục đường (Sector-Corridor) từ tâm Bưu cục.
+   * 2. Không gom các tuyến đường cách xa bưu cục và xa nhau.
+   * 3. Tránh việc gom các đầu xa của đường 1 chiều song song nếu không có đường cắt ngang kết nối liên hoàn.
+   * 4. Cân bằng số lượng đơn và khối lượng công việc giữa các nhân viên.
+   * 5. Tự động tối ưu thứ tự lộ trình #1..#M cho từng shipper sau khi chia cụm.
+   */
+  function partitionFleetRoutes(orders, fleetConfig, options) {
+    options = options || {};
+    fleetConfig = fleetConfig || {};
+    var depot = options.depot || getDepot();
+    var numShippers = Math.max(1, Math.min(fleetConfig.numShippers || 3, (orders ? orders.length : 1)));
+    var shipperList = fleetConfig.shippers || [];
+
+    if (!orders || orders.length === 0) {
+      return Promise.resolve({
+        success: true,
+        timestamp: Date.now(),
+        depot: depot,
+        totalOrders: 0,
+        numShippers: numShippers,
+        routes: []
+      });
+    }
+
+    var allOneWays = (options.strictOneWay !== false) ? getAllOneWayStreets(options.customOneWayStreets, options.mapOneWays) : [];
+
+    // 1. Gom các đơn theo từng trục đường để bảo toàn tính toàn vẹn của con đường
+    var streetPacks = {};
+    orders.forEach(function(o) {
+      var info = extractStreetAndNum(o.address || '');
+      var stName = info.street || 'Điểm lẻ';
+      var normSt = (stName || '').toLowerCase();
+      if (!streetPacks[normSt]) {
+        streetPacks[normSt] = {
+          name: stName,
+          normStreet: normSt,
+          items: []
+        };
+      }
+      streetPacks[normSt].items.push(o);
+    });
+
+    // 2. Tính trọng tâm, góc rẻ quạt từ Bưu cục và khoảng cách cho từng trục đường
+    var streetList = Object.keys(streetPacks).map(function(k) {
+      var p = streetPacks[k];
+      var sumLat = 0, sumLng = 0, count = 0;
+      p.items.forEach(function(o) {
+        if (o.lat != null && o.lng != null) {
+          sumLat += o.lat;
+          sumLng += o.lng;
+          count++;
+        }
+      });
+      var cLat = count > 0 ? sumLat / count : depot.lat;
+      var cLng = count > 0 ? sumLng / count : depot.lng;
+      var dLat = cLat - depot.lat;
+      var dLng = cLng - depot.lng;
+      var angle = Math.atan2(dLat, dLng); // Góc phương vị từ Bưu cục (-PI đến PI)
+      var dist = calculateDistance(depot.lat, depot.lng, cLat, cLng);
+
+      return {
+        name: p.name,
+        normStreet: p.normStreet,
+        items: p.items,
+        count: p.items.length,
+        center: { lat: cLat, lng: cLng },
+        angle: angle,
+        dist: dist
+      };
+    });
+
+    // 3. Sắp xếp các trục đường theo góc phương vị rẻ quạt từ Bưu cục
+    streetList.sort(function(a, b) { return a.angle - b.angle; });
+
+    // 4. Phân bổ cân bằng vào K phân khu (Sectors)
+    var targetPerShipper = orders.length / numShippers;
+    var clusters = [];
+    for (var k = 0; k < numShippers; k++) clusters.push([]);
+    var clusterCounts = new Array(numShippers).fill(0);
+
+    var curCluster = 0;
+    streetList.forEach(function(stGroup) {
+      if (curCluster < numShippers - 1 && clusterCounts[curCluster] >= targetPerShipper * 0.9) {
+        curCluster++;
+      }
+      clusters[curCluster].push(stGroup);
+      clusterCounts[curCluster] += stGroup.count;
+    });
+
+    // 5. Tối ưu hóa thứ tự lộ trình nội bộ cho từng shipper
+    var routes = [];
+    clusters.forEach(function(cl, cIdx) {
+      var clusterOrders = [];
+      cl.forEach(function(stG) {
+        stG.items.forEach(function(o) { clusterOrders.push(o); });
+      });
+
+      if (clusterOrders.length === 0) return;
+
+      var shipperCfg = shipperList[cIdx] || {};
+      var shipperName = shipperCfg.name || (typeof shipperCfg === 'string' ? shipperCfg : ('Shipper ' + (cIdx + 1)));
+      var color = shipperCfg.color || FLEET_DEFAULT_COLORS[cIdx % FLEET_DEFAULT_COLORS.length];
+
+      var tspRes = fallbackOfflineOptimization(clusterOrders, [], [], {
+        scenario: 'auto_cluster',
+        startOrigin: depot,
+        depot: depot,
+        returnToDepot: true,
+        strictOneWay: options.strictOneWay !== false
+      });
+
+      var primaryStreets = cl.map(function(stG) { return stG.name; });
+      var totalCod = clusterOrders.reduce(function(sum, o) { return sum + (o.codAmount || 0); }, 0);
+
+      routes.push({
+        id: 'fleet_route_' + (cIdx + 1),
+        shipperId: 'shipper_' + (cIdx + 1),
+        shipperName: shipperName,
+        color: color,
+        orderCount: clusterOrders.length,
+        totalCod: totalCod,
+        orderedOrders: tspRes.orderedOrders || clusterOrders,
+        orderedIndices: tspRes.orderedIndices || clusterOrders.map(function(_, i) { return i; }),
+        stops: tspRes.stops || [],
+        primaryStreets: primaryStreets,
+        startDistance: tspRes.startDistance || 0,
+        deliveryDistance: tspRes.deliveryDistance || 0,
+        returnDistance: tspRes.returnDistance || 0,
+        totalDistance: tspRes.roundTripDistance || 0
+      });
+    });
+
+    var finalResult = {
+      success: true,
+      timestamp: Date.now(),
+      depot: depot,
+      totalOrders: orders.length,
+      numShippers: numShippers,
+      routes: routes
+    };
+
+    return Promise.resolve(finalResult);
+  }
+
   return {
     DEFAULT_ENDPOINT: DEFAULT_ENDPOINT,
     DEFAULT_MODEL: DEFAULT_MODEL,
     DEFAULT_DEPOT: DEFAULT_DEPOT,
     PRESET_DEPOTS: PRESET_DEPOTS,
     BUILTIN_ONE_WAY_STREETS: BUILTIN_ONE_WAY_STREETS,
+    FLEET_DEFAULT_COLORS: FLEET_DEFAULT_COLORS,
     getEndpoint: getEndpoint,
     setEndpoint: setEndpoint,
     getModel: getModel,
@@ -1993,6 +2144,7 @@
     extractStreetAndNum: extractStreetAndNum,
     testConnection: testConnection,
     optimizeRoute: optimizeRoute,
+    partitionFleetRoutes: partitionFleetRoutes,
     fallbackOfflineOptimization: fallbackOfflineOptimization,
     calculateDistance: calculateDistance,
     computeTotalDistance: computeTotalDistance,
@@ -2009,3 +2161,4 @@
     projectPointOnPolyline: projectPointOnPolyline
   };
 });
+

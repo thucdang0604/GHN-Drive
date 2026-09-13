@@ -292,6 +292,46 @@ export const StorageService = {
       console.error('Lỗi khi ghi Group Rules:', e);
       return false;
     }
+  },
+
+  /**
+   * Lấy cấu hình phân tuyến đội ngũ nhân viên (Fleet Dispatch)
+   */
+  getFleetDispatch() {
+    try {
+      const data = localStorage.getItem('ghn_fleet_dispatch_v1');
+      if (!data) return null;
+      return JSON.parse(data);
+    } catch (e) {
+      console.error('Lỗi khi đọc Fleet Dispatch:', e);
+      return null;
+    }
+  },
+
+  /**
+   * Lưu cấu hình phân tuyến đội ngũ nhân viên (Fleet Dispatch)
+   */
+  saveFleetDispatch(dispatchData) {
+    try {
+      localStorage.setItem('ghn_fleet_dispatch_v1', JSON.stringify(dispatchData));
+      return true;
+    } catch (e) {
+      console.error('Lỗi khi ghi Fleet Dispatch:', e);
+      return false;
+    }
+  },
+
+  /**
+   * Xóa cấu hình phân tuyến đội ngũ nhân viên
+   */
+  clearFleetDispatch() {
+    try {
+      localStorage.removeItem('ghn_fleet_dispatch_v1');
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 };
+
 

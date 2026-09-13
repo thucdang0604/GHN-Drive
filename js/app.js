@@ -268,6 +268,9 @@ function setupEventListeners() {
 
   // Modal AI 9Router Tối Ưu Lộ Trình
   setupDesktopAiRouteModal();
+
+  // Modal AI Fleet Dispatcher - Phân Tuyến Đội Ngũ Shipper Bưu Cục
+  setupDesktopFleetDispatch();
 }
 
 /**
@@ -3280,3 +3283,717 @@ function setupDesktopAiRouteModal() {
   }
 }
 
+// ==========================================================
+// MODAL: AI FLEET DISPATCHER - PHÂN TUYẾN ĐỘI NGŨ SHIPPER (DESKTOP)
+// ==========================================================
+function setupDesktopFleetDispatch() {
+  const btnOpen = document.getElementById('btnOpenFleetDispatchDesktop');
+  const modal = document.getElementById('modalFleetDispatch');
+  const btnClose = document.getElementById('btnCloseFleetDispatchModal');
+  if (!btnOpen || !modal) return;
+
+  const countSelect = document.getElementById('fleetShipperCountSelect');
+  const namesRow = document.getElementById('fleetShipperNamesRow');
+  const depotNameEl = document.getElementById('fleetDepotName');
+  const pendingCountEl = document.getElementById('fleetTotalPendingCount');
+  const btnRun = document.getElementById('btnRunFleetPartition');
+  const chkStrictOneWay = document.getElementById('chkFleetStrictOneWay');
+  const chkReturnToDepot = document.getElementById('chkFleetReturnToDepot');
+
+  const resultSection = document.getElementById('fleetResultSection');
+  const summaryText = document.getElementById('fleetResultSummaryText');
+  const btnSaveConfig = document.getElementById('btnSaveFleetConfig');
+  const btnApplyToApp = document.getElementById('btnApplyFleetToApp');
+  const routesGrid = document.getElementById('fleetRoutesGrid');
+
+  const activeTitle = document.getElementById('fleetActiveRouteTitle');
+  const activeStats = document.getElementById('fleetActiveRouteStats');
+  const activeOrdersList = document.getElementById('fleetActiveOrdersList');
+  const activeKmBadge = document.getElementById('fleetActiveRouteKmBadge');
+  const mapContainer = document.getElementById('fleetMapContainer');
+
+  // P2P Dispatch sub-modal elements
+  const modalP2P = document.getElementById('modalFleetShipperP2P');
+  const btnCloseP2P = document.getElementById('btnCloseFleetShipperP2P');
+  const btnDoneP2P = document.getElementById('btnDoneFleetShipperP2P');
+  const p2pTitle = document.getElementById('fleetP2PModalTitle');
+  const p2pSummary = document.getElementById('fleetP2PRouteSummary');
+  const p2pCanvas = document.getElementById('fleetP2PCanvasContainer');
+  const p2pPin = document.getElementById('fleetP2PPinValue');
+  const p2pStatus = document.getElementById('fleetP2PStatusMsg');
+
+  let currentFleetResult = null;
+  let activeRouteIndex = 0;
+  let fleetMap = null;
+  let fleetMapLayerGroup = null;
+  let fleetP2PHost = null;
+
+  // Render Shipper Name Inputs
+  function renderShipperNameInputs(count, existingNames) {
+    if (!namesRow) return;
+    namesRow.innerHTML = '';
+    const colors = (window.AIRouteOptimizer && window.AIRouteOptimizer.FLEET_DEFAULT_COLORS) || ['#2563eb', '#ea580c', '#059669', '#7c3aed', '#dc2626', '#0891b2', '#db2777', '#d97706'];
+    for (let i = 0; i < count; i++) {
+      const col = colors[i % colors.length];
+      const defaultName = (existingNames && existingNames[i]) || `Shipper ${i + 1}`;
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display: flex; align-items: center; gap: 5px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px;';
+      wrap.innerHTML = `
+        <span style="width: 10px; height: 10px; border-radius: 50%; background: ${col}; display: inline-block;"></span>
+        <input type="text" class="fleet-shipper-name-input" data-index="${i}" value="${escapeHtml(defaultName)}" style="border: none; background: transparent; font-size: 11.5px; font-weight: 600; color: #1e293b; width: 105px; outline: none;" placeholder="Tên Shipper ${i+1}">
+      `;
+      namesRow.appendChild(wrap);
+    }
+
+    // Bind rename live updates
+    namesRow.querySelectorAll('.fleet-shipper-name-input').forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        const idx = parseInt(e.target.dataset.index, 10);
+        const newName = e.target.value.trim() || `Shipper ${idx + 1}`;
+        if (currentFleetResult && currentFleetResult.routes && currentFleetResult.routes[idx]) {
+          currentFleetResult.routes[idx].shipperName = newName;
+          StorageService.saveFleetDispatch(currentFleetResult);
+          renderFleetRouteCards();
+          if (activeRouteIndex === idx) {
+            updateActiveRouteHeader();
+          }
+        }
+      });
+    });
+  }
+
+  // Count select change
+  if (countSelect) {
+    countSelect.addEventListener('change', () => {
+      const c = parseInt(countSelect.value, 10) || 4;
+      const existingNames = [];
+      namesRow.querySelectorAll('.fleet-shipper-name-input').forEach(inp => existingNames.push(inp.value.trim()));
+      renderShipperNameInputs(c, existingNames);
+    });
+  }
+
+  // Open Modal
+  function openFleetModal() {
+    const aiOpt = window.AIRouteOptimizer;
+    const curDepot = aiOpt && aiOpt.getDepot ? aiOpt.getDepot() : { name: 'Bưu cục GHN Xuân Hòa' };
+    if (depotNameEl) depotNameEl.textContent = curDepot.name;
+
+    const activeOrders = typeof getActiveTripOrders === 'function' ? getActiveTripOrders() : currentOrders;
+    const pending = activeOrders.filter(o => o.status === 'pending');
+    if (pendingCountEl) pendingCountEl.textContent = pending.length;
+
+    // Check if saved configuration exists
+    const savedDispatch = StorageService.getFleetDispatch ? StorageService.getFleetDispatch() : null;
+    if (savedDispatch && savedDispatch.routes && savedDispatch.routes.length > 0) {
+      currentFleetResult = savedDispatch;
+      if (countSelect) countSelect.value = String(savedDispatch.routes.length);
+      const savedNames = savedDispatch.routes.map(r => r.shipperName);
+      renderShipperNameInputs(savedDispatch.routes.length, savedNames);
+
+      if (summaryText) {
+        const timeStr = savedDispatch.timestamp ? new Date(savedDispatch.timestamp).toLocaleTimeString('vi-VN') + ' ' + new Date(savedDispatch.timestamp).toLocaleDateString('vi-VN') : '';
+        summaryText.innerHTML = `💾 Cấu hình đã lưu (${timeStr}) • <strong style="color: #059669;">${savedDispatch.routes.length} tuyến</strong> (${savedDispatch.totalOrders || 0} đơn)`;
+      }
+
+      if (resultSection) resultSection.style.display = 'flex';
+      activeRouteIndex = 0;
+      renderFleetRouteCards();
+      renderFleetActiveRouteOrders();
+      setTimeout(initOrUpdateFleetMap, 200);
+    } else {
+      const initialCount = countSelect ? parseInt(countSelect.value, 10) : 4;
+      renderShipperNameInputs(initialCount);
+      if (resultSection) resultSection.style.display = 'none';
+      currentFleetResult = null;
+    }
+
+    modal.style.display = 'flex';
+    setTimeout(() => {
+      if (fleetMap) fleetMap.invalidateSize();
+    }, 250);
+  }
+
+  function closeFleetModal() {
+    modal.style.display = 'none';
+  }
+
+  btnOpen.addEventListener('click', openFleetModal);
+  if (btnClose) btnClose.addEventListener('click', closeFleetModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeFleetModal();
+  });
+
+  // Run AI Fleet Partition
+  if (btnRun) {
+    btnRun.addEventListener('click', async () => {
+      const aiOpt = window.AIRouteOptimizer;
+      if (!aiOpt || !aiOpt.partitionFleetRoutes) {
+        showToast('Module AI Fleet Partition chưa sẵn sàng!', 'error');
+        return;
+      }
+
+      const activeOrders = typeof getActiveTripOrders === 'function' ? getActiveTripOrders() : currentOrders;
+      const pending = activeOrders.filter(o => o.status === 'pending');
+      if (pending.length === 0) {
+        showToast('Không có đơn hàng Chờ Giao nào để phân tuyến!', 'warning');
+        return;
+      }
+
+      const numShippers = parseInt(countSelect.value, 10) || 4;
+      const nameInputs = namesRow.querySelectorAll('.fleet-shipper-name-input');
+      const shippers = [];
+      const colors = aiOpt.FLEET_DEFAULT_COLORS || ['#2563eb', '#ea580c', '#059669', '#7c3aed', '#dc2626', '#0891b2', '#db2777', '#d97706'];
+      for (let i = 0; i < numShippers; i++) {
+        const n = (nameInputs[i] && nameInputs[i].value.trim()) || `Shipper ${i + 1}`;
+        shippers.push({ name: n, color: colors[i % colors.length] });
+      }
+
+      btnRun.disabled = true;
+      btnRun.innerHTML = '<span>⏳ Đang phân chia tuyến...</span>';
+
+      try {
+        const strictOneWay = chkStrictOneWay ? chkStrictOneWay.checked : true;
+        const returnToDepot = chkReturnToDepot ? chkReturnToDepot.checked : true;
+        const depot = aiOpt.getDepot ? aiOpt.getDepot() : null;
+
+        const res = await aiOpt.partitionFleetRoutes(pending, { numShippers, shippers }, {
+          strictOneWay,
+          returnToDepot,
+          depot
+        });
+
+        currentFleetResult = res;
+        activeRouteIndex = 0;
+        StorageService.saveFleetDispatch(currentFleetResult);
+
+        if (summaryText) {
+          summaryText.innerHTML = `🎉 Đã phân chia tối ưu <strong style="color: #059669;">${res.routes.length} tuyến</strong> (${res.totalOrders} đơn) cho ${res.numShippers} Shipper`;
+        }
+
+        if (resultSection) resultSection.style.display = 'flex';
+        renderFleetRouteCards();
+        renderFleetActiveRouteOrders();
+        setTimeout(initOrUpdateFleetMap, 200);
+
+        showToast(`🎉 AI đã phân chia thành công ${res.routes.length} tuyến và tự động lưu cấu hình!`, 'success');
+      } catch (err) {
+        console.error('Lỗi khi phân tuyến AI:', err);
+        showToast('Lỗi khi phân tuyến: ' + (err.message || err), 'error');
+      } finally {
+        btnRun.disabled = false;
+        btnRun.innerHTML = '<span>🚀 Bắt Đầu Chia Tuyến</span>';
+      }
+    });
+  }
+
+  // Save Config manually
+  if (btnSaveConfig) {
+    btnSaveConfig.addEventListener('click', () => {
+      if (!currentFleetResult) {
+        showToast('Chưa có dữ liệu phân tuyến để lưu!', 'warning');
+        return;
+      }
+      currentFleetResult.timestamp = Date.now();
+      StorageService.saveFleetDispatch(currentFleetResult);
+      if (summaryText) {
+        const timeStr = new Date(currentFleetResult.timestamp).toLocaleTimeString('vi-VN') + ' ' + new Date(currentFleetResult.timestamp).toLocaleDateString('vi-VN');
+        summaryText.innerHTML = `💾 Cấu hình đã lưu (${timeStr}) • <strong style="color: #059669;">${currentFleetResult.routes.length} tuyến</strong> (${currentFleetResult.totalOrders || 0} đơn)`;
+      }
+      showToast('💾 Đã lưu cấu hình phân tuyến thành công!', 'success');
+    });
+  }
+
+  // Apply Fleet to Desktop Groups
+  if (btnApplyToApp) {
+    btnApplyToApp.addEventListener('click', () => {
+      if (!currentFleetResult || !currentFleetResult.routes || currentFleetResult.routes.length === 0) {
+        showToast('Chưa có dữ liệu phân tuyến!', 'warning');
+        return;
+      }
+
+      if (!confirm(`Bạn có chắc muốn áp dụng ${currentFleetResult.routes.length} tuyến này thành các nhóm giao hàng trên Desktop?`)) {
+        return;
+      }
+
+      // 1. Tạo hoặc cập nhật các nhóm tương ứng với từng tuyến
+      const newGroups = [];
+      const routeGroupMap = {}; // routeId -> groupId
+
+      currentFleetResult.routes.forEach((r, idx) => {
+        const gId = 'group_fleet_' + (idx + 1);
+        routeGroupMap[r.id] = gId;
+        newGroups.push({
+          id: gId,
+          name: r.shipperName,
+          color: r.color,
+          createdAt: Date.now() + idx
+        });
+      });
+
+      // 2. Cập nhật groupId và sắp xếp currentOrders
+      const newOrders = [];
+      const assignedIds = new Set();
+
+      currentFleetResult.routes.forEach(r => {
+        const targetGid = routeGroupMap[r.id];
+        r.orderedOrders.forEach(o => {
+          const orig = currentOrders.find(item => item.id === o.id);
+          if (orig) {
+            orig.groupId = targetGid;
+            newOrders.push(orig);
+            assignedIds.add(orig.id);
+          }
+        });
+      });
+
+      // Thêm các đơn còn lại (đã giao xong hoặc không nằm trong đợt chia này)
+      currentOrders.forEach(o => {
+        if (!assignedIds.has(o.id)) {
+          newOrders.push(o);
+        }
+      });
+
+      currentOrders = newOrders;
+      currentGroups = newGroups;
+
+      StorageService.saveOrders(currentOrders);
+      StorageService.saveGroups(currentGroups);
+      renderApp();
+
+      showToast(`🎉 Đã áp dụng phân tuyến thành ${newGroups.length} nhóm giao hàng trên Desktop!`, 'success');
+      closeFleetModal();
+    });
+  }
+
+  // Render Route Cards
+  function renderFleetRouteCards() {
+    if (!routesGrid || !currentFleetResult || !currentFleetResult.routes) return;
+    routesGrid.innerHTML = '';
+
+    currentFleetResult.routes.forEach((r, idx) => {
+      const card = document.createElement('div');
+      card.className = `fleet-route-card ${idx === activeRouteIndex ? 'selected' : ''}`;
+      card.style.setProperty('--route-color', r.color);
+
+      const streetsStr = (r.primaryStreets && r.primaryStreets.length > 0)
+        ? r.primaryStreets.slice(0, 2).join(', ') + (r.primaryStreets.length > 2 ? ` (+${r.primaryStreets.length - 2} đường)` : '')
+        : 'Đa điểm';
+
+      const kmStr = r.totalDistance ? `~${(r.totalDistance / 1000).toFixed(1)} km` : '~5 km';
+
+      card.innerHTML = `
+        <div class="fleet-route-card-header">
+          <div class="fleet-route-name">
+            <span class="fleet-color-indicator" style="background: ${r.color};"></span>
+            <span>${escapeHtml(r.shipperName)}</span>
+          </div>
+          <span style="font-size: 11px; font-weight: 700; color: ${r.color};">Tuyến ${idx + 1}</span>
+        </div>
+        <div class="fleet-stats-row">
+          <span class="fleet-stat-pill">📦 ${r.orderedOrders ? r.orderedOrders.length : r.orderCount} đơn</span>
+          <span class="fleet-stat-pill" style="color: #b45309;">💰 ${formatCurrency(r.totalCod || 0)}</span>
+          <span class="fleet-stat-pill" style="color: #0284c7;">📍 ${kmStr}</span>
+        </div>
+        <div style="font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml((r.primaryStreets || []).join(', '))}">
+          Trục chính: <strong>${escapeHtml(streetsStr)}</strong>
+        </div>
+        <div style="display: flex; gap: 6px; margin-top: 4px;">
+          <button type="button" class="btn btn-sm btn-outline-primary fleet-btn-dispatch" data-route-index="${idx}" style="flex: 1; font-size: 11px; padding: 4px 6px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-weight: 700; cursor: pointer;" title="Bắn toàn bộ đơn tuyến này sang điện thoại của ${escapeHtml(r.shipperName)} qua QR hoặc mã PIN">
+            📱 Bắn Chuyến
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary fleet-btn-select-route" data-route-index="${idx}" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; font-weight: 600; cursor: pointer;">
+            👁️ Xem
+          </button>
+        </div>
+      `;
+
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.fleet-btn-dispatch')) return;
+        activeRouteIndex = idx;
+        renderFleetRouteCards();
+        renderFleetActiveRouteOrders();
+        updateActiveRouteHeader();
+        updateFleetMap();
+      });
+
+      routesGrid.appendChild(card);
+    });
+
+    // Bind P2P Dispatch buttons
+    routesGrid.querySelectorAll('.fleet-btn-dispatch').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rIdx = parseInt(btn.dataset.routeIndex, 10);
+        openSingleShipperP2P(rIdx);
+      });
+    });
+  }
+
+  function updateActiveRouteHeader() {
+    if (!currentFleetResult || !currentFleetResult.routes) return;
+    const r = currentFleetResult.routes[activeRouteIndex];
+    if (!r) return;
+
+    if (activeTitle) {
+      activeTitle.innerHTML = `
+        <span class="fleet-color-indicator" style="background: ${r.color};"></span>
+        <span>Chi tiết đơn hàng: ${escapeHtml(r.shipperName)} (Tuyến ${activeRouteIndex + 1})</span>
+      `;
+    }
+
+    const oCount = r.orderedOrders ? r.orderedOrders.length : 0;
+    const codSum = r.orderedOrders ? r.orderedOrders.reduce((s, o) => s + (o.codAmount || 0), 0) : 0;
+    if (activeStats) {
+      activeStats.textContent = `${oCount} đơn • ${formatCurrency(codSum)} COD`;
+    }
+    if (activeKmBadge) {
+      activeKmBadge.textContent = r.totalDistance ? `~${(r.totalDistance / 1000).toFixed(1)} km` : '~5 km';
+    }
+  }
+
+  // Render Orders in Active Route (with Transfer action)
+  function renderFleetActiveRouteOrders() {
+    if (!activeOrdersList || !currentFleetResult || !currentFleetResult.routes) return;
+    const r = currentFleetResult.routes[activeRouteIndex];
+    if (!r) return;
+
+    updateActiveRouteHeader();
+    activeOrdersList.innerHTML = '';
+
+    const orders = r.orderedOrders || [];
+    if (orders.length === 0) {
+      activeOrdersList.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 12px;">Tuyến này hiện chưa có đơn hàng nào.</div>';
+      return;
+    }
+
+    orders.forEach((o, idx) => {
+      const row = document.createElement('div');
+      row.className = 'fleet-order-row';
+      row.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+          <span style="font-weight: 800; color: ${r.color}; font-size: 11px; min-width: 22px;">#${idx + 1}</span>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <strong style="color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${escapeHtml(o.customerName || 'Khách lẻ')}</strong>
+              <span style="font-size: 10.5px; color: #64748b;">${escapeHtml(o.trackingCode || '')}</span>
+            </div>
+            <div style="color: #475569; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(o.address || '')}">
+              📍 ${escapeHtml(o.address || 'Chưa có địa chỉ')}
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 8px;">
+          <span style="font-weight: 700; color: #b45309; font-size: 11px;">${formatCurrency(o.codAmount || 0)}</span>
+          <div class="fleet-transfer-wrap" style="position: relative;">
+            <button type="button" class="fleet-btn-transfer" data-order-id="${o.id}" title="Chuyển đơn này sang Shipper khác">
+              <span>🔄 Chuyển tuyến</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Bind transfer button
+      const btnTr = row.querySelector('.fleet-btn-transfer');
+      if (btnTr) {
+        btnTr.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showTransferMenu(btnTr, o.id);
+        });
+      }
+
+      activeOrdersList.appendChild(row);
+    });
+  }
+
+  // Show popup menu to transfer order to another route
+  function showTransferMenu(btnEl, orderId) {
+    // Remove existing menus
+    document.querySelectorAll('.fleet-transfer-dropdown').forEach(d => d.remove());
+
+    const menu = document.createElement('div');
+    menu.className = 'fleet-transfer-dropdown';
+    menu.style.cssText = 'position: absolute; right: 0; top: 100%; z-index: 1000; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 4px; min-width: 180px; display: flex; flex-direction: column; gap: 2px;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size: 10.5px; font-weight: 700; color: #64748b; padding: 4px 8px; border-bottom: 1px solid #f1f5f9;';
+    header.textContent = 'Chuyển đơn sang Shipper:';
+    menu.appendChild(header);
+
+    currentFleetResult.routes.forEach((targetRoute, tIdx) => {
+      if (tIdx === activeRouteIndex) return; // Không hiển thị tuyến hiện tại
+
+      const opt = document.createElement('button');
+      opt.type = 'button';
+      opt.style.cssText = 'display: flex; align-items: center; justify-content: space-between; border: none; background: transparent; padding: 6px 8px; border-radius: 5px; font-size: 11.5px; cursor: pointer; text-align: left; transition: background 0.15s; width: 100%;';
+      opt.innerHTML = `
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: ${targetRoute.color};"></span>
+          <strong style="color: #1e293b;">${escapeHtml(targetRoute.shipperName)}</strong>
+        </span>
+        <span style="font-size: 10.5px; color: #64748b;">${targetRoute.orderedOrders ? targetRoute.orderedOrders.length : 0} đơn</span>
+      `;
+      opt.addEventListener('mouseenter', () => { opt.style.background = '#f1f5f9'; });
+      opt.addEventListener('mouseleave', () => { opt.style.background = 'transparent'; });
+
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.remove();
+        executeOrderTransfer(orderId, activeRouteIndex, tIdx);
+      });
+
+      menu.appendChild(opt);
+    });
+
+    btnEl.parentElement.appendChild(menu);
+
+    const closeHandler = (e) => {
+      if (!menu.contains(e.target) && e.target !== btnEl) {
+        menu.remove();
+        window.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => {
+      window.addEventListener('click', closeHandler);
+    }, 50);
+  }
+
+  // Execute Order Transfer between two routes
+  function executeOrderTransfer(orderId, fromIdx, toIdx) {
+    if (!currentFleetResult || !currentFleetResult.routes) return;
+    const fromRoute = currentFleetResult.routes[fromIdx];
+    const toRoute = currentFleetResult.routes[toIdx];
+    if (!fromRoute || !toRoute) return;
+
+    const oIdx = fromRoute.orderedOrders.findIndex(o => o.id === orderId);
+    if (oIdx === -1) return;
+
+    const [transferredOrder] = fromRoute.orderedOrders.splice(oIdx, 1);
+    toRoute.orderedOrders.push(transferredOrder);
+
+    // Cập nhật stats
+    fromRoute.orderCount = fromRoute.orderedOrders.length;
+    fromRoute.totalCod = fromRoute.orderedOrders.reduce((s, o) => s + (o.codAmount || 0), 0);
+    toRoute.orderCount = toRoute.orderedOrders.length;
+    toRoute.totalCod = toRoute.orderedOrders.reduce((s, o) => s + (o.codAmount || 0), 0);
+
+    // Tự động lưu cấu hình sau khi tinh chỉnh
+    currentFleetResult.timestamp = Date.now();
+    StorageService.saveFleetDispatch(currentFleetResult);
+
+    // Cập nhật giao diện
+    renderFleetRouteCards();
+    renderFleetActiveRouteOrders();
+    updateFleetMap();
+
+    showToast(`✓ Đã chuyển đơn sang ${toRoute.shipperName} và tự động lưu cấu hình!`, 'success');
+  }
+
+  // Initialize or Update Leaflet Map for Fleet Dispatch
+  function initOrUpdateFleetMap() {
+    if (!mapContainer || typeof L === 'undefined') return;
+
+    if (!fleetMap) {
+      fleetMap = L.map('fleetMapContainer', {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([21.2965, 105.7410], 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(fleetMap);
+
+      fleetMapLayerGroup = L.layerGroup().addTo(fleetMap);
+    } else {
+      fleetMap.invalidateSize();
+    }
+
+    updateFleetMap();
+  }
+
+  function updateFleetMap() {
+    if (!fleetMap || !fleetMapLayerGroup || !currentFleetResult || !currentFleetResult.routes) return;
+    fleetMapLayerGroup.clearLayers();
+
+    const bounds = L.latLngBounds();
+    const depot = currentFleetResult.depot || (window.AIRouteOptimizer && window.AIRouteOptimizer.getDepot ? window.AIRouteOptimizer.getDepot() : null);
+
+    // Marker Bưu cục
+    if (depot && depot.lat != null && depot.lng != null) {
+      const depotLatLng = [depot.lat, depot.lng];
+      bounds.extend(depotLatLng);
+
+      const depotIcon = L.divIcon({
+        className: 'fleet-depot-marker',
+        html: `<div style="background: #16a34a; color: #fff; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 2.5px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.35);">🏢</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+
+      L.marker(depotLatLng, { icon: depotIcon })
+        .bindPopup(`<strong>🏢 ${escapeHtml(depot.name || 'Bưu cục')}</strong><br><span style="font-size:11px; color:#64748b;">${escapeHtml(depot.address || '')}</span>`)
+        .addTo(fleetMapLayerGroup);
+    }
+
+    // Vẽ từng tuyến
+    currentFleetResult.routes.forEach((r, rIdx) => {
+      const isSelected = rIdx === activeRouteIndex;
+      const orders = r.orderedOrders || [];
+      const routePoints = [];
+
+      if (depot && depot.lat != null && depot.lng != null) {
+        routePoints.push([depot.lat, depot.lng]);
+      }
+
+      orders.forEach((o, oIdx) => {
+        if (o.lat != null && o.lng != null) {
+          const latLng = [o.lat, o.lng];
+          routePoints.push(latLng);
+          bounds.extend(latLng);
+
+          const dotIcon = L.divIcon({
+            className: 'fleet-order-marker',
+            html: `<div style="background: ${r.color}; color: #fff; width: ${isSelected ? '22px' : '16px'}; height: ${isSelected ? '22px' : '16px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: ${isSelected ? '10px' : '8px'}; font-weight: 800; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25); opacity: ${isSelected ? '1' : '0.65'};">
+                    ${isSelected ? (oIdx + 1) : ''}
+                   </div>`,
+            iconSize: isSelected ? [22, 22] : [16, 16],
+            iconAnchor: isSelected ? [11, 11] : [8, 8]
+          });
+
+          const marker = L.marker(latLng, { icon: dotIcon });
+          marker.bindPopup(`
+            <div style="font-size: 12px; line-height: 1.4;">
+              <strong style="color: ${r.color};">Tuyến ${rIdx + 1}: ${escapeHtml(r.shipperName)} (#${oIdx + 1})</strong><br>
+              <strong>${escapeHtml(o.customerName || 'Khách lẻ')}</strong> (${escapeHtml(o.trackingCode || '')})<br>
+              <span style="color: #64748b;">📍 ${escapeHtml(o.address || '')}</span><br>
+              <span style="color: #b45309; font-weight: 700;">COD: ${formatCurrency(o.codAmount || 0)}</span>
+            </div>
+          `);
+          marker.addTo(fleetMapLayerGroup);
+        }
+      });
+
+      // Vẽ polyline lộ trình cho tuyến đang được chọn
+      if (isSelected && routePoints.length > 1) {
+        if (depot && depot.lat != null && depot.lng != null) {
+          routePoints.push([depot.lat, depot.lng]); // Chu trình về lại bưu cục
+        }
+        L.polyline(routePoints, {
+          color: r.color,
+          weight: 4,
+          opacity: 0.85,
+          dashArray: '4, 4'
+        }).addTo(fleetMapLayerGroup);
+      }
+    });
+
+    if (bounds.isValid()) {
+      fleetMap.fitBounds(bounds, { padding: [25, 25] });
+    }
+  }
+
+  // ==========================================================
+  // SINGLE-SHIPPER P2P DISPATCH DIALOG
+  // ==========================================================
+  function openSingleShipperP2P(rIdx) {
+    if (!currentFleetResult || !currentFleetResult.routes) return;
+    const r = currentFleetResult.routes[rIdx];
+    if (!r) return;
+
+    const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+    if (!p2pSync) {
+      showToast('Module P2PSync chưa sẵn sàng!', 'error');
+      return;
+    }
+
+    if (modalP2P) modalP2P.style.display = 'flex';
+    if (p2pTitle) p2pTitle.innerHTML = `<span>📱</span> Bắn Chuyến Cho ${escapeHtml(r.shipperName)} (Tuyến ${rIdx + 1})`;
+    const count = r.orderedOrders ? r.orderedOrders.length : 0;
+    const codSum = r.orderedOrders ? r.orderedOrders.reduce((s, o) => s + (o.codAmount || 0), 0) : 0;
+    const kmStr = r.totalDistance ? `~${(r.totalDistance / 1000).toFixed(1)} km` : '~5 km';
+
+    if (p2pSummary) {
+      p2pSummary.innerHTML = `<strong>${count} đơn hàng</strong> • <strong style="color: #b45309;">${formatCurrency(codSum)} COD</strong> • <span>${kmStr}</span>`;
+    }
+    if (p2pStatus) {
+      p2pStatus.innerHTML = '⏳ Đang khởi tạo phòng chờ Shipper...';
+      p2pStatus.style.color = '#059669';
+      p2pStatus.style.background = '#f0fdf4';
+      p2pStatus.style.borderColor = '#bbf7d0';
+    }
+    if (p2pPin) p2pPin.textContent = '------';
+
+    // Stop previous host if any
+    if (fleetP2PHost) {
+      try { fleetP2PHost.destroy(); } catch(e) {}
+      fleetP2PHost = null;
+    }
+
+    // Prepare single shipper data payload
+    const shipperOrders = (r.orderedOrders || []).map(o => ({
+      ...o,
+      groupId: 'group_fleet_' + r.id
+    }));
+    const shipperGroups = [{
+      id: 'group_fleet_' + r.id,
+      name: r.shipperName,
+      color: r.color,
+      createdAt: Date.now()
+    }];
+
+    fleetP2PHost = p2pSync.createHost({
+      onReady: (roomInfo) => {
+        if (p2pPin) p2pPin.textContent = roomInfo.pin;
+        if (p2pStatus) {
+          p2pStatus.innerHTML = `⏳ Phòng chờ PIN: <strong>${roomInfo.pin}</strong>. Đang đợi <strong>${escapeHtml(r.shipperName)}</strong> quét mã...`;
+        }
+        if (p2pCanvas) {
+          p2pSync.renderP2PQR(p2pCanvas, roomInfo.qrToken, { cellSize: 5, margin: 2 });
+        }
+      },
+      onConnecting: () => {
+        if (p2pStatus) {
+          p2pStatus.innerHTML = `⚡ ${escapeHtml(r.shipperName)} đang kết nối...`;
+          p2pStatus.style.color = '#d97706';
+        }
+      },
+      onConnected: () => {
+        if (p2pStatus) {
+          p2pStatus.innerHTML = `🚀 Đã kết nối! Đang bắn ${shipperOrders.length} đơn sang điện thoại...`;
+        }
+        const payload = p2pSync.buildPatchPayload(shipperOrders, shipperGroups, null);
+        fleetP2PHost.send(payload);
+      },
+      onSent: () => {
+        if (p2pStatus) {
+          p2pStatus.innerHTML = `✅ ĐÃ BẮN XONG ${shipperOrders.length} ĐƠN CHO ${escapeHtml(r.shipperName)}! (0.05s)`;
+          p2pStatus.style.color = '#16a34a';
+          p2pStatus.style.background = '#f0fdf4';
+        }
+        showToast(`⚡ Đã gửi toàn bộ chuyến cho ${r.shipperName} thành công!`, 'success');
+      },
+      onError: (err) => {
+        if (p2pStatus) {
+          p2pStatus.innerHTML = `⚠️ Lỗi P2P: ${err.message || err}`;
+          p2pStatus.style.color = '#dc2626';
+          p2pStatus.style.background = '#fef2f2';
+        }
+      }
+    });
+  }
+
+  function closeSingleShipperP2P() {
+    if (modalP2P) modalP2P.style.display = 'none';
+    if (fleetP2PHost) {
+      try { fleetP2PHost.destroy(); } catch(e) {}
+      fleetP2PHost = null;
+    }
+  }
+
+  if (btnCloseP2P) btnCloseP2P.addEventListener('click', closeSingleShipperP2P);
+  if (btnDoneP2P) btnDoneP2P.addEventListener('click', closeSingleShipperP2P);
+  if (modalP2P) {
+    modalP2P.addEventListener('click', (e) => {
+      if (e.target === modalP2P) closeSingleShipperP2P();
+    });
+  }
+}
