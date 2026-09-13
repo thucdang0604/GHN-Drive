@@ -4578,7 +4578,7 @@
   <header class="mobile-header">
       <div class="header-title">
         <span class="header-badge">GHN</span>
-        <h1>Quản Lý Đơn Giao <span class="header-version-badge" id="appVersionBadge">v2.7.0</span></h1>
+        <h1>Quản Lý Đơn Giao <span class="header-version-badge" id="appVersionBadge">v2.7.1</span></h1>
       </div>
       <div class="header-actions">
         <button id="btnOpenPasteSheetHeader" class="btn-header paste" title="Dán nhanh danh sách đơn hàng">
@@ -13591,6 +13591,27 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             // Giữ lại các đơn đã GTC/GTB ở phía sau
             var finishedOrders = orders.filter(function(o) { return o.status !== 'pending' && o.status !== 'cho_ck'; });
             orders = optimizedPending.concat(finishedOrders);
+
+            // Đồng bộ thứ tự các nhóm theo đúng chu trình lộ trình đã tối ưu
+            var seenGroupIds = {};
+            var reorderedGroups = [];
+            orders.forEach(function(o) {
+              var gid = o.groupId || 'group_ungrouped';
+              if (!seenGroupIds[gid]) {
+                seenGroupIds[gid] = true;
+                var gObj = groups.find(function(g) { return g.id === gid; });
+                if (gObj) {
+                  reorderedGroups.push(gObj);
+                }
+              }
+            });
+            // Thêm các nhóm rỗng hoặc nhóm chưa có đơn nào vào cuối
+            groups.forEach(function(g) {
+              if (!seenGroupIds[g.id]) {
+                reorderedGroups.push(g);
+              }
+            });
+            groups = reorderedGroups;
 
             saveData();
             render();

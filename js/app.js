@@ -3206,6 +3206,26 @@ function setupDesktopAiRouteModal() {
 
       currentOrders = newOrders;
       StorageService.saveOrders(currentOrders);
+
+      // Đồng bộ thứ tự các nhóm theo đúng chu trình lộ trình đã tối ưu
+      const seenGroupIds = new Set();
+      const reorderedGroups = [];
+      currentOrders.forEach(o => {
+        const gid = o.groupId || 'group_ungrouped';
+        if (!seenGroupIds.has(gid)) {
+          seenGroupIds.add(gid);
+          const gObj = currentGroups.find(g => g.id === gid);
+          if (gObj) reorderedGroups.push(gObj);
+        }
+      });
+      currentGroups.forEach(g => {
+        if (!seenGroupIds.has(g.id)) {
+          reorderedGroups.push(g);
+        }
+      });
+      currentGroups = reorderedGroups;
+      StorageService.saveGroups(currentGroups);
+
       renderApp();
       showToast('🎉 Đã áp dụng lộ trình tối ưu AI vào hệ thống!', 'success');
       closeModal();

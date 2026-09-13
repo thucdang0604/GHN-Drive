@@ -1044,106 +1044,93 @@
    * Kết hợp chiếu hình học GPS (alongDistance từ đầu đường OSM) và Gradient số nhà
    * Tuyệt đối không để AI gợi ý đi ngược chiều xe chạy!
    */
+  function cleanStreetName(str) {
+    if (!str) return '';
+    var s = removeVietnameseTones(str);
+    return s.replace(/^(?:duong|pho|hem|ngo|ap|khu)\s+/i, '').trim();
+  }
+
+  /**
+   * Bắt buộc thứ tự các đơn trên cùng một đường 1 chiều phải tuân thủ đúng chiều lưu thông BẢN ĐỒ
+   * NGUYÊN TẮC AN TOÀN TUYỆT ĐỐI:
+   * 1. CHỈ xử lý các chuỗi đơn liên tiếp (contiguous run) trên cùng 1 tuyến đường 1 chiều trong CÙNG 1 NHÓM.
+   * 2. Tuyệt đối KHÔNG hoán đổi đơn giữa các nhóm khác nhau.
+   * 3. Tuyệt đối KHÔNG hoán đổi đơn nằm cách xa nhau trên lộ trình (tránh làm lệch cấu trúc di chuyển).
+   */
   function enforceOneWayTrafficCompliance(orderedIndices, orders, allOneWays) {
     if (!orderedIndices || !Array.isArray(orderedIndices) || orderedIndices.length <= 1) return orderedIndices;
     if (!allOneWays || allOneWays.length === 0) return orderedIndices;
 
     var resultRoute = orderedIndices.slice();
-    var streetMap = {};
+    var n = resultRoute.length;
 
-    resultRoute.forEach(function(origIdx, slot) {
+    var i = 0;
+    while (i < n) {
+      var origIdx = resultRoute[i];
       var ord = orders[origIdx];
-      if (!ord) return;
+      if (!ord) { i++; continue; }
+
       var info = extractStreetAndNum(ord.address);
       var matchedOw = matchOneWayStreet(info.street, ord.address, allOneWays, info.num, ord.lat, ord.lng);
 
-      // Nếu không khớp phân đoạn (ví dụ số nhà nằm ở đoạn 2 chiều nối tiếp vào đoạn 1 chiều):
-      // Ghép nối để toàn bộ trục đường lưu thông liên tục theo một hướng thống nhất, tránh quay xe zíc zắc
-      if (!matchedOw && info.street) {
-        var normSt = removeVietnameseTones(info.street);
-        for (var w1 = 0; w1 < allOneWays.length; w1++) {
-          var candOw1 = allOneWays[w1];
-          var normCand1 = removeVietnameseTones(candOw1.street);
-          if (normSt && (normSt.indexOf(normCand1) !== -1 || normCand1.indexOf(normSt) !== -1)) {
-            matchedOw = candOw1;
-            break;
-          }
-        }
+      if (!matchedOw || !info.street) {
+        i++;
+        continue;
       }
 
-      // Nếu không khớp tên đường, kiểm tra xem vị trí GPS có nằm sát trục đường 1 chiều nào từ bản đồ không
-      if (!matchedOw && ord.lat != null && ord.lng != null) {
-        for (var w = 0; w < allOneWays.length; w++) {
-          var candOw = allOneWays[w];
-          if (candOw.ways && candOw.ways.length > 0) {
-            for (var g = 0; g < candOw.ways.length; g++) {
-              var pTest = projectPointOnPolyline(ord.lat, ord.lng, candOw.ways[g]);
-              if (pTest.dist <= 25) { // Cách tim đường <= 25m
-                matchedOw = candOw;
-                break;
+      var targetNormStreet = cleanStreetName(matchedOw.street);
+      var targetGroupId = ord.groupId || 'group_ungrouped';
+
+      // Tìm chuỗi đơn liên tiếp (contiguous run) [i ... j-1] cùng nhóm và cùng trên đường 1 chiều này
+      var j = i + 1;
+      while (j < n) {
+        var nextOrd = orders[resultRoute[j]];
+        if (!nextOrd) break;
+        // Bắt buộc cùng nhóm khu vực (không bao giờ hoán đổi đơn giữa các nhóm khác nhau)
+        if ((nextOrd.groupId || 'group_ungrouped') !== targetGroupId) break;
+
+        var nextInfo = extractStreetAndNum(nextOrd.address);
+        var nextMatchedOw = matchOneWayStreet(nextInfo.street, nextOrd.address, allOneWays, nextInfo.num, nextOrd.lat, nextOrd.lng);
+        if (!nextMatchedOw) break;
+
+        var nextNormStreet = cleanStreetName(nextMatchedOw.street);
+        if (nextNormStreet !== targetNormStreet) break;
+
+        j++;
+      }
+
+      var runLength = j - i;
+      if (runLength > 1) {
+        // Có từ 2 đơn liên tiếp trở lên trên cùng đường 1 chiều trong cùng 1 nhóm
+        var runItems = [];
+        for (var k = i; k < j; k++) {
+          var itOrd = orders[resultRoute[k]];
+          var itInfo = extractStreetAndNum(itOrd.address);
+
+          var alongDist = null;
+          if (itOrd.lat != null && itOrd.lng != null && matchedOw.ways && matchedOw.ways.length > 0) {
+            var minDistToRoad = 999999;
+            matchedOw.ways.forEach(function(geom) {
+              var proj = projectPointOnPolyline(itOrd.lat, itOrd.lng, geom);
+              if (proj.dist < minDistToRoad) {
+                minDistToRoad = proj.dist;
+                alongDist = proj.along;
               }
-            }
-            if (matchedOw) break;
+            });
           }
-        }
-      }
 
-      if (matchedOw) {
-        var key = removeVietnameseTones(matchedOw.street);
-        if (!streetMap[key]) {
-          streetMap[key] = {
-            ow: matchedOw,
-            slots: [],
-            items: []
-          };
-        }
-
-        // Tính khoảng cách dọc theo tim đường 1 chiều từ đầu đường OSM
-        var alongDist = null;
-        var minDistToRoad = 999999;
-        if (ord.lat != null && ord.lng != null && matchedOw.ways && matchedOw.ways.length > 0) {
-          matchedOw.ways.forEach(function(geom) {
-            var proj = projectPointOnPolyline(ord.lat, ord.lng, geom);
-            if (proj.dist < minDistToRoad) {
-              minDistToRoad = proj.dist;
-              alongDist = proj.along;
-            }
+          runItems.push({
+            origIdx: resultRoute[k],
+            num: itInfo.num || 0,
+            alongDistance: alongDist
           });
         }
 
-        streetMap[key].slots.push(slot);
-        streetMap[key].items.push({
-          origIdx: origIdx,
-          order: ord,
-          num: info.num,
-          alongDistance: alongDist,
-          distToRoad: minDistToRoad
-        });
-      }
-    });
+        var flowDirection = matchedOw.direction || 'asc';
+        var hasHouseNumCount = runItems.filter(function(it) { return it.num > 0; }).length;
 
-    for (var key in streetMap) {
-      var entry = streetMap[key];
-      if (entry.slots.length > 1) {
-        // Xác định chiều lưu thông dựa trên dữ liệu bản đồ hoặc số nhà
-        var flowDirection = entry.ow.direction || 'asc';
-
-        // Nếu có các đơn có cả GPS dọc tuyến và số nhà, kiểm tra mối quan hệ để phát hiện chiều tăng/giảm số nhà thực tế
-        var itemsWithGpsAndNum = entry.items.filter(function(it) {
-          return it.alongDistance != null && it.num > 0;
-        });
-
-        if (itemsWithGpsAndNum.length >= 2) {
-          itemsWithGpsAndNum.sort(function(a, b) { return a.alongDistance - b.alongDistance; });
-          var isAscendingNum = (itemsWithGpsAndNum[itemsWithGpsAndNum.length - 1].num >= itemsWithGpsAndNum[0].num);
-          flowDirection = isAscendingNum ? 'asc' : 'desc';
-        }
-
-        // Sắp xếp các đơn trên đường 1 chiều:
-        // Nếu đa số có số nhà, sắp xếp theo số nhà theo đúng flowDirection
-        var hasHouseNumCount = entry.items.filter(function(it) { return it.num > 0; }).length;
-        if (hasHouseNumCount >= entry.items.length * 0.7) {
-          entry.items.sort(function(a, b) {
+        if (hasHouseNumCount >= runItems.length * 0.6) {
+          runItems.sort(function(a, b) {
             if (flowDirection === 'desc') {
               return (b.num || 0) - (a.num || 0); // Giảm dần
             } else {
@@ -1151,15 +1138,18 @@
             }
           });
         } else {
-          // Ngược lại, sắp xếp theo khoảng cách hình học dọc theo tim đường 1 chiều từ bản đồ OSM
-          entry.items.sort(function(a, b) {
+          runItems.sort(function(a, b) {
             return (a.alongDistance || 0) - (b.alongDistance || 0);
           });
         }
 
-        entry.slots.forEach(function(slotIdx, s) {
-          resultRoute[slotIdx] = entry.items[s].origIdx;
-        });
+        for (var s = 0; s < runLength; s++) {
+          resultRoute[i + s] = runItems[s].origIdx;
+        }
+
+        i = j; // Tiếp tục từ điểm sau chuỗi vừa xử lý
+      } else {
+        i++;
       }
     }
 
@@ -1180,6 +1170,36 @@
       }
     }
     return res;
+  }
+
+  /**
+   * Tạo danh sách điểm dừng (stops) trực quan từ danh sách đơn đã sắp xếp
+   */
+  function buildStopsFromOrderedOrders(orderedOrders, allOneWays) {
+    if (!orderedOrders || orderedOrders.length === 0) return [];
+    var stops = [];
+    var curStop = null;
+    orderedOrders.forEach(function(ord, oIdx) {
+      var info = extractStreetAndNum(ord.address);
+      var sName = info.street || ord.address || 'Điểm giao';
+      if (!curStop || curStop.name !== sName) {
+        curStop = {
+          name: sName,
+          indices: [oIdx],
+          tip: ''
+        };
+        var matchedOw = matchOneWayStreet(sName, ord.address, allOneWays, info.num, ord.lat, ord.lng);
+        if (matchedOw) {
+          var dirLabel = matchedOw.direction === 'desc' ? 'Số lớn ➜ nhỏ' : 'Số nhỏ ➜ lớn';
+          var srcLabel = matchedOw.isMapDerived ? 'Bản đồ OSM' : 'Shipper';
+          curStop.tip = '🚦 1 Chiều (' + dirLabel + ' - ' + srcLabel + ')';
+        }
+        stops.push(curStop);
+      } else {
+        curStop.indices.push(oIdx);
+      }
+    });
+    return stops;
   }
 
   /**
@@ -1285,8 +1305,14 @@
           if (pNode && pNode.lat != null && startOrigin && startOrigin.lat != null) {
             costP += calculateDistance(pNode.lat, pNode.lng, startOrigin.lat, startOrigin.lng);
           }
-          if (costP < bestPermCost) {
-            bestPermCost = costP;
+          // Ưu tiên permutation có tổng chi phí nhỏ nhất; nếu chi phí vòng lặp bằng nhau,
+          // ưu tiên chọn nhóm đầu tiên gần Bưu cục (startOrigin) nhất
+          var firstDist = (startOrigin && candPerm.length > 0 && groupMap[candPerm[0]].center && groupMap[candPerm[0]].center.lat != null)
+            ? calculateDistance(startOrigin.lat, startOrigin.lng, groupMap[candPerm[0]].center.lat, groupMap[candPerm[0]].center.lng)
+            : 0;
+          var weightedCost = costP + firstDist * 0.05;
+          if (weightedCost < bestPermCost) {
+            bestPermCost = weightedCost;
             bestPerm = candPerm;
           }
         }
@@ -1378,20 +1404,22 @@
         }
       }
 
-      // Tuân thủ đường 1 chiều bản đồ (Áp dụng 1 lần cho toàn tuyến, không lặp trong loop)
+      // Tuân thủ đường 1 chiều bản đồ (Áp dụng cho các chuỗi đơn liên tiếp cùng đường trong nhóm)
       if (options.strictOneWay !== false && allOneWays.length > 0) {
         candidateIndices = enforceOneWayTrafficCompliance(candidateIndices, orders, allOneWays);
       }
 
       var orderedOrders = candidateIndices.map(function(idx) { return orders[idx]; });
+      var stopsList = buildStopsFromOrderedOrders(orderedOrders, allOneWays);
 
       return finalizeResult({
         success: true,
         source: 'offline_heuristic',
+        scenario: scenario,
         summary: 'Đã tối ưu thứ tự chu trình các nhóm: Nhóm gần Bưu cục giao đầu tiên, chặng cuối quay về Bưu cục ngắn nhất.',
         orderedIndices: candidateIndices,
         orderedOrders: orderedOrders,
-        stops: [],
+        stops: stopsList,
         startOrigin: startOrigin,
         returnToDepot: options.returnToDepot === true,
         depot: options.depot || getDepot()
@@ -1533,10 +1561,11 @@
     return finalizeResult({
       success: true,
       source: 'offline_heuristic',
+      scenario: scenario,
       summary: summaryText2,
       orderedIndices: orderedIndices2,
       orderedOrders: orderedOrders2,
-      stops: [],
+      stops: buildStopsFromOrderedOrders(orderedOrders2, allOneWays),
       startOrigin: startOrigin,
       returnToDepot: options.returnToDepot === true,
       depot: options.depot || getDepot()
@@ -1910,6 +1939,7 @@
           success: true,
           source: '9router_ai',
           model: model,
+          scenario: scenario,
           summary: parsed.summary || 'Đã tối ưu lộ trình thành công bằng AI (Tuân thủ dữ liệu đường 1 chiều bản đồ & chu trình bưu cục)',
           orderedIndices: validIndices,
           orderedOrders: orderedOrders,
