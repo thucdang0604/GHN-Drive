@@ -4567,6 +4567,621 @@
     .btn-precall-action:active {
       transform: scale(0.98);
     }
+    /* Bố cục responsive cho điện thoại */
+    @media (max-width: 600px) {
+      html,
+      body {
+        width: 100%;
+        overflow-x: hidden;
+      }
+
+      body {
+        padding-bottom: max(18px, env(safe-area-inset-bottom));
+      }
+
+      .mobile-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+        align-items: stretch;
+        padding: 8px 10px;
+      }
+
+      .header-title {
+        min-width: 0;
+      }
+
+      .header-title h1 {
+        min-width: 0;
+        font-size: 14px;
+      }
+
+      .header-actions {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        width: 100%;
+        min-width: 0;
+        gap: 5px;
+      }
+
+      .btn-header {
+        min-width: 0;
+        justify-content: center;
+        gap: 2px;
+        padding: 7px 3px;
+        font-size: clamp(9.5px, 2.65vw, 11px);
+        line-height: 1.15;
+        white-space: nowrap;
+      }
+
+      .stats-bar {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 1px;
+        padding: 6px 4px;
+      }
+
+      .stat-box {
+        min-width: 0;
+        padding: 4px 1px;
+      }
+
+      .stat-num {
+        font-size: clamp(13px, 3.5vw, 15px);
+      }
+
+      .stat-text {
+        min-height: 2.2em;
+        font-size: clamp(8px, 2.3vw, 9.5px);
+        line-height: 1.1;
+        white-space: normal;
+      }
+
+      .controls-bar {
+        height: auto;
+        min-height: 48px;
+        gap: 5px;
+        padding: 6px 8px;
+      }
+
+      .search-wrapper,
+      .search-input {
+        min-width: 0;
+      }
+
+      .search-input {
+        padding-right: 25px;
+        padding-left: 26px;
+      }
+
+      .btn-scan-qr {
+        padding: 7px 8px;
+      }
+
+      .view-toggle-btn {
+        max-width: 104px;
+        overflow: hidden;
+        padding: 7px 8px;
+        text-overflow: ellipsis;
+      }
+
+      .live-stop-bar {
+        padding: 10px;
+      }
+
+      .live-stop-top,
+      .live-stop-cust {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .live-stop-badge {
+        min-width: 0;
+        flex-wrap: wrap;
+        font-size: 12px;
+      }
+
+      .live-stop-close {
+        flex: 0 0 auto;
+        min-height: 32px;
+      }
+
+      .live-stop-name {
+        min-width: 0;
+        flex: 1 1 160px;
+        overflow-wrap: anywhere;
+      }
+
+      .live-stop-phone {
+        flex: 0 0 auto;
+        min-height: 32px;
+      }
+
+      .live-stop-addr {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      #liveStopTracking {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        text-align: right;
+      }
+
+      .live-stop-actions {
+        flex-wrap: wrap;
+      }
+
+      .btn-live-act {
+        min-height: 38px;
+      }
+
+      .live-cluster-header,
+      .live-precall-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .live-cluster-header > span,
+      .live-precall-header > span:first-child {
+        min-width: 0;
+        flex: 1 1 160px;
+      }
+
+      .btn-batch-gtc-live {
+        min-height: 32px;
+        flex: 0 0 auto;
+      }
+
+      .live-cluster-item {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 5px;
+        overflow-wrap: anywhere;
+      }
+
+      .live-precall-info {
+        overflow-wrap: anywhere;
+      }
+
+      .view-mode-bar {
+        top: 48px;
+        z-index: 490;
+        gap: 5px;
+        padding: 6px 8px;
+      }
+
+      .view-mode-tab {
+        min-width: 0;
+        gap: 3px;
+        overflow: hidden;
+        padding: 8px 3px;
+        font-size: clamp(9px, 2.65vw, 11px);
+      }
+
+      .view-mode-tab span:first-child {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .view-mode-badge {
+        flex: 0 0 auto;
+        padding: 2px 4px;
+      }
+
+      .group-toolbar {
+        flex-wrap: wrap;
+        gap: 6px;
+        overflow: visible;
+        padding: 8px 10px;
+        white-space: normal;
+      }
+
+      .group-toolbar .btn-group-pill {
+        flex: 0 0 auto;
+        min-height: 34px;
+        padding: 6px 8px;
+        font-size: 10.5px;
+      }
+
+      .group-header-tr td,
+      .group-card-header {
+        top: 96px;
+      }
+
+      .group-header-box {
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .group-header-left {
+        min-width: 0;
+        max-width: 100%;
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        overflow: visible;
+        line-height: 1.25;
+        text-overflow: clip;
+        white-space: normal;
+      }
+
+      .group-title-text {
+        overflow-wrap: anywhere;
+      }
+
+      .group-header-right {
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+      }
+
+      .group-status-pills {
+        flex-wrap: wrap;
+      }
+
+      .group-card-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .group-card-header > div:first-child,
+      .group-card-header > div:last-child {
+        min-width: 0;
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .group-card-header > div:first-child > span:last-child {
+        overflow-wrap: anywhere;
+      }
+
+      .table-container {
+        padding: 4px;
+      }
+
+      .tbl-row-main {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) 86px;
+        grid-template-areas:
+          "stt info cod"
+          "stt info actions";
+        align-items: center;
+        column-gap: 6px;
+        row-gap: 4px;
+        min-height: 76px;
+        padding: 8px 7px;
+      }
+
+      .tbl-col-stt {
+        grid-area: stt;
+        flex: none;
+        flex-direction: column;
+        align-self: stretch;
+        gap: 4px;
+      }
+
+      .tbl-col-info {
+        grid-area: info;
+        min-width: 0;
+        flex: none;
+      }
+
+      .tbl-addr-line {
+        display: -webkit-box;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        white-space: normal;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+      }
+
+      .tbl-sub-line {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        overflow: visible;
+      }
+
+      .tbl-cust-name {
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+
+      .tbl-col-cod {
+        grid-area: cod;
+        flex: none;
+        width: 100%;
+      }
+
+      .tbl-cod-val {
+        font-size: 10.5px;
+      }
+
+      .tbl-col-act {
+        grid-area: actions;
+        flex: none;
+        width: 100%;
+        gap: 3px;
+        justify-content: flex-end;
+      }
+
+      .tbl-btn-cam,
+      .tbl-btn-gtc,
+      .tbl-btn-gtb {
+        flex: 0 0 25px;
+        width: 25px;
+        height: 28px;
+      }
+
+      .cards-container {
+        gap: 8px;
+        padding: 6px;
+      }
+
+      .group-card-body {
+        padding: 6px;
+      }
+
+      .m-card {
+        min-width: 0;
+        padding: 9px;
+      }
+
+      .m-card-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .m-card-header > div:first-child {
+        min-width: 0;
+        flex: 1 1 180px;
+        flex-wrap: wrap;
+        row-gap: 4px;
+      }
+
+      .m-card-header > div:last-child {
+        margin-left: auto;
+      }
+
+      .tracking-tag {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .m-card-actions {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .m-card-actions .btn-touch-action {
+        flex: 1 1 64px;
+        min-width: 64px;
+        padding: 8px 4px;
+        font-size: 10px;
+      }
+
+      .m-card-actions .btn-act-camera {
+        flex: 0 0 36px;
+        width: 36px;
+        height: 36px;
+      }
+
+      .m-card-actions .drawer-sort-btn {
+        min-width: 36px;
+        min-height: 32px;
+      }
+
+      .m-card-actions .del-btn {
+        min-width: 36px;
+        min-height: 32px;
+        margin-left: auto;
+      }
+
+      .bottom-bar {
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 12px 8px 18px;
+      }
+
+      .batch-floating-bar {
+        left: 10px;
+        right: 10px;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        bottom: max(10px, env(safe-area-inset-bottom));
+      }
+
+      .batch-bar-info {
+        min-width: 0;
+        flex: 1 1 auto;
+        white-space: normal;
+      }
+
+      .batch-bar-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+
+      .btn-batch-action {
+        min-height: 36px;
+        padding: 7px 10px;
+      }
+
+      .map-view-container {
+        height: calc(100vh - 220px);
+        height: calc(100dvh - 220px);
+        min-height: 320px;
+      }
+
+      .map-header-bar {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 7px;
+        padding: 7px 8px;
+      }
+
+      .map-summary-info,
+      .map-filter-pills {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+      }
+
+      .map-filter-pills {
+        gap: 4px;
+      }
+
+      .map-filter-btn {
+        min-height: 28px;
+        padding: 4px 8px;
+      }
+
+      .map-street-ribbon {
+        padding-right: 8px;
+        padding-left: 8px;
+      }
+
+      .map-bottom-card {
+        max-height: 75vh;
+        max-height: 75dvh;
+        padding: 10px 12px calc(14px + env(safe-area-inset-bottom));
+      }
+
+      .bottom-sheet-backdrop {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      .bottom-sheet {
+        max-height: 92vh;
+        max-height: calc(92dvh - env(safe-area-inset-bottom));
+      }
+
+      .sheet-header {
+        align-items: flex-start;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .sheet-header h3 {
+        min-width: 0;
+        flex: 1 1 auto;
+        line-height: 1.25;
+      }
+
+      .sheet-close {
+        flex: 0 0 auto;
+      }
+
+      .sheet-body {
+        padding: 12px;
+      }
+
+      .sync-modal-backdrop {
+        align-items: flex-end;
+        padding: 8px;
+      }
+
+      .sync-modal {
+        max-height: 92vh;
+        max-height: calc(92dvh - env(safe-area-inset-bottom));
+        border-radius: 16px 16px 0 0;
+      }
+
+      .sync-modal-header {
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .sync-modal-title {
+        min-width: 0;
+      }
+
+      .sync-modal-title h3,
+      .ai-modal-title h3 {
+        line-height: 1.25;
+      }
+
+      .sync-modal-body,
+      .ai-modal-body {
+        padding: 12px;
+      }
+
+      .ai-route-modal {
+        max-height: 92vh;
+        max-height: calc(92dvh - env(safe-area-inset-bottom));
+      }
+
+      .ai-modal-header {
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .ai-modal-title {
+        min-width: 0;
+      }
+
+      .toast-box {
+        max-width: calc(100vw - 24px);
+        white-space: normal;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .header-actions {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .btn-header:nth-child(-n + 3) {
+        grid-column: span 2;
+      }
+
+      .btn-header:nth-child(n + 4) {
+        grid-column: span 3;
+      }
+
+      .view-mode-tab {
+        gap: 2px;
+        font-size: 9px;
+      }
+
+      .tbl-row-main {
+        grid-template-columns: 36px minmax(0, 1fr) 78px;
+        column-gap: 5px;
+        padding-right: 6px;
+        padding-left: 6px;
+      }
+
+      .tbl-col-act {
+        gap: 2px;
+      }
+
+      .tbl-btn-cam,
+      .tbl-btn-gtc,
+      .tbl-btn-gtb {
+        flex-basis: 23px;
+        width: 23px;
+      }
+
+      .m-card-actions .btn-touch-action {
+        flex-basis: 58px;
+        min-width: 58px;
+        padding-right: 3px;
+        padding-left: 3px;
+        font-size: 9.5px;
+      }
+    }
   </style>
 </head>
 <body>
