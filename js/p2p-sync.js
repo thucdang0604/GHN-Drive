@@ -15,6 +15,8 @@
   var PREFIX_P2P = 'GHNP2P:';
   var currentPeer = null;
   var currentConn = null;
+  var currentConnectTimeout = null;
+  var currentConnectCancel = null;
 
   function getPeerConstructor() {
     if (typeof Peer !== 'undefined') return Peer;
@@ -238,13 +240,9 @@
       var qrPayload = PREFIX_P2P + peerId;
 
       var peerConfig = {
-        debug: 1,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
-          ]
-        }
+        // Giữ config mặc định của PeerJS 1.5.4 (STUN + TURN).
+        // Tự ghi đè iceServers bằng STUN-only làm một số mạng NAT/firewall không kết nối được.
+        debug: 1
       };
 
       try {
@@ -333,13 +331,8 @@
       var peerId = raw.indexOf('ghn-sync-') === 0 ? raw : formatPeerId(raw);
 
       var clientPeerConfig = {
-        debug: 1,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
-          ]
-        }
+        // Dùng cùng config mặc định của PeerJS với máy gửi để có TURN relay dự phòng.
+        debug: 1
       };
 
       try {
@@ -349,35 +342,82 @@
         return null;
       }
 
-      if (options.onConnecting) options.onConnecting(peerId);
+      var peer = currentPeer;
+      var finished = false;
+      var receivedData = false;
+      var timeoutMs = Math.max(10000, Number(options.timeoutMs) || 60000);
 
-      currentPeer.on('open', function() {
-        var conn = currentPeer.connect(peerId, { reliable: true });
+      function clearConnectTimeout() {
+        if (currentPeer === peer && currentConnectTimeout !== null) {
+          clearTimeout(currentConnectTimeout);
+          currentConnectTimeout = null;
+        }
+      }
+
+      function failConnection(err) {
+        if (finished) return;
+        finished = true;
+        currentConnectCancel = null;
+        clearConnectTimeout();
+        if (options.onError) options.onError(err);
+        if (currentPeer === peer) P2PSync.disconnect();
+      }
+
+      currentConnectCancel = function() {
+        finished = true;
+        clearConnectTimeout();
+      };
+
+      currentConnectTimeout = setTimeout(function() {
+        var err = new Error('Quá ' + Math.round(timeoutMs / 1000) + ' giây chưa nhận được dữ liệu từ Máy A. Hãy tạo PIN mới; nếu vẫn lỗi, thử đổi Wi-Fi/4G vì mạng có thể đang chặn WebRTC.');
+        err.type = 'connection-timeout';
+        failConnection(err);
+      }, timeoutMs);
+
+      peer.on('open', function() {
+        if (finished || currentPeer !== peer) return;
+        if (options.onConnecting) options.onConnecting(peerId);
+
+        var conn = peer.connect(peerId, { reliable: true });
         currentConn = conn;
 
         conn.on('open', function() {
+          if (finished) return;
           if (options.onConnected) options.onConnected(conn);
         });
 
         conn.on('data', function(data) {
+          receivedData = true;
+          if (!finished) {
+            finished = true;
+            clearConnectTimeout();
+          }
           if (options.onData) options.onData(data);
           if (options.onDataReceived) options.onDataReceived(data);
         });
 
         conn.on('error', function(err) {
           console.warn('Lỗi kênh kết nối P2P:', err);
-          if (options.onError) options.onError(err);
+          failConnection(err);
         });
 
         conn.on('close', function() {
-          if (options.onClose) options.onClose();
+          if (!finished) {
+            var err = new Error('Kết nối với Máy A đã đóng trước khi nhận dữ liệu. Hãy tạo PIN mới và thử lại.');
+            err.type = 'connection-closed';
+            failConnection(err);
+          } else if (receivedData && options.onClose) {
+            options.onClose();
+          }
         });
       });
 
-      currentPeer.on('error', function(err) {
+      peer.on('error', function(err) {
         console.warn('Lỗi kết nối P2P:', err);
         var msg = 'Không thể kết nối tới máy kia (' + (err.type || err.message || err) + '). Hãy đảm bảo cả 2 máy đều có mạng và máy A đang mở mã!';
-        if (options.onError) options.onError(new Error(msg));
+        var wrappedError = new Error(msg);
+        wrappedError.type = err.type || 'connection-error';
+        failConnection(wrappedError);
       });
 
       return {
@@ -395,6 +435,15 @@
      * Ngắt mọi kết nối P2P hiện có
      */
     disconnect: function() {
+      if (currentConnectCancel) {
+        var cancelConnect = currentConnectCancel;
+        currentConnectCancel = null;
+        cancelConnect();
+      }
+      if (currentConnectTimeout !== null) {
+        clearTimeout(currentConnectTimeout);
+        currentConnectTimeout = null;
+      }
       if (currentConn) {
         try { currentConn.close(); } catch(e) {}
         currentConn = null;
