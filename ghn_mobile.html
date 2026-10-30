@@ -2057,6 +2057,9 @@
       border: 1.5px solid #e2e8f0;
       border-radius: 8px;
       padding: 10px 12px;
+      width: 100%;
+      font: inherit;
+      text-align: left;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -5193,16 +5196,13 @@
       justify-content: flex-end;
     }
 
-    .shipper-mode .header-actions .btn-header:not(.sync):not(.clean),
+    .shipper-mode .header-actions .btn-header:not(.sync):not(.clean):not(.trip),
     .shipper-mode #btnToggleView,
     .shipper-mode #tabViewTable,
     .shipper-mode #tableViewContainer,
-    .shipper-mode .group-toolbar,
     .shipper-mode .bottom-bar,
     .shipper-mode #batchFloatingBar,
-    .shipper-mode #batchGroupSheetBackdrop,
     .shipper-mode #pasteSheetBackdrop,
-    .shipper-mode #tripSheetBackdrop,
     .shipper-mode #groupRulesModalBackdrop,
     .shipper-mode #aiRouteModal,
     .shipper-mode #gpsAccuracyModal,
@@ -5222,11 +5222,6 @@
     .shipper-mode .del-btn,
     .shipper-mode .btn-row-edit-loc {
       display: none !important;
-    }
-
-    .shipper-mode .m-card .card-grp-btn {
-      pointer-events: none;
-      cursor: default !important;
     }
 
     .shipper-mode #mapStatAccuracyChip,
@@ -5252,6 +5247,148 @@
 
     .shipper-mode #panelImportQR {
       display: block !important;
+    }
+
+    .shipper-mode #groupToolbar {
+      flex-wrap: wrap;
+      gap: 6px;
+      overflow: visible;
+      padding: 8px 10px;
+      white-space: normal;
+    }
+
+    .shipper-mode #groupToolbar .rules,
+    .shipper-mode #groupToolbar .sort-street,
+    .shipper-mode #groupToolbar .auto,
+    .shipper-mode #btnToggleCollapseAll {
+      display: none !important;
+    }
+
+    .shipper-mode #groupToolbar .add,
+    .shipper-mode #btnToggleCardDetails {
+      flex: 1 1 0;
+      justify-content: center;
+      min-width: 0;
+      min-height: 38px;
+      padding: 7px 8px;
+      font-size: 11px;
+    }
+
+    .shipper-mode .group-card-empty {
+      padding: 12px 10px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      color: #64748b;
+      font-size: 11.5px;
+      text-align: center;
+    }
+
+    .shipper-mode .m-card-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin: 2px 0 3px;
+      min-width: 0;
+    }
+
+    .shipper-mode .m-card-summary-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .shipper-mode .m-card-summary-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .shipper-mode .m-card-summary-address {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+      color: #475569;
+    }
+
+    .shipper-mode .m-card-summary-status {
+      flex: 0 0 auto;
+      max-width: 45%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .shipper-mode .m-card-summary .phone-btn {
+      flex: 0 0 auto;
+      min-height: 38px;
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+
+    .shipper-mode .m-card-summary .card-grp-btn {
+      flex: 0 0 auto;
+      max-width: 48%;
+      min-height: 38px;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 10px;
+      font-weight: 700;
+      touch-action: manipulation;
+    }
+
+    .shipper-mode .m-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .shipper-mode .m-card .card-grp-btn {
+      min-height: 38px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .shipper-mode .m-card-expand-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 40px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 19px;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .shipper-mode .m-card.is-collapsed .m-card-body,
+    .shipper-mode .m-card.is-collapsed .m-card-actions {
+      display: none !important;
+    }
+
+    .shipper-mode .m-card.is-expanded .m-card-summary {
+      display: none !important;
     }
   </style>
 </head>
@@ -5411,6 +5548,9 @@
       </button>
       <button id="btnToggleCollapseAll" class="btn-group-pill collapse" title="Thu gọn hoặc mở rộng tất cả các nhóm">
         🔽 Thu Gọn
+      </button>
+      <button id="btnToggleCardDetails" class="btn-group-pill collapse" type="button" title="Mở rộng hoặc thu gọn chi tiết các thẻ">
+        ▾ Mở Rộng Thẻ
       </button>
     </section>
 
@@ -6517,6 +6657,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
       // Trạng thái Bản đồ Lộ trình
       var currentView = 'cards'; // 'cards' | 'map' (table remains available on desktop)
+      var cardExpandedState = Object.create(null);
       var mobileMap = null;
       var mapMarkers = {};
       var routePolyline = null;
@@ -8830,15 +8971,16 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         list.innerHTML = '';
         groups.forEach(function(g) {
           var count = orders.filter(function(o) { return (o.groupId || 'group_ungrouped') === g.id; }).length;
-          var div = document.createElement('div');
-          div.className = 'batch-group-option';
-          div.innerHTML = 
+          var option = document.createElement('button');
+          option.type = 'button';
+          option.className = 'batch-group-option';
+          option.innerHTML =
             '<span class="bg-name">📁 ' + escapeHtml(g.name) + '</span>' +
             '<span class="bg-count">' + count + ' đơn</span>';
-          div.addEventListener('click', function() {
+          option.addEventListener('click', function() {
             applyBatchMoveToGroup(g.id);
           });
-          list.appendChild(div);
+          list.appendChild(option);
         });
 
         modal.style.display = 'flex';
@@ -12224,7 +12366,49 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         });
       })();
 
-      // Render Dạng Thẻ gom nhóm
+      function updateCardDetailsToggleButton() {
+        var button = document.getElementById('btnToggleCardDetails');
+        if (!button) return;
+        var cards = Array.prototype.slice.call(document.querySelectorAll('#cardsViewContainer .m-card'));
+        var allExpanded = cards.length > 0 && cards.every(function(card) {
+          return card.classList.contains('is-expanded');
+        });
+        button.textContent = allExpanded ? '▴ Thu Gọn Thẻ' : '▾ Mở Rộng Thẻ';
+        button.title = allExpanded ? 'Thu gọn chi tiết tất cả các thẻ' : 'Mở rộng chi tiết tất cả các thẻ';
+        button.setAttribute('aria-expanded', allExpanded ? 'true' : 'false');
+      }
+
+      function setCardDetailsExpanded(card, expanded, skipButtonUpdate) {
+        if (!card) return;
+        card.classList.toggle('is-expanded', expanded);
+        card.classList.toggle('is-collapsed', !expanded);
+        var orderId = card.getAttribute('data-order-id');
+        if (orderId) cardExpandedState[orderId] = expanded;
+        var button = card.querySelector('.m-card-expand-toggle');
+        if (button) {
+          button.textContent = expanded ? '⌃' : '⌄';
+          button.title = expanded ? 'Thu gọn chi tiết đơn' : 'Mở rộng chi tiết đơn';
+          button.setAttribute('aria-label', button.title);
+          button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+        if (!skipButtonUpdate) updateCardDetailsToggleButton();
+      }
+
+      function toggleAllCardDetails() {
+        var cards = Array.prototype.slice.call(document.querySelectorAll('#cardsViewContainer .m-card'));
+        if (cards.length === 0) {
+          showToast('Chưa có đơn để mở rộng');
+          return;
+        }
+        var shouldExpand = cards.some(function(card) {
+          return !card.classList.contains('is-expanded');
+        });
+        cards.forEach(function(card) {
+          setCardDetailsExpanded(card, shouldExpand, true);
+        });
+        updateCardDetailsToggleButton();
+      }
+
       // Render Dạng Thẻ gom nhóm
       function renderCards(list) {
         var container = document.getElementById('cardsViewContainer');
@@ -12232,7 +12416,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         groups.forEach(function(group) {
           var groupOrders = list.filter(function(o) { return o.groupId === group.id; });
-          if (groupOrders.length === 0) return;
+          var allGroupOrders = orders.filter(function(o) { return o.groupId === group.id; });
+          if (groupOrders.length === 0 && allGroupOrders.length > 0) return;
 
           var section = document.createElement('div');
           section.className = 'group-card-section';
@@ -12278,6 +12463,13 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var body = document.createElement('div');
             body.className = 'group-card-body';
 
+            if (groupOrders.length === 0) {
+              var emptyMessage = document.createElement('div');
+              emptyMessage.className = 'group-card-empty';
+              emptyMessage.textContent = 'Nhóm chưa có đơn. Chạm tên nhóm trên một thẻ để chuyển đơn vào đây.';
+              body.appendChild(emptyMessage);
+            }
+
             groupOrders.forEach(function(item) {
               var origIdx = orders.findIndex(function(x) { return x.id === item.id; });
               var idxInGroup = groupOrders.findIndex(function(x) { return x.id === item.id; });
@@ -12290,7 +12482,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               var isGtb = (item.status === 'gtb');
 
               var statusClass = isChoCk ? 'status-cho-ck' : (isGtc ? 'status-gtc' : (isGtb ? 'status-gtb' : 'status-pending'));
-              card.className = 'm-card ' + statusClass + (isChecked ? ' row-selected' : '');
+              var isCardExpanded = cardExpandedState[item.id] === true;
+              card.className = 'm-card ' + statusClass + (isChecked ? ' row-selected' : '') + (isCardExpanded ? ' is-expanded' : ' is-collapsed');
+              card.setAttribute('data-order-id', item.id);
 
               var statusBadgeHtml = '';
               if (isChoCk) {
@@ -12326,9 +12520,23 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                     '<span class="m-stt-badge">#' + stt + '</span>' +
                     '<span class="tracking-tag">' + (escapeHtml(item.trackingCode) || 'Chưa có mã') + '</span>' +
                   '</div>' +
-                  '<div style="text-align: right;">' +
-                    '<span class="cod-tag">' + formatMoney(item.codAmount) + '</span>' +
-                    (item.gtbThu ? '<br><span class="gtb-tag" title="Tiền thu khi GTB">Thu GTB: ' + formatMoney(item.gtbThu) + '</span>' : '') +
+                  '<div class="m-card-meta">' +
+                    '<div style="text-align: right;">' +
+                      '<span class="cod-tag">' + formatMoney(item.codAmount) + '</span>' +
+                      (item.gtbThu ? '<br><span class="gtb-tag" title="Tiền thu khi GTB">Thu GTB: ' + formatMoney(item.gtbThu) + '</span>' : '') +
+                    '</div>' +
+                    '<button type="button" class="m-card-expand-toggle" title="' + (isCardExpanded ? 'Thu gọn chi tiết đơn' : 'Mở rộng chi tiết đơn') + '" aria-label="' + (isCardExpanded ? 'Thu gọn chi tiết đơn' : 'Mở rộng chi tiết đơn') + '" aria-expanded="' + (isCardExpanded ? 'true' : 'false') + '">' + (isCardExpanded ? '⌃' : '⌄') + '</button>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="m-card-summary">' +
+                  '<div class="m-card-summary-line">' +
+                    '<span class="m-card-summary-name">👤 ' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span>' +
+                    (item.phone ? '<a href="tel:' + item.phone + '" class="phone-btn">📞 ' + item.phone + '</a>' : '') +
+                    (statusBadgeHtml ? '<span class="m-card-summary-status">' + statusBadgeHtml + '</span>' : '') +
+                  '</div>' +
+                  '<div class="m-card-summary-line">' +
+                    '<span class="m-card-summary-address" title="' + escapeHtml(item.address || 'Chưa có địa chỉ') + '">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</span>' +
+                    '<button type="button" class="order-group-badge card-grp-btn" title="Chạm để chuyển đơn sang nhóm khác">📁 ' + escapeHtml(group.name) + ' ▾</button>' +
                   '</div>' +
                 '</div>' +
                 '<div class="m-card-body">' +
@@ -12336,7 +12544,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                     '<span class="cust-name">👤 ' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span>' +
                     (item.phone ? '<a href="tel:' + item.phone + '" class="phone-btn">📞 ' + item.phone + '</a>' : '') +
                     (item.secondaryPhone ? '<a href="tel:' + item.secondaryPhone + '" class="phone-btn" style="background:#f1f5f9; color:#0369a1; border-color:#bae6fd;">📞 Phụ: ' + item.secondaryPhone + '</a>' : '') +
-                    '<span class="order-group-badge card-grp-btn" title="Chuyển nhóm">📁 ' + escapeHtml(group.name) + '</span>' +
+                    '<button type="button" class="order-group-badge card-grp-btn" title="Chạm để chuyển đơn sang nhóm khác">📁 ' + escapeHtml(group.name) + ' ▾</button>' +
                   '</div>' +
                   '<div class="addr-text" style="margin-top: 4px;">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</div>' +
                   '<div style="margin-top: 5px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">' +
@@ -12367,6 +12575,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 btnLiveCard.addEventListener('click', function(e) {
                   e.stopPropagation();
                   startLiveDelivery(item);
+                });
+              }
+
+              var btnExpandCard = card.querySelector('.m-card-expand-toggle');
+              if (btnExpandCard) {
+                btnExpandCard.addEventListener('click', function(e) {
+                  e.stopPropagation();
+                  setCardDetailsExpanded(card, !card.classList.contains('is-expanded'));
                 });
               }
 
@@ -12468,9 +12684,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 }
               });
 
-              card.querySelector('.card-grp-btn').addEventListener('click', function(e) {
-                e.stopPropagation();
-                promptChangeOrderGroup(item.id);
+              card.querySelectorAll('.card-grp-btn').forEach(function(btnChangeGroup) {
+                btnChangeGroup.addEventListener('click', function(e) {
+                  e.stopPropagation();
+                  promptChangeOrderGroup(item.id);
+                });
               });
 
               body.appendChild(card);
@@ -12481,6 +12699,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
           container.appendChild(section);
         });
+        updateCardDetailsToggleButton();
       }
 
       // 8. Chức năng Quét mã QR / Barcode bằng Camera
@@ -13108,6 +13327,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         document.getElementById('btnAutoGroup').addEventListener('click', autoGroupAllOrders);
         document.getElementById('btnNewGroup').addEventListener('click', createNewGroup);
         document.getElementById('btnToggleCollapseAll').addEventListener('click', toggleAllCollapse);
+        var btnToggleCardDetails = document.getElementById('btnToggleCardDetails');
+        if (btnToggleCardDetails) btnToggleCardDetails.addEventListener('click', toggleAllCardDetails);
 
         // Mở popup dán nhanh
         var pasteSheet = document.getElementById('pasteSheetBackdrop');
