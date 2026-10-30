@@ -5182,9 +5182,80 @@
         font-size: 9.5px;
       }
     }
+
+    /* Giao diện tác nghiệp shipper: các công cụ điều phối vẫn có trên desktop. */
+    .shipper-mode .header-version-badge {
+      display: none !important;
+    }
+
+    .shipper-mode .header-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .shipper-mode .header-actions .btn-header:not(.sync),
+    .shipper-mode #btnToggleView,
+    .shipper-mode #tabViewTable,
+    .shipper-mode #tableViewContainer,
+    .shipper-mode .group-toolbar,
+    .shipper-mode .bottom-bar,
+    .shipper-mode #batchFloatingBar,
+    .shipper-mode #batchGroupSheetBackdrop,
+    .shipper-mode #pasteSheetBackdrop,
+    .shipper-mode #tripSheetBackdrop,
+    .shipper-mode #groupRulesModalBackdrop,
+    .shipper-mode #aiRouteModal,
+    .shipper-mode #gpsAccuracyModal,
+    .shipper-mode #updateLocationModal {
+      display: none !important;
+    }
+
+    .shipper-mode .view-mode-tab[data-view="cards"],
+    .shipper-mode .view-mode-tab[data-view="map"] {
+      flex: 1 1 0;
+    }
+
+    .shipper-mode .card-order-chk,
+    .shipper-mode .card-grp-chk,
+    .shipper-mode .drawer-sort-wrap,
+    .shipper-mode .drawer-sort-btn,
+    .shipper-mode .del-btn,
+    .shipper-mode .btn-row-edit-loc {
+      display: none !important;
+    }
+
+    .shipper-mode .m-card .card-grp-btn {
+      pointer-events: none;
+      cursor: default !important;
+    }
+
+    .shipper-mode #mapStatAccuracyChip,
+    .shipper-mode #mapStatOutlierChip,
+    .shipper-mode #btnToggleMarkerLabel,
+    .shipper-mode #btnToggleBuildingNumbers,
+    .shipper-mode #btnMapSortStreet,
+    .shipper-mode #btnMapHealSync,
+    .shipper-mode #mapPickModeBanner,
+    .shipper-mode #mapSuggestPreviewBanner,
+    .shipper-mode #btnMapQuickFixOutlier {
+      display: none !important;
+    }
+
+    .shipper-mode .sync-tabs {
+      grid-template-columns: 1fr;
+    }
+
+    .shipper-mode #tabExportQR,
+    .shipper-mode #panelExportQR {
+      display: none !important;
+    }
+
+    .shipper-mode #panelImportQR {
+      display: block !important;
+    }
   </style>
 </head>
-<body>
+<body class="shipper-mode">
 
   <!-- ==========================================================
        HEADER, CONTROLS & STATS (Ghim thanh công cụ trên cùng)
@@ -5193,7 +5264,7 @@
   <header class="mobile-header">
       <div class="header-title">
         <span class="header-badge">GHN</span>
-        <h1>Quản Lý Đơn Giao <span class="header-version-badge" id="appVersionBadge">v2.7.1</span></h1>
+        <h1>Đơn Giao Hàng <span class="header-version-badge" id="appVersionBadge">v2.7.1</span></h1>
       </div>
       <div class="header-actions">
         <button id="btnOpenPasteSheetHeader" class="btn-header paste" title="Dán nhanh danh sách đơn hàng">
@@ -5205,8 +5276,8 @@
         <button id="btnOpenAiRouteModal" class="btn-header ai-route" title="AI 9Router: Tối ưu lộ trình & Phân nhóm thông minh">
           🤖 AI Lộ Trình
         </button>
-        <button id="btnOpenQrSyncModal" class="btn-header sync" title="Đồng bộ dữ liệu sang thiết bị khác (P2P / Mã PIN)">
-          📲 Đồng Bộ
+        <button id="btnOpenQrSyncModal" class="btn-header sync" title="Nhận danh sách đơn từ máy tính bằng mã PIN hoặc QR">
+          📲 Nhận Đơn
         </button>
         <button id="btnCleanData" class="btn-header clean" title="Dọn dẹp các đơn đã GTC/GTB">
           🗑 Dọn Cũ
@@ -5312,10 +5383,10 @@
 
     <!-- THANH CHỌN CHẾ ĐỘ XEM (BẢNG / THẺ / BẢN ĐỒ LỘ TRÌNH) -->
     <section class="view-mode-bar">
-      <button class="view-mode-tab active" data-view="table" id="tabViewTable">
+      <button class="view-mode-tab" data-view="table" id="tabViewTable">
         <span>📊 Bảng</span>
       </button>
-      <button class="view-mode-tab" data-view="cards" id="tabViewCards">
+      <button class="view-mode-tab active" data-view="cards" id="tabViewCards">
         <span>📋 Thẻ</span>
       </button>
       <button class="view-mode-tab map-tab" data-view="map" id="tabViewMap">
@@ -5346,7 +5417,7 @@
   <!-- ==========================================================
        1. BẢNG HTML ĐỘC LẬP TRÊN ĐIỆN THOẠI (TABLE VIEW)
        ========================================================== -->
-  <main class="table-container" id="tableViewContainer">
+  <main class="table-container" id="tableViewContainer" style="display: none;">
     <table class="ghn-table" id="ordersTable">
       <thead>
         <tr>
@@ -5366,7 +5437,7 @@
   <!-- ==========================================================
        2. DẠNG THẺ (CARD VIEW)
        ========================================================== -->
-  <section class="cards-container" id="cardsViewContainer" style="display: none;">
+  <section class="cards-container" id="cardsViewContainer" style="display: flex;">
     <!-- Dữ liệu thẻ theo từng nhóm sẽ render tại đây -->
   </section>
 
@@ -6190,7 +6261,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       <div class="sync-modal-header">
         <div class="sync-modal-title">
           <span>📲</span>
-          <h3>Đồng Bộ Dữ Liệu Thiết Bị</h3>
+          <h3>Nhận Đơn Từ Máy Tính</h3>
         </div>
         <button type="button" id="btnCloseQrSync" class="sync-close-btn">&times;</button>
       </div>
@@ -6198,12 +6269,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       <div class="sync-modal-body">
         <!-- Chế độ Đồng bộ: Gửi (Máy A) hoặc Nhận (Máy B) -->
         <div class="sync-tabs">
-          <button type="button" class="sync-tab-btn active" id="tabExportQR">Thiết Bị Gửi (Máy A)</button>
-          <button type="button" class="sync-tab-btn" id="tabImportQR">Thiết Bị Nhận (Máy B)</button>
+          <button type="button" class="sync-tab-btn" id="tabExportQR">Thiết Bị Gửi (Máy A)</button>
+          <button type="button" class="sync-tab-btn active" id="tabImportQR">Nhận Đơn Từ Máy Tính</button>
         </div>
 
         <!-- PANEL 1: GỬI DỮ LIỆU (MÁY A) -->
-        <div id="panelExportQR" class="sync-panel active">
+        <div id="panelExportQR" class="sync-panel" style="display: none;">
           <!-- Chọn loại dữ liệu muốn đồng bộ -->
           <div class="sync-type-selector">
             <label class="sync-type-card active" id="optPatchMode">
@@ -6252,11 +6323,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         </div>
 
         <!-- PANEL 2: NHẬN DỮ LIỆU (MÁY B) -->
-        <div id="panelImportQR" class="sync-panel" style="display: none;">
+        <div id="panelImportQR" class="sync-panel active" style="display: block;">
           <!-- Khung Nhận P2P -->
           <div id="p2pClientBox" style="display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 14px 8px;">
             <div style="width: 100%; max-width: 320px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px 12px; text-align: center;">
-              <div style="font-size: 11.5px; font-weight: 800; color: #1e3a8a; margin-bottom: 8px;">NHẬP 6 SỐ PIN TỪ MÁY GỬI:</div>
+              <div style="font-size: 11.5px; font-weight: 800; color: #1e3a8a; margin-bottom: 8px;">NHẬP 6 SỐ PIN HIỂN THỊ TRÊN MÁY TÍNH:</div>
               <div style="display: flex; gap: 8px;">
                 <input type="number" id="inputP2PPin" placeholder="6 số PIN..." maxlength="6" style="flex: 1; padding: 12px 14px; border: 1.5px solid #3b82f6; border-radius: 8px; font-size: 20px; font-weight: 800; text-align: center; letter-spacing: 4px; font-family: monospace; background: #ffffff;">
                 <button type="button" id="btnConnectP2PPin" style="background: #2563eb; color: #ffffff; border: none; border-radius: 8px; padding: 0 18px; font-size: 14px; font-weight: 800; cursor: pointer;">
@@ -6445,7 +6516,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       var allCollapsed = false;
 
       // Trạng thái Bản đồ Lộ trình
-      var currentView = 'table'; // 'table' | 'cards' | 'map'
+      var currentView = 'cards'; // 'cards' | 'map' (table remains available on desktop)
       var mobileMap = null;
       var mapMarkers = {};
       var routePolyline = null;
@@ -11342,6 +11413,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       function switchView(mode) {
+        if (document.body.classList.contains('shipper-mode') && mode === 'table') mode = 'cards';
         currentView = mode;
         var tableContainer = document.getElementById('tableViewContainer');
         var cardsContainer = document.getElementById('cardsViewContainer');
@@ -13012,7 +13084,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           });
         }
 
-        // Đổi chế độ xem Bảng / Thẻ / Bản Đồ Lộ Trình
+        // Đổi chế độ xem Thẻ / Bản Đồ Lộ Trình trên mobile
         var btnToggle = document.getElementById('btnToggleView');
         var tabTable = document.getElementById('tabViewTable');
         var tabCards = document.getElementById('tabViewCards');
@@ -13024,13 +13096,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         if (btnToggle) {
           btnToggle.addEventListener('click', function() {
-            if (currentView === 'table') {
-              switchView('cards');
-            } else if (currentView === 'cards') {
-              switchView('map');
-            } else {
-              switchView('table');
-            }
+            switchView(currentView === 'map' ? 'cards' : 'map');
           });
         }
 
