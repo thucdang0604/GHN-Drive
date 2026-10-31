@@ -5479,26 +5479,29 @@
 
     .shipper-mode .m-card-collapsed-line .tbl-addr-line {
       display: block;
-      overflow: hidden;
+      overflow: visible;
+      overflow-wrap: anywhere;
       font-size: 12.5px;
       line-height: 1.25;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      text-overflow: clip;
+      white-space: normal;
     }
 
     .shipper-mode .m-card-collapsed-line .tbl-sub-line {
-      flex-wrap: nowrap;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 4px;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .shipper-mode .m-card-collapsed-line .tbl-cust-name {
-      flex: 1 1 auto;
+      flex: 0 1 auto;
       min-width: 0;
       max-width: none;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      overflow: visible;
+      overflow-wrap: anywhere;
+      text-overflow: clip;
+      white-space: normal;
     }
 
     .shipper-mode .m-card-collapsed-line .tbl-col-cod {
