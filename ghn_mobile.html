@@ -5443,11 +5443,20 @@
 
     .shipper-mode .m-card-collapsed-line {
       display: none;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 3px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .shipper-mode .m-card-collapsed-main,
+    .shipper-mode .m-card-collapsed-address-row {
+      display: flex;
       align-items: center;
       gap: 4px;
       width: 100%;
       min-width: 0;
-      white-space: nowrap;
     }
 
     .shipper-mode .m-card-collapsed-stt,
@@ -5465,24 +5474,25 @@
     }
 
     .shipper-mode .m-card-collapsed-code {
-      flex: 0 1 108px;
-      min-width: 34px;
-      max-width: 108px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      flex: 0 1 auto;
+      width: max-content;
+      min-width: 0;
+      max-width: 48%;
+      overflow-wrap: anywhere;
+      white-space: normal;
       padding: 2px 4px;
-      font-size: 10px;
+      font-size: 9.5px;
+      line-height: 1.2;
     }
 
     .shipper-mode .m-card-collapsed-address {
       flex: 1 1 auto;
       min-width: 20px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      overflow-wrap: anywhere;
+      white-space: normal;
       color: #334155;
-      font-size: 10.5px;
+      font-size: 11px;
+      line-height: 1.3;
     }
 
     .shipper-mode .m-card-collapsed-money {
@@ -5495,7 +5505,7 @@
       font-size: 10px;
     }
 
-    .shipper-mode .m-card-collapsed-line .m-card-expand-toggle {
+    .shipper-mode .m-card-collapsed-main .m-card-expand-toggle {
       width: 28px;
       height: 28px;
       flex-basis: 28px;
@@ -13152,16 +13162,19 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
               card.innerHTML = 
                 '<div class="m-card-collapsed-line">' +
-                  '<span class="m-card-collapsed-stt">#' + stt + '</span>' +
-                  '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
-                  '<span class="tracking-tag m-card-collapsed-code" title="' + escapeHtml(item.trackingCode || 'Chưa có mã') + '">' + (escapeHtml(item.trackingCode) || 'Chưa có mã') + '</span>' +
-                  '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
-                  '<span class="m-card-collapsed-phone" title="4 số cuối SĐT">☎ ' + escapeHtml(phoneLast4) + '</span>' +
-                  '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
-                  '<span class="m-card-collapsed-address" title="' + escapeHtml(item.address || 'Chưa có địa chỉ') + '">' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</span>' +
-                  '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
-                  '<span class="m-card-collapsed-money">' + formatMoney(item.codAmount) + '</span>' +
-                  '<button type="button" class="m-card-expand-toggle" title="Mở rộng chi tiết đơn" aria-label="Mở rộng chi tiết đơn" aria-expanded="false">⌄</button>' +
+                  '<div class="m-card-collapsed-main">' +
+                    '<span class="m-card-collapsed-stt">#' + stt + '</span>' +
+                    '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
+                    '<span class="tracking-tag m-card-collapsed-code" title="' + escapeHtml(item.trackingCode || 'Chưa có mã') + '">' + (escapeHtml(item.trackingCode) || 'Chưa có mã') + '</span>' +
+                    '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
+                    '<span class="m-card-collapsed-phone" title="4 số cuối SĐT">☎ ' + escapeHtml(phoneLast4) + '</span>' +
+                    '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
+                    '<span class="m-card-collapsed-money">' + formatMoney(item.codAmount) + '</span>' +
+                    '<button type="button" class="m-card-expand-toggle" title="Mở rộng chi tiết đơn" aria-label="Mở rộng chi tiết đơn" aria-expanded="false">⌄</button>' +
+                  '</div>' +
+                  '<div class="m-card-collapsed-address-row">' +
+                    '<span class="m-card-collapsed-address" title="' + escapeHtml(item.address || 'Chưa có địa chỉ') + '">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</span>' +
+                  '</div>' +
                 '</div>' +
                 '<div class="m-card-header">' +
                   '<div style="display: flex; align-items: center; gap: 6px;">' +
