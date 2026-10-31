@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bảng Giao Hàng GHN - Tối Ưu Mobile</title>
-  <meta http-equiv="refresh" content="0; url=ghn_mobile.html">
+  <meta http-equiv="refresh" content="0; url=ghn_mobile.html?v=cc58d89-2row">
   <script>
-    window.location.replace('ghn_mobile.html' + window.location.search + window.location.hash);
+    // shortcut: GitHub Pages caches HTML for 10 minutes, bump this version after each mobile release.
+    var mobileUrlParams = new URLSearchParams(window.location.search);
+    mobileUrlParams.set('v', 'cc58d89-2row');
+    window.location.replace('ghn_mobile.html?' + mobileUrlParams.toString() + window.location.hash);
   </script>
 </head>
 <body style="font-family: sans-serif; text-align: center; padding: 40px 20px; color: #334155; background: #f8fafc;">
   <h2>Đang chuyển hướng tới Bảng Giao Hàng GHN Mobile...</h2>
-  <p>Nếu trang không tự chuyển, vui lòng <a href="ghn_mobile.html" style="color: #f26522; font-weight: bold;">bấm vào đây</a>.</p>
+  <p>Nếu trang không tự chuyển, vui lòng <a href="ghn_mobile.html?v=cc58d89-2row" style="color: #f26522; font-weight: bold;">bấm vào đây</a>.</p>
 </body>
 </html>

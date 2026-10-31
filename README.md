@@ -11,7 +11,7 @@
 - Đồng bộ P2P chế độ toàn bộ truyền kèm ảnh giao hàng (tối đa 2 MB mỗi ảnh, 20 MB mỗi lượt); chế độ cập nhật nhanh không truyền ảnh.
 
 ## 🌐 Trải Nghiệm Trực Tiếp Trên GitHub Pages
-Truy cập ngay trên điện thoại: **[https://thucdang0604.github.io/GHN-Drive/](https://thucdang0604.github.io/GHN-Drive/)** (hoặc `ghn_mobile.html`)
+Truy cập ngay trên điện thoại: **[https://thucdang0604.github.io/GHN-Drive/?v=cc58d89-2row](https://thucdang0604.github.io/GHN-Drive/?v=cc58d89-2row)** (hoặc `ghn_mobile.html?v=cc58d89-2row`)
 
 ## 📁 Cấu Trúc Dự Án
 - `ghn_mobile.html`: Ứng dụng giao hàng cho điện thoại; thư viện QR và bản đồ được lưu cùng dự án. Tải Google Sheet, truyền P2P và tải ảnh bản đồ cần kết nối mạng.
