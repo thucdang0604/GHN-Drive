@@ -11,6 +11,7 @@ import socket
 import datetime
 import ipaddress
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from urllib.parse import unquote, urlsplit
 
 # Dam bao in tieng Viet UTF-8 tren Windows console
 if sys.stdout.encoding != 'utf-8':
@@ -20,8 +21,27 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 PORT = 3443
-CERT_FILE = "cert.pem"
-KEY_FILE = "key.pem"
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+CERT_FILE = os.path.join(APP_ROOT, "cert.pem")
+KEY_FILE = os.path.join(APP_ROOT, "key.pem")
+
+def is_forbidden_path(request_path):
+    parts = [part.lower() for part in unquote(urlsplit(request_path).path).split("/") if part]
+    return any(part.startswith(".") or part in {"output", "node_modules", "__pycache__"} or part.endswith((".pem", ".key")) for part in parts)
+
+class AppRequestHandler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=APP_ROOT, **kwargs)
+
+    def send_head(self):
+        if is_forbidden_path(self.path):
+            self.send_error(403, "Access denied")
+            return None
+        return super().send_head()
+
+    def list_directory(self, path):
+        self.send_error(403, "Directory listing is disabled")
+        return None
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -90,7 +110,7 @@ def run():
     local_ip = get_local_ip()
     
     server_address = ('0.0.0.0', PORT)
-    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+    httpd = HTTPServer(server_address, AppRequestHandler)
 
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)

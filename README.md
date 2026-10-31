@@ -2,7 +2,7 @@
 
 Ứng dụng web tối ưu cho thiết bị di động hỗ trợ nhân viên giao nhận (shipper) GHN:
 - Tải đơn theo mã chuyến từ Google Sheet hoặc dán text thông minh.
-- Nhận diện Landmark POI (tòa nhà, trung tâm thương mại, chung cư) với GPS chuẩn xác 100%.
+- Nhận diện Landmark POI để gợi ý tọa độ tham chiếu cho tòa nhà, trung tâm thương mại và chung cư.
 - Bóc tách SĐT phụ và ghi chú giờ giấc, lưu ý giao hàng nhúng trong địa chỉ.
 - Tự động nắn sửa tọa độ đa tầng (Landmark POI, Co-location theo mã băm địa điểm, Bắt dính số nhà, Tim đường Street Median).
 - Sắp xếp thứ tự giao hàng linh hoạt theo số nhà chẵn/lẻ hoặc kéo thả.
@@ -13,7 +13,9 @@
 Truy cập ngay trên điện thoại: **[https://thucdang0604.github.io/GHN-Drive/](https://thucdang0604.github.io/GHN-Drive/)** (hoặc `ghn_mobile.html`)
 
 ## 📁 Cấu Trúc Dự Án
-- `ghn_mobile.html`: File ứng dụng độc lập 100% (All-in-One: HTML, CSS, JavaScript nhúng) chuyên dụng cho điện thoại di động, hoạt động mượt mà cả khi offline hoặc mở trực tiếp.
+- `ghn_mobile.html`: Ứng dụng giao hàng cho điện thoại; thư viện QR và bản đồ được lưu cùng dự án. Tải Google Sheet, truyền P2P và tải ảnh bản đồ cần kết nối mạng.
 - `index.html`: Trang chuyển hướng tự động vào `ghn_mobile.html` khi truy cập qua GitHub Pages.
 - `desktop.html`: Phiên bản giao diện máy tính nhiều cột.
 - `serve_https.py`: Công cụ chạy server HTTPS cục bộ hỗ trợ mở Camera quét mã qua mạng LAN.
+
+Để chạy server HTTPS trên LAN, cài Python dependency trước bằng `python -m pip install -r requirements.txt`, sau đó chạy `python serve_https.py` từ thư mục dự án.

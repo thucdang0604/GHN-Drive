@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <!-- Thư viện quét mã QR / Barcode đa nền tảng -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="js/html5-qrcode.min.js"></script>
   <!-- Thư viện sinh mã QR offline 100% -->
   <script src="js/qrcode.min.js"></script>
   <!-- Thư viện nén dữ liệu LZString offline 100% -->
@@ -528,7 +528,7 @@ giá tiền: 0 VNĐ."
           <div id="desktopP2PHostBox" style="display: flex; flex-direction: column; align-items: center; background: #f8fafc; border: 1px dashed var(--border-color); border-radius: 10px; padding: 14px;">
             <div class="p2p-pin-box" style="width: 100%; max-width: 280px; margin-bottom: 10px;">
               <div style="font-size: 11px; color: #64748b; font-weight: 700;">MÃ PIN KẾT NỐI (GÕ TRÊN ĐIỆN THOẠI):</div>
-              <div id="desktopP2PHostPinValue" class="p2p-pin-value" style="font-size: 26px; letter-spacing: 4px;">------</div>
+              <div id="desktopP2PHostPinValue" class="p2p-pin-value" style="font-size: 12px; letter-spacing: .5px; overflow-wrap: anywhere;">------</div>
             </div>
 
             <div id="desktopP2PCanvasContainer" style="width: 200px; height: 200px; background: #fff; padding: 8px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center;"></div>
@@ -556,9 +556,9 @@ giá tiền: 0 VNĐ."
         <!-- PANEL 2: NHẬN TỪ ĐIỆN THOẠI (CLIENT) -->
         <div id="desktopP2PClientPanel" style="display: none; flex-direction: column; gap: 12px; align-items: center; padding: 10px 0;">
           <div style="width: 100%; max-width: 340px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: center;">
-            <div style="font-size: 12px; font-weight: 800; color: #1e3a8a; margin-bottom: 8px;">NHẬP 6 SỐ PIN TỪ ĐIỆN THOẠI:</div>
+            <div style="font-size: 12px; font-weight: 800; color: #1e3a8a; margin-bottom: 8px;">NHẬP MÃ KẾT NỐI TỪ ĐIỆN THOẠI:</div>
             <div style="display: flex; gap: 8px;">
-              <input type="number" id="desktopInputP2PPin" placeholder="6 số PIN..." maxlength="6" style="flex: 1; padding: 10px 12px; border: 1.5px solid #3b82f6; border-radius: 8px; font-size: 18px; font-weight: 800; text-align: center; letter-spacing: 4px; font-family: monospace; background: #ffffff;">
+              <input type="text" id="desktopInputP2PPin" placeholder="Mã kết nối..." maxlength="48" autocapitalize="off" spellcheck="false" autocomplete="off" style="flex: 1; min-width: 0; padding: 10px 8px; border: 1.5px solid #3b82f6; border-radius: 8px; font-size: 14px; font-weight: 800; text-align: center; letter-spacing: 1px; font-family: monospace; background: #ffffff;">
               <button type="button" id="desktopBtnConnectP2PPin" style="background: #2563eb; color: #ffffff; border: none; border-radius: 8px; padding: 0 16px; font-size: 13.5px; font-weight: 800; cursor: pointer;">
                 Nhận Ngay
               </button>
@@ -966,7 +966,7 @@ giá tiền: 0 VNĐ."
 
         <div>
           <div style="font-size: 11.5px; color: #64748b; margin-bottom: 2px;">HOẶC NHẬP MÃ PIN TRÊN ĐIỆN THOẠI:</div>
-          <div id="fleetP2PPinValue" style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; letter-spacing: 6px; color: #0284c7; background: #e0f2fe; padding: 6px 18px; border-radius: 8px; display: inline-block;">
+          <div id="fleetP2PPinValue" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 800; letter-spacing: .5px; overflow-wrap: anywhere; color: #0284c7; background: #e0f2fe; padding: 6px 18px; border-radius: 8px; display: inline-block;">
             ------
           </div>
         </div>

@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
-  currentOrders = StorageService.loadSampleIfEmpty();
+  currentOrders = StorageService.getOrders();
   currentGroups = StorageService.getGroups();
   ensureGroupIntegrity();
   renderApp();
@@ -851,6 +851,7 @@ function setupDesktopQrScanner() {
               }
             }
             const res = qrsync.applyPatch({ v: payload.v || 2, g: allGroups, p: allPatches }, currentOrders, currentGroups);
+            if (!res.valid) { showToast('Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên.', 'error'); return; }
             currentOrders = res.orders;
             currentGroups = res.groups;
             StorageService.saveOrders(currentOrders);
@@ -868,6 +869,7 @@ function setupDesktopQrScanner() {
               }
             }
             const res = qrsync.applyFull({ v: payload.v || 2, g: allGroups, o: allOrders }, currentOrders, currentGroups, false);
+            if (!res.valid) { showToast('Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên.', 'error'); return; }
             currentOrders = res.orders;
             currentGroups = res.groups;
             ensureGroupIntegrity();
@@ -884,6 +886,7 @@ function setupDesktopQrScanner() {
         closeDesktopScanner();
         if (payload.t === 'patch') {
           const res = qrsync.applyPatch(payload, currentOrders, currentGroups);
+          if (!res.valid) { showToast('Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên.', 'error'); return; }
           currentOrders = res.orders;
           currentGroups = res.groups;
           StorageService.saveOrders(currentOrders);
@@ -893,6 +896,7 @@ function setupDesktopQrScanner() {
           return;
         } else if (payload.t === 'full') {
           const res = qrsync.applyFull(payload, currentOrders, currentGroups, false);
+          if (!res.valid) { showToast('Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên.', 'error'); return; }
           currentOrders = res.orders;
           currentGroups = res.groups;
           ensureGroupIntegrity();
@@ -996,6 +1000,8 @@ function setupDesktopQrSync() {
     }
 
     desktopP2PHost = p2pSync.createHost({
+      authorizeConnection: () => window.confirm('Một thiết bị đang yêu cầu nhận dữ liệu chuyến. Bạn có xác nhận đây là thiết bị shipper cần nhận đơn không?'),
+      onUnauthorized: () => { if (desktopP2PHostStatusText) desktopP2PHostStatusText.textContent = 'Đã từ chối kết nối; mã vẫn chờ thiết bị được xác nhận.'; },
       onReady: (roomInfo) => {
         if (desktopP2PHostPinValue) desktopP2PHostPinValue.textContent = roomInfo.pin;
         if (desktopP2PHostStatusText) {
@@ -1038,7 +1044,7 @@ function setupDesktopQrSync() {
       },
       onError: (err) => {
         if (desktopP2PHostStatusText) {
-          desktopP2PHostStatusText.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Lỗi P2P: ${err.message || err}</span>`;
+          desktopP2PHostStatusText.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Lỗi P2P: ${escapeHtml(err.message || err)}</span>`;
         }
       }
     });
@@ -1088,16 +1094,15 @@ function setupDesktopQrSync() {
   // Xử lý Nhận dữ liệu từ điện thoại bằng mã PIN
   if (btnConnectPin && inputPin) {
     btnConnectPin.addEventListener('click', () => {
-      const pin = inputPin.value.trim();
-      if (!pin || pin.length < 6) {
-        showToast('Vui lòng nhập đủ 6 chữ số PIN từ điện thoại!', 'error');
+      const pin = inputPin.value.trim().toLowerCase();
+      const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+      if (!p2pSync || !p2pSync.isValidConnectionCode(pin)) {
+        showToast('Vui lòng nhập mã kết nối hợp lệ từ điện thoại!', 'error');
         return;
       }
-      const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
-      if (!p2pSync) return;
 
       if (clientStatus) {
-        clientStatus.innerHTML = `<span class="pulse-dot"></span> ⏳ Đang kết nối tới điện thoại qua mã PIN <strong>${pin}</strong>...`;
+        clientStatus.innerHTML = `<span class="pulse-dot"></span> ⏳ Đang kết nối tới điện thoại qua mã <strong>${escapeHtml(pin)}</strong>...`;
       }
       btnConnectPin.disabled = true;
 
@@ -1110,18 +1115,23 @@ function setupDesktopQrSync() {
         },
         onData: (data) => {
           btnConnectPin.disabled = false;
-          if (!data || !data.payload) return;
+          if (!data || data.type !== 'ghn_p2p_sync' || !data.payload) return;
           const p = data.payload;
           if (p.t === 'patch') {
             const res = p2pSync.applyPatch(p, currentOrders, currentGroups);
+            if (!res.valid) { showToast('Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên.', 'error'); return; }
             currentOrders = res.orders;
             currentGroups = res.groups;
             showToast(`🎉 Đã cập nhật trạng thái/tọa độ cho ${res.matchedCount} đơn!`, 'success');
           } else if (p.t === 'full') {
             const res = p2pSync.applyFull(p, currentOrders, currentGroups, false);
+            if (!res.valid) { showToast('Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên.', 'error'); return; }
             currentOrders = res.orders;
             currentGroups = res.groups;
             showToast(`🎉 Đã nạp thành công ${res.importedCount} đơn từ điện thoại!`, 'success');
+          } else {
+            showToast('Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên.', 'error');
+            return;
           }
           ensureGroupIntegrity();
           StorageService.saveOrders(currentOrders);
@@ -1132,7 +1142,7 @@ function setupDesktopQrSync() {
         },
         onError: (err) => {
           btnConnectPin.disabled = false;
-          if (clientStatus) clientStatus.innerHTML = `<span style="color:#ef4444; font-weight:700;">❌ Lỗi: ${err.message || err}</span>`;
+          if (clientStatus) clientStatus.innerHTML = `<span style="color:#ef4444; font-weight:700;">❌ Lỗi: ${escapeHtml(err.message || err)}</span>`;
         }
       });
     });
@@ -1663,7 +1673,7 @@ function renderDesktopMap() {
                 <div style="font-size: 11.5px; color: #475569; margin-bottom: 2px;">${escapeHtml(o.item.address)}</div>
                 <div style="font-size: 11.5px; display: flex; justify-content: space-between; align-items: center;">
                   <span>COD: <strong style="color: #f26522;">${formatCurrency(o.item.codAmount)}</strong></span>
-                  ${o.item.phone ? `<a href="tel:${o.item.phone}" style="color: #0284c7; text-decoration: none; font-weight: 700;">📞 Gọi</a>` : ''}
+                  ${o.item.phone ? `<a href="tel:${safeTel(o.item.phone)}" style="color: #0284c7; text-decoration: none; font-weight: 700;">📞 Gọi</a>` : ''}
                 </div>
               </div>
             `).join('')}
@@ -1693,7 +1703,7 @@ function renderDesktopMap() {
         }
       } else if (o.item.status === 'gtb') {
         const reason = o.item.gtbReason || (o.item.subStatus === 'hen_giao_lai' ? 'Hẹn giao lại' : (o.item.subStatus === 'knm' ? 'KNM' : (o.item.subStatus === 'tu_choi' ? 'Từ chối nhận' : '')));
-        statusText = reason ? `✕ GTB (${reason})` : '✕ Giao thất bại (GTB)';
+        statusText = reason ? `✕ GTB (${escapeHtml(reason)})` : '✕ Giao thất bại (GTB)';
         statusColor = '#dc2626';
       }
       popupContent = `
@@ -1710,8 +1720,8 @@ function renderDesktopMap() {
             ${o.item.gtbThu ? `<br>GTB thu: <strong style="color: #dc2626;">${formatCurrency(o.item.gtbThu)}</strong>` : ''}
           </div>
           <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
-            ${o.item.phone ? `<a href="tel:${o.item.phone}" style="background: #e0f2fe; color: #0369a1; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">📞 Gọi ${o.item.phone}</a>` : ''}
-            <a href="${gmapsUrl}" target="_blank" style="background: #f0fdf4; color: #15803d; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">🧭 Dẫn đường</a>
+            ${o.item.phone ? `<a href="tel:${safeTel(o.item.phone)}" style="background: #e0f2fe; color: #0369a1; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">📞 Gọi ${escapeHtml(o.item.phone)}</a>` : ''}
+            <a href="${gmapsUrl}" target="_blank" rel="noopener noreferrer" style="background: #f0fdf4; color: #15803d; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">🧭 Dẫn đường</a>
           </div>
           <button type="button" class="btn-desktop-edit-loc" style="width: 100%; font-size: 11.5px; padding: 5px 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; cursor: pointer; font-weight: 700;" onclick="window.openDesktopUpdateLocModalById('${o.item.id}', ${o.stt})">
             📍 Sửa vị trí / Chọn trên bản đồ
@@ -1936,6 +1946,7 @@ function createOrderCard(order, routeNumber, activeOrders, groupName) {
   const isMissingNum = order.hasHouseNumber === false;
   const isHealed = !!order.isGpsHealed;
   const isOutlier = !!order.isGpsOutlier;
+  const deliveryPhotoHref = safeDeliveryPhotoUrl(order.deliveryPhoto);
   const secPhone = order.secondaryPhone && order.secondaryPhone !== order.phone ? order.secondaryPhone : null;
   const mapsUrl = hasGps 
     ? `https://www.google.com/maps/dir/?api=1&destination=${order.lat},${order.lng}`
@@ -1980,7 +1991,7 @@ function createOrderCard(order, routeNumber, activeOrders, groupName) {
           </svg>
         </span>
         <span class="status-badge ${statusClass}">${statusText}</span>
-        ${order.deliveryPhoto ? `<a href="${order.deliveryPhoto}" target="_blank" class="badge-geo-alert" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; text-decoration:none;" title="Xem ảnh chụp khi giao">📸 Có ảnh</a>` : ''}
+        ${deliveryPhotoHref ? `<a href="${escapeHtml(deliveryPhotoHref)}" target="_blank" rel="noopener noreferrer" class="badge-geo-alert" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; text-decoration:none;" title="Xem ảnh chụp khi giao">📸 Có ảnh</a>` : ''}
         ${isMissingNum ? `<span class="badge-geo-alert missing" title="Địa chỉ thiếu số nhà cụ thể (chỉ có tên đường/phường). Hãy gọi khách khi tới gần!">⚠️ Thiếu số</span>` : ''}
         ${isHealed ? `<span class="badge-geo-alert healed" title="Tọa độ đã được hệ thống tự động nắn chuẩn">⚡ Đã nắn GPS</span>` : ''}
         ${isOutlier ? `<span class="badge-geo-alert outlier" title="Tọa độ bị lệch > ${order.gpsOutlierDist || 1000}m so với tuyến đường">⚠️ Lệch GPS</span>` : ''}
@@ -1993,16 +2004,16 @@ function createOrderCard(order, routeNumber, activeOrders, groupName) {
       <div class="order-recipient">
         <span class="customer-name">${escapeHtml(order.customerName || 'Khách hàng')}</span>
         ${order.phone ? `
-          <a href="tel:${order.phone}" class="customer-phone" title="Gọi điện cho khách">
+          <a href="tel:${safeTel(order.phone)}" class="customer-phone" title="Gọi điện cho khách">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
             </svg>
-            ${order.phone}
+            ${escapeHtml(order.phone)}
           </a>
         ` : ''}
         ${secPhone ? `
-          <a href="tel:${secPhone}" class="customer-phone sec-phone" title="Số điện thoại phụ bóc tách từ địa chỉ">
-            📞 Phụ: ${secPhone}
+          <a href="tel:${safeTel(secPhone)}" class="customer-phone sec-phone" title="Số điện thoại phụ bóc tách từ địa chỉ">
+            📞 Phụ: ${escapeHtml(secPhone)}
           </a>
         ` : ''}
         <span class="order-group-select-badge" title="Bấm để chuyển nhóm">📁 ${escapeHtml(groupName || 'Chưa phân nhóm')}</span>
@@ -2016,11 +2027,11 @@ function createOrderCard(order, routeNumber, activeOrders, groupName) {
         <span>
           ${escapeHtml(order.address || 'Không có địa chỉ')}
           ${hasGps ? `
-            <button type="button" class="btn-desktop-jump-map" data-order-id="${order.id}" title="Xem vị trí trên bản đồ lộ trình">
+            <button type="button" class="btn-desktop-jump-map" data-order-id="${escapeHtml(order.id)}" title="Xem vị trí trên bản đồ lộ trình">
               🗺️ Bản đồ
             </button>
           ` : ''}
-          <button type="button" class="btn-desktop-edit-loc" data-order-id="${order.id}" title="Chỉnh sửa hoặc ghim lại vị trí GPS chính xác">
+          <button type="button" class="btn-desktop-edit-loc" data-order-id="${escapeHtml(order.id)}" title="Chỉnh sửa hoặc ghim lại vị trí GPS chính xác">
             📍 Sửa vị trí
           </button>
           ${order.address || hasGps ? `
@@ -2262,6 +2273,21 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function safeTel(value) {
+  return String(value || '').replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+}
+
+function safeDeliveryPhotoUrl(value) {
+  const source = String(value || '').trim();
+  if (/^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(source)) return source;
+  try {
+    const url = new URL(source, window.location.href);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+  } catch (_) {
+    return '';
+  }
 }
 
 // ==========================================================
@@ -3701,7 +3727,7 @@ function setupDesktopFleetDispatch() {
         <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 8px;">
           <span style="font-weight: 700; color: #b45309; font-size: 11px;">${formatCurrency(o.codAmount || 0)}</span>
           <div class="fleet-transfer-wrap" style="position: relative;">
-            <button type="button" class="fleet-btn-transfer" data-order-id="${o.id}" title="Chuyển đơn này sang Shipper khác">
+            <button type="button" class="fleet-btn-transfer" data-order-id="${escapeHtml(o.id)}" title="Chuyển đơn này sang Shipper khác">
               <span>🔄 Chuyển tuyến</span>
             </button>
           </div>
@@ -4010,6 +4036,8 @@ function setupDesktopFleetDispatch() {
     }];
 
     fleetP2PHost = p2pSync.createHost({
+      authorizeConnection: () => window.confirm(`Cho phép thiết bị nhận chuyến của ${r.shipperName}?`),
+      onUnauthorized: () => { if (p2pStatus) p2pStatus.textContent = 'Đã từ chối kết nối; phòng vẫn chờ shipper.'; },
       onReady: (roomInfo) => {
         if (p2pPin) p2pPin.textContent = roomInfo.pin;
         if (p2pStatus) {
@@ -4042,7 +4070,7 @@ function setupDesktopFleetDispatch() {
       },
       onError: (err) => {
         if (p2pStatus) {
-          p2pStatus.innerHTML = `⚠️ Lỗi P2P: ${err.message || err}`;
+          p2pStatus.innerHTML = `⚠️ Lỗi P2P: ${escapeHtml(err.message || err)}`;
           p2pStatus.style.color = '#dc2626';
           p2pStatus.style.background = '#fef2f2';
         }

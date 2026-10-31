@@ -122,23 +122,6 @@ export const StorageService = {
   },
 
   /**
-   * Dọn dẹp các đơn hàng cũ đã xử lý xong (Trạng thái là GTC hoặc GTB)
-   * Trả về danh sách đơn còn lại (chỉ giữ lại đơn đang 'pending' hoặc chưa xong)
-   */
-  cleanProcessedOrders(onlyStatus = null) {
-    const current = this.getOrders();
-    let remaining;
-    if (onlyStatus) {
-      remaining = current.filter(o => o.status !== onlyStatus);
-    } else {
-      // Mặc định xóa tất cả đơn đã có trạng thái hoàn tất (GTC hoặc GTB)
-      remaining = current.filter(o => o.status === 'pending');
-    }
-    this.saveOrders(remaining);
-    return remaining;
-  },
-
-  /**
    * Xóa toàn bộ dữ liệu (Reset hoàn toàn)
    */
   clearAll() {
@@ -172,98 +155,6 @@ export const StorageService = {
       console.error('Lỗi khi lưu groups:', e);
       return false;
     }
-  },
-
-  /**
-   * Thêm dữ liệu mẫu ban đầu nếu người dùng chưa có đơn nào
-   */
-  loadSampleIfEmpty() {
-    const current = this.getOrders();
-    if (current.length === 0) {
-      const sample = [
-        {
-          id: 'ghn_sample_1',
-          trackingCode: 'VNGH80617648808',
-          customerName: 'Ngọc Ánh',
-          phone: '0969199184',
-          address: 'Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai, P. Võ Thị Sáu, Q. 3, TP.HCM',
-          codAmount: 0,
-          status: 'pending',
-          groupId: 'group_ungrouped',
-          lat: 10.779774,
-          lng: 106.693156,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'ghn_sample_2',
-          trackingCode: 'VNGH80617649912',
-          customerName: 'Trần Minh',
-          phone: '0908123456',
-          address: 'Tầng 12, Centec Tower, 72 Nguyễn Thị Minh Khai, Q. 3',
-          codAmount: 185000,
-          status: 'pending',
-          groupId: 'group_ungrouped',
-          lat: 10.779774,
-          lng: 106.693156,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'ghn_sample_3',
-          trackingCode: 'VNGH80617651034',
-          customerName: 'Phạm Thu Hương',
-          phone: '0912345678',
-          address: 'Tòa nhà Centec 72-74 Nguyễn Thị Minh Khai, Phường Võ Thị Sáu, Quận 3',
-          codAmount: 320000,
-          status: 'pending',
-          groupId: 'group_ungrouped',
-          lat: null,
-          lng: null,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'ghn_sample_4',
-          trackingCode: 'VNGH80617652156',
-          customerName: 'Lê Văn Hùng',
-          phone: '0987654321',
-          address: 'Vincom Center Đồng Khởi, 72 Lê Thánh Tôn, Bến Nghé, Quận 1',
-          codAmount: 250000,
-          status: 'pending',
-          groupId: 'group_ungrouped',
-          lat: 10.778000,
-          lng: 106.701800,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'ghn_sample_5',
-          trackingCode: 'VNGH80617653278',
-          customerName: 'Hoàng Lan',
-          phone: '0933557799',
-          address: '18 Nguyễn Thị Minh Khai, P. Đa Kao, Quận 1',
-          codAmount: 95000,
-          status: 'pending',
-          groupId: 'group_ungrouped',
-          lat: 10.787600,
-          lng: 106.699800,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'ghn_sample_6',
-          trackingCode: 'VNGH80617654390',
-          customerName: 'Đặng Quốc Bảo',
-          phone: '0977889900',
-          address: '154/8 Pasteur, P. Bến Nghé, Quận 1',
-          codAmount: 140000,
-          status: 'pending',
-          groupId: 'group_ungrouped',
-          lat: 10.781200,
-          lng: 106.698500,
-          createdAt: new Date().toISOString()
-        }
-      ];
-      this.saveOrders(sample);
-      return sample;
-    }
-    return current;
   },
 
   /**

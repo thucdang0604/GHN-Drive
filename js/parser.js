@@ -12,8 +12,8 @@
  * - Dán nhiều đơn cùng một lúc (hỗ trợ cả Tab-separated TSV từ Excel)
  */
 
-import { parseAndNormalizeAddress, healTripCoordinates, isValidCoord } from './geo-healer.js';
-export { parseAndNormalizeAddress, healTripCoordinates, isValidCoord };
+import { parseAndNormalizeAddress, healTripCoordinates, isValidCoord, calculateGpsAccuracyReport, DISTRICT_CENTERS } from './geo-healer.js';
+export { parseAndNormalizeAddress, healTripCoordinates, isValidCoord, calculateGpsAccuracyReport, DISTRICT_CENTERS };
 
 export function removeDiacritics(str) {
   if (!str) return '';

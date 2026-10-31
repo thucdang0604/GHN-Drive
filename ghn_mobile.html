@@ -2,10 +2,10 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bảng Giao Hàng GHN v2.6.0 - Tối Ưu Mobile</title>
   <!-- Thư viện quét mã QR / Barcode đa nền tảng (QR & Code 128 GHN) -->
-  <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script defer src="js/html5-qrcode.min.js"></script>
   <!-- Thư viện sinh mã QR offline 100% -->
   <script defer src="js/qrcode.min.js"></script>
   <!-- Thư viện truyền dữ liệu siêu tốc P2P WebRTC (AirDrop / Mã PIN) -->
@@ -14,8 +14,8 @@
   <!-- Module AI 9Router & Tối Ưu Hóa Lộ Trình -->
   <script defer src="js/ai-router.js"></script>
   <!-- Thư viện Bản đồ Leaflet (CDN online giúp file chạy độc lập 100% khi deploy) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="css/leaflet.css">
+  <script defer src="js/leaflet.js"></script>
   <style>
     /* ==========================================================
        HỆ THỐNG MÀU SẮC & BIẾN CƠ SỞ (GHN THEME)
@@ -2799,6 +2799,133 @@
       transform: scale(0.96);
     }
 
+    /* Chip đo lường độ chính xác GPS Giai đoạn 1 */
+    .map-stat-chip.accuracy-chip {
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #86efac;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.15s ease;
+    }
+    .map-stat-chip.accuracy-chip:active {
+      background: #dcfce7;
+      transform: scale(0.96);
+    }
+
+    /* Modal Báo Cáo Đo Lường & So Sánh Độ Chính Xác (Giai Đoạn 1) */
+    .accuracy-sheet {
+      background: #ffffff;
+      border-radius: 18px 18px 0 0;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .accuracy-hero {
+      background: linear-gradient(135deg, #0d3259 0%, #001f3f 100%);
+      color: #ffffff;
+      padding: 14px 16px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .accuracy-hero-score {
+      font-size: 32px;
+      font-weight: 900;
+      color: #34d399;
+      line-height: 1;
+    }
+    .accuracy-hero-desc {
+      font-size: 11.5px;
+      color: #cbd5e1;
+      margin-top: 4px;
+    }
+    .accuracy-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .accuracy-kpi-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .accuracy-kpi-card.highlight {
+      background: #f0fdf4;
+      border-color: #86efac;
+    }
+    .accuracy-kpi-card.purple {
+      background: #faf5ff;
+      border-color: #d8b4fe;
+    }
+    .accuracy-kpi-card.warning {
+      background: #fff7ed;
+      border-color: #fed7aa;
+    }
+    .accuracy-kpi-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .accuracy-kpi-label {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .accuracy-table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-top: 10px;
+      max-height: 380px;
+    }
+    .accuracy-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .accuracy-table th {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 700;
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid #cbd5e1;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .accuracy-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: top;
+    }
+    .accuracy-table tr:hover {
+      background: #f8fafc;
+    }
+    .accuracy-badge-tag {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .accuracy-badge-tag.tag-100 { background: #dcfce7; color: #15803d; }
+    .accuracy-badge-tag.tag-alley { background: #f3e8ff; color: #7e22ce; }
+    .accuracy-badge-tag.tag-hub { background: #fee2e2; color: #b91c1c; }
+    .accuracy-badge-tag.tag-median { background: #fef3c7; color: #b45309; }
+    .accuracy-badge-tag.tag-orig { background: #e0f2fe; color: #0369a1; }
+    .accuracy-badge-tag.tag-unmapped { background: #f1f5f9; color: #64748b; }
+
     /* Banner cảnh báo tọa độ lệch trong thẻ chi tiết */
     .map-card-outlier-banner {
       background: #fff1f2;
@@ -4570,6 +4697,7 @@
     .btn-precall-action:active {
       transform: scale(0.98);
     }
+
     /* Bố cục responsive cho điện thoại */
     @media (max-width: 600px) {
       html,
@@ -5591,6 +5719,7 @@
         <span class="map-stat-chip"><strong id="mapStatPoints">0</strong> điểm GPS</span>
         <span class="map-stat-chip pending"><strong id="mapStatPending">0</strong> chờ</span>
         <span class="map-stat-chip gtc"><strong id="mapStatGtc">0</strong> xong</span>
+        <span class="map-stat-chip accuracy-chip" id="mapStatAccuracyChip" title="Bấm để xem Báo Cáo Đo Lường & So Sánh Độ Chính Xác GPS (Giai Đoạn 1)"><strong id="mapStatAccuracyScore">--%</strong> 🎯 Chuẩn GPS</span>
         <span class="map-stat-chip outlier" id="mapStatOutlierChip" style="display: none;" title="Bấm để xem các đơn nghi ngờ sai lệch GPS"><strong id="mapStatOutlier">0</strong> ⚠️ lệch GPS</span>
       </div>
       <div class="map-filter-pills">
@@ -5750,6 +5879,79 @@
       <div class="sheet-body" style="padding: 12px 14px; overflow-y: auto;">
         <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Những đơn này thiếu kinh độ/vĩ độ nên không thể ghim lên bản đồ. Bạn có thể bấm định vị ngay hoặc chỉ đường Google Maps:</p>
         <div id="unmappedOrdersList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BÁO CÁO ĐO LƯỜNG & SO SÁNH ĐỘ CHÍNH XÁC GPS (GIAI ĐOẠN 1) -->
+  <div id="gpsAccuracyModal" class="bottom-sheet-backdrop">
+    <div class="bottom-sheet accuracy-sheet">
+      <div class="sheet-header">
+        <h2>🎯 Đo Lường & So Sánh Độ Chính Xác GPS</h2>
+        <button id="btnCloseAccuracyModal" class="sheet-close">&times;</button>
+      </div>
+      <div class="sheet-body" style="padding: 12px 14px; overflow-y: auto;">
+        <!-- Hero Box -->
+        <div class="accuracy-hero">
+          <div>
+            <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Độ Tin Cậy Định Vị (Giai Đoạn 1)</div>
+            <div class="accuracy-hero-desc">Bắt dính lùi cấp hẻm + Lọc tọa độ bưu cục ảo + Kiểm tra chéo quận</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="accuracy-hero-score" id="accHeroScore">0%</div>
+            <div style="font-size: 10px; color: #a7f3d0;" id="accHeroSubtitle">Đang tính toán...</div>
+          </div>
+        </div>
+
+        <!-- 4 KPI Cards -->
+        <div class="accuracy-kpi-grid">
+          <div class="accuracy-kpi-card highlight">
+            <span class="accuracy-kpi-val" id="accKpiAlley">0</span>
+            <span class="accuracy-kpi-label">🏘️ Cứu đơn Hẻm (Lùi cấp)</span>
+          </div>
+          <div class="accuracy-kpi-card highlight">
+            <span class="accuracy-kpi-val" id="accKpiLandmark">0</span>
+            <span class="accuracy-kpi-label">🏢 Landmark / Khớp 100%</span>
+          </div>
+          <div class="accuracy-kpi-card warning">
+            <span class="accuracy-kpi-val" id="accKpiFakeHub">0</span>
+            <span class="accuracy-kpi-label">⚠️ Triệt tiêu GPS bưu cục ảo</span>
+          </div>
+          <div class="accuracy-kpi-card warning">
+            <span class="accuracy-kpi-val" id="accKpiDistrict">0</span>
+            <span class="accuracy-kpi-label">🗺️ Lệch ranh giới Quận</span>
+          </div>
+        </div>
+
+        <!-- Nút chạy lại nắn sửa Giai đoạn 1 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <button type="button" id="btnRunHealPhase1" style="flex: 1; background: var(--ghn-orange); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            ⚡ Chạy Lại Nắn Sửa Giai Đoạn 1
+          </button>
+        </div>
+
+        <!-- Bảng đối chiếu chi tiết từng đơn hàng -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+          <strong style="font-size: 12px; color: var(--text-main);">📋 Bảng Đối Chiếu Chất Lượng Từng Đơn:</strong>
+          <span style="font-size: 11px; color: var(--text-muted);" id="accTableCount">0 đơn</span>
+        </div>
+
+        <div class="accuracy-table-wrap">
+          <table class="accuracy-table">
+            <thead>
+              <tr>
+                <th style="width: 28px;">#</th>
+                <th>Khách & Địa Chỉ</th>
+                <th>Phân Loại Vị Trí</th>
+                <th>Tin Cậy</th>
+                <th>Đánh Giá Cải Thiện</th>
+              </tr>
+            </thead>
+            <tbody id="accTableBody">
+              <!-- Render danh sách đối chiếu -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -6437,7 +6639,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           <div id="p2pHostBox" class="qr-display-card" style="display: flex; flex-direction: column; align-items: center;">
             <div class="p2p-pin-box" style="width: 100%; max-width: 280px; margin-bottom: 10px;">
               <div style="font-size: 11px; color: #64748b; font-weight: 700;">MÃ PIN KẾT NỐI (GÕ TRÊN MÁY B):</div>
-              <div id="p2pHostPinValue" class="p2p-pin-value" style="letter-spacing: 4px; font-size: 26px;">------</div>
+              <div id="p2pHostPinValue" class="p2p-pin-value" style="letter-spacing: .5px; font-size: 12px; overflow-wrap: anywhere;">------</div>
             </div>
 
             <div id="p2pHostCanvasContainer" class="qr-canvas-box" style="width: 190px; height: 190px;" title="Quét mã này để kết nối"></div>
@@ -6467,9 +6669,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           <!-- Khung Nhận P2P -->
           <div id="p2pClientBox" style="display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 14px 8px;">
             <div style="width: 100%; max-width: 320px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px 12px; text-align: center;">
-              <div style="font-size: 11.5px; font-weight: 800; color: #1e3a8a; margin-bottom: 8px;">NHẬP 6 SỐ PIN HIỂN THỊ TRÊN MÁY TÍNH:</div>
+                <div style="font-size: 11.5px; font-weight: 800; color: #1e3a8a; margin-bottom: 8px;">NHẬP MÃ KẾT NỐI HIỂN THỊ TRÊN MÁY TÍNH:</div>
               <div style="display: flex; gap: 8px;">
-                <input type="number" id="inputP2PPin" placeholder="6 số PIN..." maxlength="6" style="flex: 1; padding: 12px 14px; border: 1.5px solid #3b82f6; border-radius: 8px; font-size: 20px; font-weight: 800; text-align: center; letter-spacing: 4px; font-family: monospace; background: #ffffff;">
+                <input type="text" id="inputP2PPin" placeholder="Mã kết nối..." maxlength="48" autocapitalize="off" spellcheck="false" autocomplete="off" style="flex: 1; min-width: 0; padding: 12px 8px; border: 1.5px solid #3b82f6; border-radius: 8px; font-size: 14px; font-weight: 800; text-align: center; letter-spacing: 1px; font-family: monospace; background: #ffffff;">
                 <button type="button" id="btnConnectP2PPin" style="background: #2563eb; color: #ffffff; border: none; border-radius: 8px; padding: 0 18px; font-size: 14px; font-weight: 800; cursor: pointer;">
                   Nhận Ngay
                 </button>
@@ -6752,12 +6954,23 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             metaStore.put({ key: 'lastUpdated', value: new Date().toISOString() });
 
             ordStore.clear();
+            var orderIds = orders.map(function(o) { return o.id; });
+            var photoKeysRequest = photoStore.getAllKeys();
+            photoKeysRequest.onsuccess = function() {
+              photoKeysRequest.result.forEach(function(id) {
+                if (orderIds.indexOf(id) === -1) photoStore.delete(id);
+              });
+            };
             orders.forEach(function(o) {
-              ordStore.put(o);
+              var storedOrder = Object.assign({}, o);
+              delete storedOrder.deliveryPhoto;
+              if (o.deliveryPhoto || o.hasStoredPhoto) storedOrder.hasStoredPhoto = true;
+              ordStore.put(storedOrder);
               if (o.deliveryPhoto) {
                 photoStore.put({ id: o.id, photo: o.deliveryPhoto, updatedAt: o.deliveredAt || new Date().toISOString() });
               }
             });
+            tx.onerror = function() { console.warn('Lỗi giao dịch ghi IndexedDB:', tx.error); };
           } catch(err) {
             console.warn('Lỗi ghi IndexedDB:', err);
           }
@@ -6794,7 +7007,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       function loadData() {
         try {
           var rawCache = localStorage.getItem(VERIFIED_GEOCACHE_KEY);
-          if (rawCache) verifiedGeocache = JSON.parse(rawCache);
+          if (rawCache) {
+            var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+            var parsedCache = JSON.parse(rawCache);
+            verifiedGeocache = p2p ? p2p.sanitizeVerifiedGeocache(parsedCache) : {};
+          }
         } catch(e) {
           verifiedGeocache = {};
         }
@@ -6840,81 +7057,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           if (raw) {
             orders = JSON.parse(raw);
           } else {
-            orders = [
-              {
-                id: 'ghn_1',
-                trackingCode: 'VNGH80617648808',
-                customerName: 'Ngọc Ánh',
-                phone: '0969199184',
-                address: 'Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai, P. Võ Thị Sáu, Q. 3, TP.HCM',
-                codAmount: 0,
-                status: 'pending',
-                groupId: 'group_ungrouped',
-                lat: 10.779774,
-                lng: 106.693156
-              },
-              {
-                id: 'ghn_2',
-                trackingCode: 'VNGH80617649912',
-                customerName: 'Trần Minh',
-                phone: '0908123456',
-                address: 'Tầng 12, Centec Tower, 72 Nguyễn Thị Minh Khai, Q. 3',
-                codAmount: 185000,
-                status: 'pending',
-                groupId: 'group_ungrouped',
-                lat: 10.779774,
-                lng: 106.693156
-              },
-              {
-                id: 'ghn_3',
-                trackingCode: 'VNGH80617651034',
-                customerName: 'Phạm Thu Hương',
-                phone: '0912345678',
-                address: 'Tòa nhà Centec 72-74 Nguyễn Thị Minh Khai, Phường Võ Thị Sáu, Quận 3',
-                codAmount: 320000,
-                status: 'pending',
-                groupId: 'group_ungrouped',
-                lat: null,
-                lng: null
-              },
-              {
-                id: 'ghn_4',
-                trackingCode: 'VNGH80617652156',
-                customerName: 'Lê Văn Hùng',
-                phone: '0987654321',
-                address: 'Vincom Center Đồng Khởi, 72 Lê Thánh Tôn, Bến Nghé, Quận 1',
-                codAmount: 250000,
-                status: 'pending',
-                groupId: 'group_ungrouped',
-                lat: 10.778000,
-                lng: 106.701800
-              },
-              {
-                id: 'ghn_5',
-                trackingCode: 'VNGH80617653278',
-                customerName: 'Hoàng Lan',
-                phone: '0933557799',
-                address: '18 Nguyễn Thị Minh Khai, P. Đa Kao, Quận 1',
-                codAmount: 95000,
-                status: 'pending',
-                groupId: 'group_ungrouped',
-                lat: 10.787600,
-                lng: 106.699800
-              },
-              {
-                id: 'ghn_6',
-                trackingCode: 'VNGH80617654390',
-                customerName: 'Đặng Quốc Bảo',
-                phone: '0977889900',
-                address: '154/8 Pasteur, P. Bến Nghé, Quận 1',
-                codAmount: 140000,
-                status: 'pending',
-                groupId: 'group_ungrouped',
-                lat: 10.781200,
-                lng: 106.698500
-              }
-            ];
-            saveData();
+            orders = [];
           }
         } catch(e) {
           orders = [];
@@ -7242,6 +7385,27 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         }
       ];
 
+      // TỌA ĐỘ TRUNG TÂM VÀ BÁN KÍNH QUẬN/HUYỆN (CROSS-VALIDATION)
+      var DISTRICT_CENTERS = {
+        'q1': { name: 'Quận 1', lat: 10.7760, lng: 106.7000, radius: 4200 },
+        'q3': { name: 'Quận 3', lat: 10.7818, lng: 106.6850, radius: 3600 },
+        'q4': { name: 'Quận 4', lat: 10.7600, lng: 106.7050, radius: 3600 },
+        'q5': { name: 'Quận 5', lat: 10.7540, lng: 106.6660, radius: 3800 },
+        'q6': { name: 'Quận 6', lat: 10.7480, lng: 106.6350, radius: 4500 },
+        'q7': { name: 'Quận 7', lat: 10.7350, lng: 106.7200, radius: 6500 },
+        'q8': { name: 'Quận 8', lat: 10.7250, lng: 106.6500, radius: 6800 },
+        'q10': { name: 'Quận 10', lat: 10.7720, lng: 106.6660, radius: 3800 },
+        'q11': { name: 'Quận 11', lat: 10.7650, lng: 106.6500, radius: 4000 },
+        'q12': { name: 'Quận 12', lat: 10.8650, lng: 106.6450, radius: 8500 },
+        'binhthanh': { name: 'Bình Thạnh', lat: 10.8050, lng: 106.7100, radius: 5500 },
+        'phunhuan': { name: 'Phú Nhuận', lat: 10.7980, lng: 106.6800, radius: 3600 },
+        'tanbinh': { name: 'Tân Bình', lat: 10.8000, lng: 106.6550, radius: 5200 },
+        'tanphu': { name: 'Tân Phú', lat: 10.7900, lng: 106.6250, radius: 5500 },
+        'govap': { name: 'Gò Vấp', lat: 10.8400, lng: 106.6650, radius: 5800 },
+        'binhtan': { name: 'Bình Tân', lat: 10.7650, lng: 106.5950, radius: 7500 },
+        'thuduc': { name: 'Thủ Đức', lat: 10.8500, lng: 106.7700, radius: 12000 }
+      };
+
       function parseAndNormalizeAddress(rawAddress) {
         if (!rawAddress) {
           return {
@@ -7250,6 +7414,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             houseNumber: '',
             houseNumVal: 999999,
             hasHouseNumber: false,
+            isAlley: false,
+            alleyTrunk: '',
+            alleyLevels: [],
+            alleyFingerprints: [],
+            districtCode: '',
             buildingName: '',
             landmarkKey: null,
             landmarkCoords: null,
@@ -7323,8 +7492,6 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         }
 
         // 5. Xử lý thứ tự đảo: Tên đường trước, số nhà sau
-        // Chỉ đảo khi có từ "Đường/Phố/Đg/Đ." rõ ràng trước tên đường, hoặc có từ khóa "nhà số / số nhà"
-        // Tuyệt đối không khớp nếu bắt đầu bằng "Số <digits>" vì đó là tiền tố số nhà bình thường ("Số 62 Cao Thắng")
         var mNumberedStreet = addr.match(/^(?:đường|phố|đ\.|đg\.)\s*(số\s*\d+[a-zA-Z]?)\s*[,.\s]+(?:nhà\s*số|số\s*nhà|nhà|số)?\s*[:\s]*([\d/]+[a-zA-Z-]*)(.*)$/i);
         if (mNumberedStreet) {
           var streetPart = 'Đường ' + mNumberedStreet[1].trim();
@@ -7371,24 +7538,53 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           warningFlags.push('missing_house_number');
         }
 
-        // 7. Xây dựng locationFingerprint duy nhất
+        // 6.5 Bóc tách cấp hẻm đa tầng (Alley Hierarchy)
+        var isAlley = false;
+        var alleyTrunk = '';
+        var alleyLevels = [];
+
+        if (houseNumber && houseNumber.indexOf('/') !== -1) {
+          isAlley = true;
+          var hParts = houseNumber.split('/');
+          alleyTrunk = hParts[0].trim();
+          var curLvl = hParts[0].trim();
+          alleyLevels.push(curLvl);
+          for (var hp = 1; hp < hParts.length; hp++) {
+            curLvl += '/' + hParts[hp].trim();
+            alleyLevels.push(curLvl);
+          }
+        } else if (hasHouseNumber) {
+          alleyTrunk = houseNumber;
+          alleyLevels.push(houseNumber);
+        }
+
+        // 7. Xây dựng locationFingerprint duy nhất & Alley Fingerprints
         var locationFingerprint = '';
+        var normalizedAddress = removeDiacritics(addr).toLowerCase();
+        var numericDistrict = normalizedAddress.match(/\b(?:quan|q\.?|huyen)\s*(\d{1,2})\b/);
+        var compactAddress = normalizedAddress.replace(/[^a-z0-9]/g, '');
+        var distCode = numericDistrict
+          ? 'q' + numericDistrict[1]
+          : Object.keys(DISTRICT_CENTERS).find(function(key) { return key.indexOf('q') !== 0 && compactAddress.indexOf(key) !== -1; }) || '';
+        var distKey = distCode ? ('_' + distCode) : '';
+        var cleanStKey = removeDiacritics(streetName).toLowerCase().replace(/[^a-z0-9]/g, '');
+        var cleanHouseKey = houseNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
+
         if (matchedLandmark) {
           locationFingerprint = 'bld_' + matchedLandmark.key;
+        } else if (cleanStKey && cleanHouseKey) {
+          locationFingerprint = 'addr_' + cleanHouseKey + '_' + cleanStKey + distKey;
+        } else if (cleanStKey) {
+          locationFingerprint = 'street_' + cleanStKey + distKey;
         } else {
-          var cleanStKey = removeDiacritics(streetName).toLowerCase().replace(/[^a-z0-9]/g, '');
-          var cleanHouseKey = houseNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
-          var mDist = addr.match(/\b(?:quận|q\.?|huyện)\s*(\d+|[a-zà-ỹ]+)\b/i);
-          var distKey = mDist ? ('_q' + removeDiacritics(mDist[1]).toLowerCase().replace(/[^a-z0-9]/g, '')) : '';
-
-          if (cleanStKey && cleanHouseKey) {
-            locationFingerprint = 'addr_' + cleanHouseKey + '_' + cleanStKey + distKey;
-          } else if (cleanStKey) {
-            locationFingerprint = 'street_' + cleanStKey + distKey;
-          } else {
-            locationFingerprint = 'raw_' + Math.abs(hashString(addr));
-          }
+          locationFingerprint = 'raw_' + Math.abs(hashString(addr));
         }
+
+        var alleyFingerprints = (cleanStKey && alleyLevels.length > 0)
+          ? alleyLevels.map(function(lvl) {
+              return 'addr_' + lvl.toLowerCase().replace(/[^a-z0-9]/g, '') + '_' + cleanStKey + distKey;
+            })
+          : [];
 
         return {
           cleanAddress: addr,
@@ -7397,6 +7593,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           houseNumber: houseNumber,
           houseNumVal: houseNumVal,
           hasHouseNumber: hasHouseNumber,
+          isAlley: isAlley,
+          alleyTrunk: alleyTrunk,
+          alleyLevels: alleyLevels,
+          alleyFingerprints: alleyFingerprints,
+          districtCode: distCode,
           buildingName: matchedLandmark ? matchedLandmark.names[0] : '',
           landmarkKey: matchedLandmark ? matchedLandmark.key : null,
           landmarkCoords: matchedLandmark ? { lat: matchedLandmark.lat, lng: matchedLandmark.lng } : null,
@@ -9453,17 +9654,43 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           });
         }
 
-        // Nút Sửa chéo & đồng bộ tọa độ trùng địa chỉ
+        // Nút Sửa chéo & đồng bộ tọa độ trùng địa chỉ (Giai đoạn 1)
         var btnHeal = document.getElementById('btnMapHealSync');
         if (btnHeal) {
           btnHeal.addEventListener('click', function() {
-            var count = autoHealDuplicateAddresses(false);
-            if (count > 0) {
-              render();
-              showToast('⚡ Đã sửa chéo & đồng bộ vị trí cho ' + count + ' đơn cùng địa chỉ!');
-            } else {
-              showToast('Các đơn cùng địa chỉ đã có tọa độ đồng nhất!');
-            }
+            var count = autoHealDuplicateAddresses(true);
+            render();
+          });
+        }
+
+        // Chip xem Báo Cáo Đo Lường & So Sánh Độ Chính Xác GPS (Giai đoạn 1)
+        var accChip = document.getElementById('mapStatAccuracyChip');
+        if (accChip) {
+          accChip.addEventListener('click', function() {
+            openAccuracyModal();
+          });
+        }
+
+        var btnCloseAcc = document.getElementById('btnCloseAccuracyModal');
+        if (btnCloseAcc) {
+          btnCloseAcc.addEventListener('click', function() {
+            closeAccuracyModal();
+          });
+        }
+
+        var accModal = document.getElementById('gpsAccuracyModal');
+        if (accModal) {
+          accModal.addEventListener('click', function(e) {
+            if (e.target === accModal) closeAccuracyModal();
+          });
+        }
+
+        var btnHealP1 = document.getElementById('btnRunHealPhase1');
+        if (btnHealP1) {
+          btnHealP1.addEventListener('click', function() {
+            autoHealDuplicateAddresses(true);
+            render();
+            renderGpsAccuracyReportModal();
           });
         }
 
@@ -9482,6 +9709,87 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         // Khởi tạo bộ lắng nghe cho chế độ Xem trước vị trí gợi ý trên bản đồ
         setupSuggestPreviewListeners();
+      }
+
+      function openAccuracyModal() {
+        var modal = document.getElementById('gpsAccuracyModal');
+        if (!modal) return;
+        renderGpsAccuracyReportModal();
+        modal.classList.add('show');
+      }
+
+      function closeAccuracyModal() {
+        var modal = document.getElementById('gpsAccuracyModal');
+        if (modal) modal.classList.remove('show');
+      }
+
+      function renderGpsAccuracyReportModal() {
+        var report = calculateGpsAccuracyReport(orders);
+
+        var scoreEl = document.getElementById('accHeroScore');
+        var subEl = document.getElementById('accHeroSubtitle');
+        if (scoreEl) scoreEl.textContent = report.accuracyScore + '%';
+        if (subEl) {
+          var desc = report.accuracyScore >= 85 ? '✓ Rất tốt: Hầu hết đơn đã có vị trí chuẩn' :
+                     report.accuracyScore >= 65 ? 'Khá: Đã nắn sửa hẻm và bưu cục ảo' : 'Cần tra cứu thêm địa chỉ';
+          subEl.textContent = desc;
+        }
+
+        var kAlley = document.getElementById('accKpiAlley');
+        var kLm = document.getElementById('accKpiLandmark');
+        var kHub = document.getElementById('accKpiFakeHub');
+        var kDist = document.getElementById('accKpiDistrict');
+
+        if (kAlley) kAlley.textContent = report.alleySnappedCount;
+        if (kLm) kLm.textContent = report.landmarkCount + report.exactPeerCount;
+        if (kHub) kHub.textContent = report.fakeHubCount;
+        if (kDist) kDist.textContent = report.districtMismatchCount;
+
+        var countText = document.getElementById('accTableCount');
+        if (countText) countText.textContent = report.total + ' đơn (' + report.validGpsCount + ' có GPS)';
+
+        var tbody = document.getElementById('accTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (report.items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;">Chưa có đơn hàng nào trong chuyến</td></tr>';
+          return;
+        }
+
+        report.items.forEach(function(it) {
+          var tr = document.createElement('tr');
+          var tagClass = 'tag-orig';
+          if (it.level === 'landmark' || it.level === 'exact_peer') tagClass = 'tag-100';
+          else if (it.level === 'alley_snapped') tagClass = 'tag-alley';
+          else if (it.level === 'fake_hub' || it.level === 'district_mismatch' || it.level === 'gps_outlier') tagClass = 'tag-hub';
+          else if (it.level === 'street_median') tagClass = 'tag-median';
+          else if (it.level === 'unmapped') tagClass = 'tag-unmapped';
+
+          tr.innerHTML =
+            '<td style="font-weight: 700;">#' + it.stt + '</td>' +
+            '<td>' +
+              '<div style="font-weight: 700; color: var(--text-main);">' + escapeHtml(it.customerName) + '</div>' +
+              '<div style="font-size: 10px; color: var(--text-muted);">' + escapeHtml(it.address) + '</div>' +
+            '</td>' +
+            '<td><span class="accuracy-badge-tag ' + tagClass + '">' + escapeHtml(it.label) + '</span></td>' +
+            '<td style="font-weight: 800; color: ' + (it.confidence >= 80 ? '#15803d' : (it.confidence >= 50 ? '#b45309' : '#dc2626')) + ';">' + it.confidence + '%</td>' +
+            '<td style="font-size: 10.5px; color: #475569;">' + escapeHtml(it.improvement) + '</td>';
+
+          tr.style.cursor = 'pointer';
+          tr.title = 'Bấm để zoom đến đơn này trên bản đồ';
+          tr.addEventListener('click', function() {
+            closeAccuracyModal();
+            if (isValidCoordinate(it.lat, it.lng)) {
+              switchView('map');
+              jumpToOrderOnMap(it.order.id);
+            } else {
+              showToast('Đơn #' + it.stt + ' chưa có tọa độ GPS!');
+            }
+          });
+
+          tbody.appendChild(tr);
+        });
       }
 
       function updateShipperLocationMarker(lat, lng, accuracy) {
@@ -9914,26 +10222,107 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         outlierOrders = [];
         if (!ordersList || ordersList.length === 0) return;
 
-        // Gom các đơn theo tuyến đường để tìm tọa độ trung vị
-        var streetCoords = {};
+        // BƯỚC 1: Khởi tạo cờ cho tất cả đơn hàng
         for (var i = 0; i < ordersList.length; i++) {
           var o = ordersList[i];
           o.isGpsOutlier = false;
+          o.isFakeHubCoord = false;
+          o.isDistrictMismatch = false;
           o.gpsOutlierDist = 0;
+          o.outlierReason = '';
           o.streetMedianLat = null;
           o.streetMedianLng = null;
+        }
 
-          if (isValidCoordinate(o.lat, o.lng)) {
-            var info = extractStreetAndHouseNumber(o.address);
-            var st = info.street;
-            if (st) {
-              if (!streetCoords[st]) streetCoords[st] = [];
-              streetCoords[st].push({ lat: Number(o.lat), lng: Number(o.lng), order: o });
+        // BƯỚC 2: PHÁT HIỆN TỌA ĐỘ BƯU CỤC / UBND ẢO (FAKE HUB CLUSTERS)
+        // Nếu từ 2 đơn có tên đường khác nhau nhưng lại trùng khít tọa độ (< 15m)
+        var coordBuckets = {};
+        for (var cIdx = 0; cIdx < ordersList.length; cIdx++) {
+          var ordC = ordersList[cIdx];
+          if (isValidCoordinate(ordC.lat, ordC.lng)) {
+            var cKey = (Math.round(Number(ordC.lat) * 10000) / 10000) + '_' + (Math.round(Number(ordC.lng) * 10000) / 10000);
+            if (!coordBuckets[cKey]) coordBuckets[cKey] = [];
+            coordBuckets[cKey].push(ordC);
+          }
+        }
+
+        for (var bKey in coordBuckets) {
+          var bucket = coordBuckets[bKey];
+          if (bucket.length >= 2) {
+            var distinctStreets = {};
+            var streetCount = 0;
+            for (var b = 0; b < bucket.length; b++) {
+              var pInfoB = bucket[b].parsedGeo || parseAndNormalizeAddress(bucket[b].address);
+              var stB = (pInfoB.street || '').toLowerCase();
+              if (stB && stB !== 'chưa rõ đường') {
+                if (!distinctStreets[stB]) {
+                  distinctStreets[stB] = true;
+                  streetCount++;
+                }
+              }
+            }
+            if (streetCount >= 2) {
+              for (var bk = 0; bk < bucket.length; bk++) {
+                var oFake = bucket[bk];
+                oFake.isFakeHubCoord = true;
+                oFake.isGpsOutlier = true;
+                oFake.gpsOutlierDist = 999;
+                oFake.outlierReason = 'Tọa độ ảo bưu cục/UBND (gán chung cho nhiều đường khác nhau)';
+                if (outlierOrders.indexOf(oFake) === -1) {
+                  outlierOrders.push(oFake);
+                }
+              }
             }
           }
         }
 
-        // Tính trung vị cho từng đường và kiểm tra lệch
+        // BƯỚC 3: KIỂM TRA CHÉO RANH GIỚI QUẬN / HUYỆN (DISTRICT VALIDATION)
+        for (var dIdx = 0; dIdx < ordersList.length; dIdx++) {
+          var oDist = ordersList[dIdx];
+          if (isValidCoordinate(oDist.lat, oDist.lng) && !oDist.isFakeHubCoord) {
+            var pInfoD = oDist.parsedGeo || parseAndNormalizeAddress(oDist.address);
+            if (pInfoD.districtCode && DISTRICT_CENTERS[pInfoD.districtCode]) {
+              var dCenter = DISTRICT_CENTERS[pInfoD.districtCode];
+              var distM = getCoordDistanceMeters(oDist.lat, oDist.lng, dCenter.lat, dCenter.lng);
+              if (distM > dCenter.radius + 1500) {
+                oDist.isDistrictMismatch = true;
+                oDist.isGpsOutlier = true;
+                oDist.gpsOutlierDist = Math.round(distM - dCenter.radius);
+                oDist.outlierReason = 'Lệch ranh giới ' + dCenter.name + ' (' + Math.round(distM / 1000) + 'km so với trung tâm quận)';
+                if (outlierOrders.indexOf(oDist) === -1) {
+                  outlierOrders.push(oDist);
+                }
+              }
+            }
+          }
+        }
+
+        // BƯỚC 4: GOM CÁC ĐƠN THẬT THEO ĐƯỜNG ĐỂ TÍNH TRUNG VỊ (LOẠI BỎ TỌA ĐỘ ẢO)
+        var streetCoords = {};
+        var validTripCoords = [];
+        for (var k = 0; k < ordersList.length; k++) {
+          var ordK = ordersList[k];
+          if (isValidCoordinate(ordK.lat, ordK.lng) && !ordK.isFakeHubCoord && !ordK.isDistrictMismatch) {
+            var infoK = extractStreetAndHouseNumber(ordK.address);
+            var st = infoK.street;
+            if (st && st !== 'Chưa rõ đường') {
+              if (!streetCoords[st]) streetCoords[st] = [];
+              streetCoords[st].push({ lat: Number(ordK.lat), lng: Number(ordK.lng), order: ordK });
+              validTripCoords.push({ lat: Number(ordK.lat), lng: Number(ordK.lng) });
+            }
+          }
+        }
+
+        var tripMedianLat = null;
+        var tripMedianLng = null;
+        if (validTripCoords.length >= 3) {
+          validTripCoords.sort(function(a, b) { return a.lat - b.lat; });
+          var midTrip = Math.floor(validTripCoords.length / 2);
+          tripMedianLat = validTripCoords[midTrip].lat;
+          tripMedianLng = validTripCoords[midTrip].lng;
+        }
+
+        // Tính trung vị cho từng đường và kiểm tra lệch xa
         var streetMedians = {};
         for (var stName in streetCoords) {
           var list = streetCoords[stName];
@@ -9944,28 +10333,43 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             var medLng = list[mid].lng;
             streetMedians[stName] = { lat: medLat, lng: medLng };
 
-            for (var k = 0; k < list.length; k++) {
-              var item = list[k];
+            for (var sIdx = 0; sIdx < list.length; sIdx++) {
+              var item = list[sIdx];
               var dist = getCoordDistanceMeters(item.lat, item.lng, medLat, medLng);
               var outlierThreshold = list.length >= 4 ? 850 : 1400;
-              if (dist > outlierThreshold) { // Lệch xa so với cụm đường
+              if (dist > outlierThreshold) {
                 item.order.isGpsOutlier = true;
                 item.order.gpsOutlierDist = Math.round(dist);
+                item.order.outlierReason = 'Lệch ' + Math.round(dist) + 'm so với cụm đường ' + stName;
                 if (outlierOrders.indexOf(item.order) === -1) {
                   outlierOrders.push(item.order);
                 }
               }
             }
+          } else if (list.length === 1 && tripMedianLat != null) {
+            var singleItem = list[0];
+            var distTr = getCoordDistanceMeters(singleItem.lat, singleItem.lng, tripMedianLat, tripMedianLng);
+            if (distTr > 3500) {
+              singleItem.order.isGpsOutlier = true;
+              singleItem.order.gpsOutlierDist = Math.round(distTr);
+              singleItem.order.outlierReason = 'Lệch ' + Math.round(distTr) + 'm so với toàn bộ chuyến';
+              if (outlierOrders.indexOf(singleItem.order) === -1) {
+                outlierOrders.push(singleItem.order);
+              }
+            }
           }
         }
 
-        // Gán streetMedianLat / streetMedianLng cho TẤT CẢ các đơn cùng đường (kể cả đơn lat == null)
+        // Gán streetMedianLat / streetMedianLng cho TẤT CẢ các đơn cùng đường
         for (var m = 0; m < ordersList.length; m++) {
           var ord = ordersList[m];
           var infoOrd = extractStreetAndHouseNumber(ord.address);
           if (infoOrd.street && streetMedians[infoOrd.street]) {
             ord.streetMedianLat = streetMedians[infoOrd.street].lat;
             ord.streetMedianLng = streetMedians[infoOrd.street].lng;
+          } else if (tripMedianLat != null) {
+            ord.streetMedianLat = tripMedianLat;
+            ord.streetMedianLng = tripMedianLng;
           }
         }
 
@@ -9984,6 +10388,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
       function autoHealDuplicateAddresses(showToastMsg) {
         var healedCount = 0;
+        var alleySnappedCount = 0;
         if (!orders || orders.length === 0) return 0;
 
         detectCoordinateOutliers(orders);
@@ -10008,6 +10413,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 ordLandmark.lat = lm.lat;
                 ordLandmark.lng = lm.lng;
                 ordLandmark.isGpsOutlier = false;
+                ordLandmark.isFakeHubCoord = false;
+                ordLandmark.isDistrictMismatch = false;
                 ordLandmark.isGpsHealed = true;
                 ordLandmark.healedSource = 'landmark_poi';
                 healedCount++;
@@ -10031,13 +10438,11 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         for (var fpKey in groups) {
           var groupOrders = groups[fpKey];
           
-          // 1. Kiểm tra xem có trong Verified Geocache không
           var bestLat = null, bestLng = null;
           if (verifiedGeocache[fpKey] && isValidCoordinate(verifiedGeocache[fpKey].lat, verifiedGeocache[fpKey].lng)) {
             bestLat = verifiedGeocache[fpKey].lat;
             bestLng = verifiedGeocache[fpKey].lng;
           } else {
-            // 2. Tìm đơn có GPS hợp lệ và không bị outlier
             var validAndNonOutlier = groupOrders.filter(function(x) {
               return isValidCoordinate(x.lat, x.lng) && !x.isGpsOutlier;
             });
@@ -10063,7 +10468,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 needsHeal = true;
               } else {
                 var d = getCoordDistanceMeters(target.lat, target.lng, bestLat, bestLng);
-                if (d > 100) { // Lệch hơn 100m so với đơn chuẩn cùng địa chỉ
+                if (d > 100) {
                   needsHeal = true;
                 }
               }
@@ -10072,9 +10477,56 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 target.lat = bestLat;
                 target.lng = bestLng;
                 target.isGpsOutlier = false;
+                target.isFakeHubCoord = false;
+                target.isDistrictMismatch = false;
                 target.isGpsHealed = true;
                 target.healedSource = 'co_location';
                 healedCount++;
+              }
+            }
+          }
+        }
+
+        // TẦNG 2.5: THUẬT TOÁN LÙI CẤP HẺM (ALLEY STEP-BACK SNAPPING)
+        // Xây dựng kho tọa độ các cấp hẻm đã có GPS chuẩn
+        var alleyCoordMap = {};
+        for (var a1 = 0; a1 < orders.length; a1++) {
+          var oAlley = orders[a1];
+          if (isValidCoordinate(oAlley.lat, oAlley.lng) && !oAlley.isGpsOutlier) {
+            var pG = oAlley.parsedGeo || parseAndNormalizeAddress(oAlley.address);
+            if (pG.isAlley && pG.alleyFingerprints && pG.alleyFingerprints.length > 0) {
+              for (var af = 0; af < pG.alleyFingerprints.length; af++) {
+                var afKey = pG.alleyFingerprints[af];
+                if (!alleyCoordMap[afKey]) {
+                  alleyCoordMap[afKey] = { lat: Number(oAlley.lat), lng: Number(oAlley.lng), order: oAlley };
+                }
+              }
+            }
+          }
+        }
+
+        for (var a2 = 0; a2 < orders.length; a2++) {
+          var oTargetAlley = orders[a2];
+          if (!isValidCoordinate(oTargetAlley.lat, oTargetAlley.lng) || oTargetAlley.isGpsOutlier) {
+            var pG2 = oTargetAlley.parsedGeo || parseAndNormalizeAddress(oTargetAlley.address);
+            if (pG2.isAlley && pG2.alleyFingerprints && pG2.alleyFingerprints.length > 0) {
+              var afList = pG2.alleyFingerprints;
+              for (var step = afList.length - 1; step >= 0; step--) {
+                var candKey = afList[step];
+                if (alleyCoordMap[candKey]) {
+                  var matchA = alleyCoordMap[candKey];
+                  oTargetAlley.lat = matchA.lat;
+                  oTargetAlley.lng = matchA.lng;
+                  oTargetAlley.isGpsOutlier = false;
+                  oTargetAlley.isFakeHubCoord = false;
+                  oTargetAlley.isDistrictMismatch = false;
+                  oTargetAlley.isGpsHealed = true;
+                  oTargetAlley.healedSource = (step === afList.length - 1) ? 'alley_exact' : (step === 0 ? 'alley_trunk' : 'alley_stepback');
+                  oTargetAlley.healedAlleyLevel = pG2.alleyLevels[step];
+                  healedCount++;
+                  alleySnappedCount++;
+                  break;
+                }
               }
             }
           }
@@ -10100,6 +10552,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               ordStreet.lat = ordStreet.streetMedianLat;
               ordStreet.lng = ordStreet.streetMedianLng;
               ordStreet.isGpsOutlier = false;
+              ordStreet.isFakeHubCoord = false;
+              ordStreet.isDistrictMismatch = false;
               ordStreet.isGpsHealed = true;
               ordStreet.healedSource = 'street_median';
               healedCount++;
@@ -10110,11 +10564,146 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         if (healedCount > 0) {
           saveData();
           if (showToastMsg) {
-            showToast('⚡ Đã tự động đồng bộ tọa độ cho ' + healedCount + ' đơn cùng địa chỉ!');
+            showToast('⚡ Giai đoạn 1: Đã chuẩn hóa ' + healedCount + ' đơn (' + alleySnappedCount + ' đơn hẻm bắt dính miệng hẻm)!');
           }
         }
 
         return healedCount;
+      }
+
+      // ==========================================================
+      // ĐO LƯỜNG VÀ SO SÁNH ĐỘ CHÍNH XÁC GPS (PHASE 1 BENCHMARK)
+      // ==========================================================
+      function calculateGpsAccuracyReport(ordersList) {
+        if (!ordersList || ordersList.length === 0) {
+          return {
+            total: 0,
+            validGpsCount: 0,
+            landmarkCount: 0,
+            exactPeerCount: 0,
+            alleySnappedCount: 0,
+            fakeHubCount: 0,
+            districtMismatchCount: 0,
+            medianCount: 0,
+            unmappedCount: 0,
+            accuracyScore: 0,
+            items: []
+          };
+        }
+
+        var total = ordersList.length;
+        var validGpsCount = 0;
+        var landmarkCount = 0;
+        var exactPeerCount = 0;
+        var alleySnappedCount = 0;
+        var fakeHubCount = 0;
+        var districtMismatchCount = 0;
+        var medianCount = 0;
+        var unmappedCount = 0;
+
+        var items = ordersList.map(function(o, idx) {
+          var hasGps = isValidCoordinate(o.lat, o.lng);
+          var pGeo = o.parsedGeo || parseAndNormalizeAddress(o.address);
+          var level = 'unmapped';
+          var label = 'Chưa có GPS';
+          var confidence = 0;
+          var improvement = 'Chưa xác định được vị trí';
+
+          if (hasGps) {
+            validGpsCount++;
+            if (o.isFakeHubCoord) {
+              fakeHubCount++;
+              level = 'fake_hub';
+              label = 'Tọa độ ảo Bưu cục / UBND';
+              confidence = 20;
+              improvement = '⚠️ Đã phát hiện gán nhầm điểm hub';
+            } else if (o.isDistrictMismatch) {
+              districtMismatchCount++;
+              level = 'district_mismatch';
+              label = 'Lệch ranh giới Quận';
+              confidence = 25;
+              improvement = '⚠️ Đã phát hiện định vị nhầm quận xa';
+            } else if (o.isGpsOutlier) {
+              level = 'gps_outlier';
+              label = 'Tọa độ nghi ngờ lệch';
+              confidence = 0;
+              improvement = o.outlierReason || 'Cần kiểm tra lại vị trí';
+            } else if (o.healedSource === 'landmark_poi' || (pGeo.landmarkCoords && Math.abs(o.lat - pGeo.landmarkCoords.lat) < 0.0001)) {
+              landmarkCount++;
+              level = 'landmark';
+              label = 'Landmark POI 100%';
+              confidence = 100;
+              improvement = '✓ Chuẩn xác tuyệt đối tòa nhà';
+            } else if (o.healedSource === 'co_location' || o.healedSource === 'peer_snapping') {
+              exactPeerCount++;
+              level = 'exact_peer';
+              label = 'Cùng số nhà đã xác thực';
+              confidence = 96;
+              improvement = '✓ Khớp vị trí với đơn cùng số nhà';
+            } else if (o.healedSource === 'alley_exact' || o.healedSource === 'alley_stepback' || o.healedSource === 'alley_trunk') {
+              alleySnappedCount++;
+              level = 'alley_snapped';
+              var lvlStr = o.healedAlleyLevel || (pGeo.alleyTrunk ? ('Đầu hẻm ' + pGeo.alleyTrunk) : 'Nhánh hẻm');
+              label = 'Bắt dính hẻm [' + lvlStr + ']';
+              confidence = (o.healedSource === 'alley_exact') ? 95 : (o.healedSource === 'alley_trunk' ? 82 : 88);
+              improvement = '⚡ Cứu đơn khỏi rơi tim đường, neo đúng miệng hẻm';
+            } else if (o.healedSource === 'interpolation' || o.healedSource === 'building_snap') {
+              level = 'snapped';
+              label = 'Nội suy số nhà';
+              confidence = 80;
+              improvement = 'Khớp theo dãy số nhà liên tiếp';
+            } else if (o.healedSource === 'street_median' || o.healedSource === 'street_median_fallback') {
+              medianCount++;
+              level = 'street_median';
+              label = 'Tim đường trung vị';
+              confidence = 55;
+              improvement = 'Định vị tâm tuyến đường (cần tra thêm hẻm)';
+            } else {
+              level = 'original_gps';
+              label = 'GPS theo đơn gốc';
+              confidence = 78;
+              improvement = 'Tọa độ có sẵn từ hệ thống';
+            }
+          } else {
+            unmappedCount++;
+          }
+
+          return {
+            order: o,
+            stt: idx + 1,
+            customerName: o.customerName || 'Khách lẻ',
+            address: o.address || '',
+            street: pGeo.street || 'Chưa rõ',
+            houseNumber: pGeo.houseNumber || '',
+            isAlley: pGeo.isAlley,
+            level: level,
+            label: label,
+            confidence: confidence,
+            improvement: improvement,
+            lat: o.lat,
+            lng: o.lng
+          };
+        });
+
+        var totalConfidence = 0;
+        for (var tIdx = 0; tIdx < items.length; tIdx++) {
+          totalConfidence += items[tIdx].confidence;
+        }
+        var accuracyScore = Math.round(totalConfidence / (total || 1));
+
+        return {
+          total: total,
+          validGpsCount: validGpsCount,
+          landmarkCount: landmarkCount,
+          exactPeerCount: exactPeerCount,
+          alleySnappedCount: alleySnappedCount,
+          fakeHubCount: fakeHubCount,
+          districtMismatchCount: districtMismatchCount,
+          medianCount: medianCount,
+          unmappedCount: unmappedCount,
+          accuracyScore: accuracyScore,
+          items: items
+        };
       }
 
       // ==========================================================
@@ -10378,6 +10967,13 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           elGtc.textContent = gCount;
         }
 
+        // Cập nhật điểm độ chính xác GPS Giai đoạn 1
+        var accReport = calculateGpsAccuracyReport(orders);
+        var elAccScore = document.getElementById('mapStatAccuracyScore');
+        if (elAccScore) {
+          elAccScore.textContent = accReport.accuracyScore + '%';
+        }
+
         // Thu thập thống kê theo từng tuyến đường & số nhà
         var streetStats = {};
         var allStreets = [];
@@ -10623,8 +11219,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var btnQuickFix = document.getElementById('btnMapQuickFixOutlier');
 
         if (outlierBanner && item.isGpsOutlier && item.streetMedianLat && item.streetMedianLng) {
-          var distKm = (item.gpsOutlierDist / 1000).toFixed(1);
-          if (outlierDistEl) outlierDistEl.textContent = distKm + ' km';
+          var reasonStr = item.outlierReason || ((item.gpsOutlierDist / 1000).toFixed(1) + ' km');
+          if (outlierDistEl) outlierDistEl.textContent = reasonStr;
           outlierBanner.style.display = 'flex';
           
           if (btnQuickFix) {
@@ -10633,6 +11229,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               item.lat = item.streetMedianLat;
               item.lng = item.streetMedianLng;
               item.isGpsOutlier = false;
+              item.isFakeHubCoord = false;
+              item.isDistrictMismatch = false;
               var fp = getAddressFingerprint(item.address);
               if (fp) saveToVerifiedGeocache(fp, item.lat, item.lng, item.address);
               saveData();
@@ -10652,7 +11250,23 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         nameEl.textContent = item.customerName || 'Khách lẻ';
         trkEl.textContent = item.trackingCode || 'Chưa có mã';
-        addrEl.textContent = item.address || 'Chưa có địa chỉ';
+
+        var tagHtml = '';
+        if (item.healedSource === 'landmark_poi') {
+          tagHtml = ' <span class="accuracy-badge-tag tag-100">🏢 Landmark 100%</span>';
+        } else if (item.healedSource === 'alley_exact' || item.healedSource === 'alley_stepback' || item.healedSource === 'alley_trunk') {
+          var lvlText = item.healedAlleyLevel || 'Hẻm';
+          tagHtml = ' <span class="accuracy-badge-tag tag-alley">🏘️ Bắt dính hẻm [' + escapeHtml(lvlText) + ']</span>';
+        } else if (item.healedSource === 'co_location' || item.healedSource === 'peer_snapping') {
+          tagHtml = ' <span class="accuracy-badge-tag tag-100">⚡ Cùng số nhà</span>';
+        } else if (item.isFakeHubCoord) {
+          tagHtml = ' <span class="accuracy-badge-tag tag-hub">⚠️ Đã loại bỏ GPS bưu cục ảo</span>';
+        } else if (item.isDistrictMismatch) {
+          tagHtml = ' <span class="accuracy-badge-tag tag-hub">⚠️ Lệch Quận</span>';
+        } else if (item.healedSource === 'street_median' || item.healedSource === 'street_median_fallback') {
+          tagHtml = ' <span class="accuracy-badge-tag tag-median">🛣️ Tim đường</span>';
+        }
+        addrEl.innerHTML = escapeHtml(item.address || 'Chưa có địa chỉ') + tagHtml;
 
         codEl.textContent = formatMoney(item.codAmount);
         if (item.gtbThu) {
@@ -10663,7 +11277,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         }
 
         if (item.phone) {
-          btnCall.href = 'tel:' + item.phone;
+          btnCall.href = 'tel:' + safeTel(item.phone);
           btnCall.style.display = 'inline-flex';
         } else {
           btnCall.href = '#';
@@ -11512,7 +12126,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               '</div>' +
               '<div style="color:#64748b; margin-bottom:6px;">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</div>' +
               '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
-                (item.phone ? '<a href="tel:' + item.phone + '" class="phone-btn" style="font-size:11px;">📞 ' + item.phone + '</a>' : '') +
+                (item.phone ? '<a href="tel:' + safeTel(item.phone) + '" class="phone-btn" style="font-size:11px;">📞 ' + escapeHtml(item.phone) + '</a>' : '') +
                 (item.address ? '<a href="' + mapsSearch + '" target="_blank" class="map-link" style="font-size:11px;">🗺 Tìm Google Maps</a>' : '') +
                 '<button type="button" class="btn-unmapped-fix-loc" data-order-id="' + item.id + '">📍 Định vị ngay</button>' +
               '</div>';
@@ -11812,7 +12426,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var info = document.getElementById('cameraPreviewInfo');
         if (info) {
           info.innerHTML = '<strong>' + escapeHtml(order.trackingCode || '') + '</strong> - ' +
-            escapeHtml(order.customerName || 'Khách lẻ') + ' (' + (order.phone || '') + ')<br>' +
+            escapeHtml(order.customerName || 'Khách lẻ') + ' (' + escapeHtml(order.phone || '') + ')<br>' +
             '📍 ' + escapeHtml(order.address || '') + '<br>' +
             '<span style="color:#b45309; font-weight:800;">COD: ' + formatMoney(order.codAmount || 0) + '</span>';
         }
@@ -12144,8 +12758,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                     '</div>' +
                     '<div class="tbl-sub-line">' +
                       '<span class="tbl-cust-name" title="' + escapeHtml(item.customerName || '') + '">👤 ' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span>' +
-                      (item.phone ? '<a href="tel:' + item.phone + '" class="tbl-phone-link" title="Gọi số chính" onclick="event.stopPropagation();">📞 ' + item.phone + '</a>' : '') +
-                      (item.secondaryPhone ? '<a href="tel:' + item.secondaryPhone + '" class="tbl-phone-link" style="background:#f1f5f9; color:#0369a1;" title="Gọi số phụ" onclick="event.stopPropagation();">📞 ' + item.secondaryPhone + '</a>' : '') +
+                      (item.phone ? '<a href="tel:' + safeTel(item.phone) + '" class="tbl-phone-link" title="Gọi số chính" onclick="event.stopPropagation();">📞 ' + escapeHtml(item.phone) + '</a>' : '') +
+                      (item.secondaryPhone ? '<a href="tel:' + safeTel(item.secondaryPhone) + '" class="tbl-phone-link" style="background:#f1f5f9; color:#0369a1;" title="Gọi số phụ" onclick="event.stopPropagation();">📞 ' + escapeHtml(item.secondaryPhone) + '</a>' : '') +
                       '<span class="tbl-status-pill ' + pillClass + '">' + statusTextMini + '</span>' +
                     '</div>' +
                   '</div>' +
@@ -12531,7 +13145,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 '<div class="m-card-summary">' +
                   '<div class="m-card-summary-line">' +
                     '<span class="m-card-summary-name">👤 ' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span>' +
-                    (item.phone ? '<a href="tel:' + item.phone + '" class="phone-btn">📞 ' + item.phone + '</a>' : '') +
+                    (item.phone ? '<a href="tel:' + safeTel(item.phone) + '" class="phone-btn">📞 ' + escapeHtml(item.phone) + '</a>' : '') +
                     (statusBadgeHtml ? '<span class="m-card-summary-status">' + statusBadgeHtml + '</span>' : '') +
                   '</div>' +
                   '<div class="m-card-summary-line">' +
@@ -12542,8 +13156,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 '<div class="m-card-body">' +
                   '<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">' +
                     '<span class="cust-name">👤 ' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span>' +
-                    (item.phone ? '<a href="tel:' + item.phone + '" class="phone-btn">📞 ' + item.phone + '</a>' : '') +
-                    (item.secondaryPhone ? '<a href="tel:' + item.secondaryPhone + '" class="phone-btn" style="background:#f1f5f9; color:#0369a1; border-color:#bae6fd;">📞 Phụ: ' + item.secondaryPhone + '</a>' : '') +
+                    (item.phone ? '<a href="tel:' + safeTel(item.phone) + '" class="phone-btn">📞 ' + escapeHtml(item.phone) + '</a>' : '') +
+                    (item.secondaryPhone ? '<a href="tel:' + safeTel(item.secondaryPhone) + '" class="phone-btn" style="background:#f1f5f9; color:#0369a1; border-color:#bae6fd;">📞 Phụ: ' + escapeHtml(item.secondaryPhone) + '</a>' : '') +
                     '<button type="button" class="order-group-badge card-grp-btn" title="Chạm để chuyển đơn sang nhóm khác">📁 ' + escapeHtml(group.name) + ' ▾</button>' +
                   '</div>' +
                   '<div class="addr-text" style="margin-top: 4px;">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</div>' +
@@ -12935,6 +13549,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         }
 
         p2pHostInstance = p2p.createHost({
+          authorizeConnection: function() { return window.confirm('Một thiết bị đang yêu cầu nhận dữ liệu đơn hàng. Bạn có xác nhận đây là thiết bị cần nhận đơn không?'); },
+          onUnauthorized: function() { if (statusTextEl) statusTextEl.textContent = 'Đã từ chối kết nối; mã vẫn chờ thiết bị được xác nhận.'; },
           onReady: function(roomInfo) {
             if (pinValueEl) pinValueEl.textContent = roomInfo.pin;
             if (statusTextEl) {
@@ -12971,7 +13587,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           },
           onError: function(err) {
             if (statusTextEl) {
-              statusTextEl.innerHTML = '<span style="color:#ef4444; font-weight:700;">⚠️ Lỗi P2P: ' + (err.message || err) + '</span>';
+              statusTextEl.innerHTML = '<span style="color:#ef4444; font-weight:700;">⚠️ Lỗi P2P: ' + escapeHtml(err.message || err) + '</span>';
             }
           }
         });
@@ -12979,7 +13595,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
       function connectP2PClient(pinOrId) {
         if (!pinOrId) {
-          alert('Vui lòng nhập mã PIN 6 số hoặc quét mã QR Thiết Bị A!');
+          alert('Vui lòng nhập mã kết nối hoặc quét mã QR Thiết Bị A!');
           return;
         }
         var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
@@ -12987,10 +13603,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           showToast('⚠️ Module P2P chưa sẵn sàng. Vui lòng thử lại!');
           return;
         }
+        pinOrId = String(pinOrId).trim().toLowerCase();
+        if (!p2p.isValidConnectionCode(pinOrId)) {
+          showToast('⚠️ Mã kết nối không hợp lệ. Hãy nhập lại hoặc quét mã QR.');
+          return;
+        }
 
         var statusMsg = document.getElementById('p2pClientStatusMsg');
         if (statusMsg) {
-          statusMsg.innerHTML = '<span style="color:#2563eb; font-weight:700;">⏳ Đang kết nối tới Máy A (' + pinOrId + ')...</span>';
+          statusMsg.innerHTML = '<span style="color:#2563eb; font-weight:700;">⏳ Đang kết nối tới Máy A (' + escapeHtml(pinOrId) + ')...</span>';
         }
 
         if (p2pClientInstance) {
@@ -13009,7 +13630,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             }
           },
           onData: function(data) {
-            if (!data || data.type !== 'ghn_p2p_sync') {
+            if (!data || data.type !== 'ghn_p2p_sync' || !data.payload || data.payload.t !== data.mode) {
               console.warn('Dữ liệu không đúng định dạng P2P:', data);
               return;
             }
@@ -13018,13 +13639,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
 
             if (data.mode === 'patch') {
-              applySyncedPatch(data.payload);
+              if (!applySyncedPatch(data.payload)) return;
             } else if (data.mode === 'full') {
-              applySyncedFull(data.payload);
+              if (!applySyncedFull(data.payload)) return;
+            } else {
+              return;
             }
 
             if (data.verifiedGeocache && Object.keys(data.verifiedGeocache).length > 0) {
-              verifiedGeocache = Object.assign(verifiedGeocache || {}, data.verifiedGeocache);
+              verifiedGeocache = Object.assign(Object.create(null), verifiedGeocache || {}, p2p.sanitizeVerifiedGeocache(data.verifiedGeocache));
               saveVerifiedGeocache();
             }
 
@@ -13039,7 +13662,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           onError: function(err) {
             console.error('Lỗi P2P Client:', err);
             if (statusMsg) {
-              statusMsg.innerHTML = '<span style="color:#ef4444; font-weight:700;">❌ ' + (err.message || 'Lỗi kết nối tới Máy A') + '</span>';
+              statusMsg.innerHTML = '<span style="color:#ef4444; font-weight:700;">❌ ' + escapeHtml(err.message || 'Lỗi kết nối tới Máy A') + '</span>';
             }
             showToast('Lỗi kết nối P2P: ' + (err.message || err));
           }
@@ -13093,8 +13716,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             }
             if (Array.isArray(data.orders)) orders = data.orders;
             if (Array.isArray(data.groups)) groups = data.groups;
-            if (data.verifiedGeocache) {
-              verifiedGeocache = Object.assign(verifiedGeocache || {}, data.verifiedGeocache);
+            var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+            if (data.verifiedGeocache && p2p) {
+              verifiedGeocache = Object.assign(Object.create(null), verifiedGeocache || {}, p2p.sanitizeVerifiedGeocache(data.verifiedGeocache));
               saveVerifiedGeocache();
             }
             ensureGroupIntegrity();
@@ -13114,6 +13738,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
         if (!p2p) return;
         var result = p2p.applyPatch(payload, orders, groups);
+        if (!result.valid) {
+          showToast('⚠️ Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên!');
+          return false;
+        }
         orders = result.orders;
         groups = result.groups;
         saveData();
@@ -13124,12 +13752,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         } else {
           showToast('⚠️ Đã nhận mã nhưng không có đơn nào trùng mã vận đơn trên máy này!');
         }
+        return true;
       }
 
       function applySyncedFull(payload) {
         var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
         if (!p2p) return;
         var result = p2p.applyFull(payload, orders, groups, false);
+        if (!result.valid) {
+          showToast('⚠️ Gói đồng bộ không hợp lệ; dữ liệu hiện tại được giữ nguyên!');
+          return false;
+        }
         orders = result.orders;
         groups = result.groups;
         ensureGroupIntegrity();
@@ -13137,6 +13770,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         render();
         if (mobileMap) renderMap(orders);
         showToast('🎉 Đã nạp thành công ' + result.importedCount + ' đơn và ' + groups.length + ' nhóm!');
+        return true;
       }
 
       function onScanSuccess(decodedText) {
@@ -13552,12 +14186,12 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         if (btnConnectPin && inputPin) {
           btnConnectPin.addEventListener('click', function() {
             var val = inputPin.value.trim();
-            if (!val || val.length !== 6) {
-              alert('Vui lòng nhập đúng 6 số PIN hiển thị trên Thiết Bị A!');
+            if (!val) {
+              alert('Vui lòng nhập mã kết nối hiển thị trên Thiết Bị A!');
               inputPin.focus();
               return;
             }
-            connectP2PClient(val);
+            connectP2PClient(val.toLowerCase());
           });
           inputPin.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -14559,7 +15193,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         var phoneLink = document.getElementById('liveStopPhoneLink');
         if (phoneLink) {
           if (order.phone) {
-            phoneLink.href = 'tel:' + order.phone;
+            phoneLink.href = 'tel:' + safeTel(order.phone);
             phoneLink.style.display = 'inline-flex';
             phoneLink.textContent = '📞 ' + order.phone;
           } else {
@@ -14607,7 +15241,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               row.innerHTML = 
                 '<div>' +
                   '<strong>#' + sStt + '</strong> ' + escapeHtml(sib.customerName || 'Khách') +
-                  (sib.phone ? ' (<a href="tel:' + sib.phone + '" style="color:#38bdf8; text-decoration:none;">' + sib.phone + '</a>)' : '') +
+                  (sib.phone ? ' (<a href="tel:' + safeTel(sib.phone) + '" style="color:#38bdf8; text-decoration:none;">' + escapeHtml(sib.phone) + '</a>)' : '') +
                   ' - <span style="color:#fde047; font-weight:700;">' + formatMoney(sib.codAmount) + '</span>' +
                 '</div>' +
                 '<div style="display:flex; gap:4px;">' +
@@ -14814,6 +15448,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       function escapeHtml(str) {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function safeTel(value) {
+        return String(value || '').replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
       }
     })();
   </script>

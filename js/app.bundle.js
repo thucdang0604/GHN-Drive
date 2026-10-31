@@ -107,21 +107,6 @@
       return orders;
     },
     /**
-     * Dọn dẹp các đơn hàng cũ đã xử lý xong (Trạng thái là GTC hoặc GTB)
-     * Trả về danh sách đơn còn lại (chỉ giữ lại đơn đang 'pending' hoặc chưa xong)
-     */
-    cleanProcessedOrders(onlyStatus = null) {
-      const current = this.getOrders();
-      let remaining;
-      if (onlyStatus) {
-        remaining = current.filter((o) => o.status !== onlyStatus);
-      } else {
-        remaining = current.filter((o) => o.status === "pending");
-      }
-      this.saveOrders(remaining);
-      return remaining;
-    },
-    /**
      * Xóa toàn bộ dữ liệu (Reset hoàn toàn)
      */
     clearAll() {
@@ -153,97 +138,6 @@
         console.error("L\u1ED7i khi l\u01B0u groups:", e);
         return false;
       }
-    },
-    /**
-     * Thêm dữ liệu mẫu ban đầu nếu người dùng chưa có đơn nào
-     */
-    loadSampleIfEmpty() {
-      const current = this.getOrders();
-      if (current.length === 0) {
-        const sample = [
-          {
-            id: "ghn_sample_1",
-            trackingCode: "VNGH80617648808",
-            customerName: "Ngo\u0323c A\u0301nh",
-            phone: "0969199184",
-            address: "Centec Tower, 72 74 \u0110\u01B0\u1EDDng Nguy\u1EC5n Th\u1ECB Minh Khai, P. V\xF5 Th\u1ECB S\xE1u, Q. 3, TP.HCM",
-            codAmount: 0,
-            status: "pending",
-            groupId: "group_ungrouped",
-            lat: 10.779774,
-            lng: 106.693156,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
-          },
-          {
-            id: "ghn_sample_2",
-            trackingCode: "VNGH80617649912",
-            customerName: "Tr\u1EA7n Minh",
-            phone: "0908123456",
-            address: "T\u1EA7ng 12, Centec Tower, 72 Nguy\u1EC5n Th\u1ECB Minh Khai, Q. 3",
-            codAmount: 185e3,
-            status: "pending",
-            groupId: "group_ungrouped",
-            lat: 10.779774,
-            lng: 106.693156,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
-          },
-          {
-            id: "ghn_sample_3",
-            trackingCode: "VNGH80617651034",
-            customerName: "Ph\u1EA1m Thu H\u01B0\u01A1ng",
-            phone: "0912345678",
-            address: "T\xF2a nh\xE0 Centec 72-74 Nguy\u1EC5n Th\u1ECB Minh Khai, Ph\u01B0\u1EDDng V\xF5 Th\u1ECB S\xE1u, Qu\u1EADn 3",
-            codAmount: 32e4,
-            status: "pending",
-            groupId: "group_ungrouped",
-            lat: null,
-            lng: null,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
-          },
-          {
-            id: "ghn_sample_4",
-            trackingCode: "VNGH80617652156",
-            customerName: "L\xEA V\u0103n H\xF9ng",
-            phone: "0987654321",
-            address: "Vincom Center \u0110\u1ED3ng Kh\u1EDFi, 72 L\xEA Th\xE1nh T\xF4n, B\u1EBFn Ngh\xE9, Qu\u1EADn 1",
-            codAmount: 25e4,
-            status: "pending",
-            groupId: "group_ungrouped",
-            lat: 10.778,
-            lng: 106.7018,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
-          },
-          {
-            id: "ghn_sample_5",
-            trackingCode: "VNGH80617653278",
-            customerName: "Ho\xE0ng Lan",
-            phone: "0933557799",
-            address: "18 Nguy\u1EC5n Th\u1ECB Minh Khai, P. \u0110a Kao, Qu\u1EADn 1",
-            codAmount: 95e3,
-            status: "pending",
-            groupId: "group_ungrouped",
-            lat: 10.7876,
-            lng: 106.6998,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
-          },
-          {
-            id: "ghn_sample_6",
-            trackingCode: "VNGH80617654390",
-            customerName: "\u0110\u1EB7ng Qu\u1ED1c B\u1EA3o",
-            phone: "0977889900",
-            address: "154/8 Pasteur, P. B\u1EBFn Ngh\xE9, Qu\u1EADn 1",
-            codAmount: 14e4,
-            status: "pending",
-            groupId: "group_ungrouped",
-            lat: 10.7812,
-            lng: 106.6985,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
-          }
-        ];
-        this.saveOrders(sample);
-        return sample;
-      }
-      return current;
     },
     /**
      * Lấy cấu hình phân nhóm tự động theo tên đường & số nhà (Group Rules)
@@ -442,6 +336,25 @@
       lng: 106.703212
     }
   ];
+  var DISTRICT_CENTERS = {
+    "q1": { name: "Qu\u1EADn 1", lat: 10.776, lng: 106.7, radius: 4200 },
+    "q3": { name: "Qu\u1EADn 3", lat: 10.7818, lng: 106.685, radius: 3600 },
+    "q4": { name: "Qu\u1EADn 4", lat: 10.76, lng: 106.705, radius: 3600 },
+    "q5": { name: "Qu\u1EADn 5", lat: 10.754, lng: 106.666, radius: 3800 },
+    "q6": { name: "Qu\u1EADn 6", lat: 10.748, lng: 106.635, radius: 4500 },
+    "q7": { name: "Qu\u1EADn 7", lat: 10.735, lng: 106.72, radius: 6500 },
+    "q8": { name: "Qu\u1EADn 8", lat: 10.725, lng: 106.65, radius: 6800 },
+    "q10": { name: "Qu\u1EADn 10", lat: 10.772, lng: 106.666, radius: 3800 },
+    "q11": { name: "Qu\u1EADn 11", lat: 10.765, lng: 106.65, radius: 4e3 },
+    "q12": { name: "Qu\u1EADn 12", lat: 10.865, lng: 106.645, radius: 8500 },
+    "binhthanh": { name: "B\xECnh Th\u1EA1nh", lat: 10.805, lng: 106.71, radius: 5500 },
+    "phunhuan": { name: "Ph\xFA Nhu\u1EADn", lat: 10.798, lng: 106.68, radius: 3600 },
+    "tanbinh": { name: "T\xE2n B\xECnh", lat: 10.8, lng: 106.655, radius: 5200 },
+    "tanphu": { name: "T\xE2n Ph\xFA", lat: 10.79, lng: 106.625, radius: 5500 },
+    "govap": { name: "G\xF2 V\u1EA5p", lat: 10.84, lng: 106.665, radius: 5800 },
+    "binhtan": { name: "B\xECnh T\xE2n", lat: 10.765, lng: 106.595, radius: 7500 },
+    "thuduc": { name: "Th\u1EE7 \u0110\u1EE9c", lat: 10.85, lng: 106.77, radius: 12e3 }
+  };
   function getCoordDistanceMeters(lat1, lng1, lat2, lng2) {
     if (!isValidCoord(lat1, lng1) || !isValidCoord(lat2, lng2)) return 999999;
     const R = 6371e3;
@@ -465,6 +378,11 @@
         houseNumber: "",
         houseNumVal: 999999,
         hasHouseNumber: false,
+        isAlley: false,
+        alleyTrunk: "",
+        alleyLevels: [],
+        alleyFingerprints: [],
+        districtCode: "",
         buildingName: "",
         landmarkKey: null,
         landmarkCoords: null,
@@ -561,22 +479,41 @@
     if (!hasHouseNumber) {
       warningFlags.push("missing_house_number");
     }
+    let isAlley = false;
+    let alleyTrunk = "";
+    const alleyLevels = [];
+    if (houseNumber && houseNumber.includes("/")) {
+      isAlley = true;
+      const parts = houseNumber.split("/");
+      alleyTrunk = parts[0].trim();
+      let currentLvl = parts[0].trim();
+      alleyLevels.push(currentLvl);
+      for (let p = 1; p < parts.length; p++) {
+        currentLvl += "/" + parts[p].trim();
+        alleyLevels.push(currentLvl);
+      }
+    } else if (hasHouseNumber) {
+      alleyTrunk = houseNumber;
+      alleyLevels.push(houseNumber);
+    }
     let locationFingerprint = "";
+    const normalizedAddress = removeDiacritics(addr).toLowerCase();
+    const numericDistrict = normalizedAddress.match(/\b(?:quan|q\.?|huyen)\s*(\d{1,2})\b/);
+    const compactAddress = normalizedAddress.replace(/[^a-z0-9]/g, "");
+    const distCode = numericDistrict ? "q" + numericDistrict[1] : Object.keys(DISTRICT_CENTERS).find((key) => !key.startsWith("q") && compactAddress.includes(key)) || "";
+    const distKey = distCode ? "_" + distCode : "";
+    const cleanStKey = removeDiacritics(streetName).toLowerCase().replace(/[^a-z0-9]/g, "");
+    const cleanHouseKey = houseNumber.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (matchedLandmark) {
       locationFingerprint = "bld_" + matchedLandmark.key;
+    } else if (cleanStKey && cleanHouseKey) {
+      locationFingerprint = `addr_${cleanHouseKey}_${cleanStKey}${distKey}`;
+    } else if (cleanStKey) {
+      locationFingerprint = `street_${cleanStKey}${distKey}`;
     } else {
-      const cleanStKey = removeDiacritics(streetName).toLowerCase().replace(/[^a-z0-9]/g, "");
-      const cleanHouseKey = houseNumber.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const mDist = addr.match(/\b(?:quận|q\.?|huyện)\s*(\d+|[a-zà-ỹ]+)\b/i);
-      const distKey = mDist ? "_q" + removeDiacritics(mDist[1]).toLowerCase().replace(/[^a-z0-9]/g, "") : "";
-      if (cleanStKey && cleanHouseKey) {
-        locationFingerprint = `addr_${cleanHouseKey}_${cleanStKey}${distKey}`;
-      } else if (cleanStKey) {
-        locationFingerprint = `street_${cleanStKey}${distKey}`;
-      } else {
-        locationFingerprint = `raw_${Math.abs(hashString(addr))}`;
-      }
+      locationFingerprint = `raw_${Math.abs(hashString(addr))}`;
     }
+    const alleyFingerprints = cleanStKey && alleyLevels.length > 0 ? alleyLevels.map((lvl) => `addr_${lvl.toLowerCase().replace(/[^a-z0-9]/g, "")}_${cleanStKey}${distKey}`) : [];
     return {
       cleanAddress: addr,
       street: streetName,
@@ -584,6 +521,11 @@
       houseNumber,
       houseNumVal,
       hasHouseNumber,
+      isAlley,
+      alleyTrunk,
+      alleyLevels,
+      alleyFingerprints,
+      districtCode: distCode,
       buildingName: matchedLandmark ? matchedLandmark.names[0] : "",
       landmarkKey: matchedLandmark ? matchedLandmark.key : null,
       landmarkCoords: matchedLandmark ? { lat: matchedLandmark.lat, lng: matchedLandmark.lng } : null,
@@ -604,12 +546,62 @@
   function detectCoordinateOutliers(orders) {
     if (!orders || orders.length === 0) return [];
     const outliers = [];
+    orders.forEach((o) => {
+      o.isGpsOutlier = false;
+      o.isFakeHubCoord = false;
+      o.isDistrictMismatch = false;
+      o.gpsOutlierDist = 0;
+      o.outlierReason = "";
+    });
+    const coordBuckets = {};
+    orders.forEach((o) => {
+      if (isValidCoord(o.lat, o.lng)) {
+        const key = Math.round(Number(o.lat) * 1e4) / 1e4 + "_" + Math.round(Number(o.lng) * 1e4) / 1e4;
+        if (!coordBuckets[key]) coordBuckets[key] = [];
+        coordBuckets[key].push(o);
+      }
+    });
+    for (const k in coordBuckets) {
+      const bucket = coordBuckets[k];
+      if (bucket.length >= 2) {
+        const distinctStreets = /* @__PURE__ */ new Set();
+        bucket.forEach((o) => {
+          const pInfo = o.parsedGeo || parseAndNormalizeAddress(o.address);
+          if (pInfo.street && pInfo.street !== "Ch\u01B0a r\xF5 \u0111\u01B0\u1EDDng") {
+            distinctStreets.add(pInfo.street.toLowerCase());
+          }
+        });
+        if (distinctStreets.size >= 2) {
+          bucket.forEach((o) => {
+            o.isFakeHubCoord = true;
+            o.isGpsOutlier = true;
+            o.gpsOutlierDist = 999;
+            o.outlierReason = "T\u1ECDa \u0111\u1ED9 \u1EA3o b\u01B0u c\u1EE5c/UBND (g\xE1n chung cho nhi\u1EC1u con \u0111\u01B0\u1EDDng kh\xE1c nhau)";
+            if (!outliers.includes(o)) outliers.push(o);
+          });
+        }
+      }
+    }
+    orders.forEach((o) => {
+      if (isValidCoord(o.lat, o.lng) && !o.isFakeHubCoord) {
+        const pInfo = o.parsedGeo || parseAndNormalizeAddress(o.address);
+        if (pInfo.districtCode && DISTRICT_CENTERS[pInfo.districtCode]) {
+          const distInfo = DISTRICT_CENTERS[pInfo.districtCode];
+          const distM = getCoordDistanceMeters(o.lat, o.lng, distInfo.lat, distInfo.lng);
+          if (distM > distInfo.radius + 1500) {
+            o.isDistrictMismatch = true;
+            o.isGpsOutlier = true;
+            o.gpsOutlierDist = Math.round(distM - distInfo.radius);
+            o.outlierReason = `L\u1EC7ch ranh gi\u1EDBi ${distInfo.name} (${Math.round(distM / 1e3)}km so v\u1EDBi trung t\xE2m qu\u1EADn)`;
+            if (!outliers.includes(o)) outliers.push(o);
+          }
+        }
+      }
+    });
     const streetCoords = {};
     const validTripCoords = [];
     orders.forEach((o) => {
-      o.isGpsOutlier = false;
-      o.gpsOutlierDist = 0;
-      if (isValidCoord(o.lat, o.lng)) {
+      if (isValidCoord(o.lat, o.lng) && !o.isFakeHubCoord && !o.isDistrictMismatch) {
         const pInfo = o.parsedGeo || parseAndNormalizeAddress(o.address);
         const st = pInfo.street || "Ch\u01B0a r\xF5 \u0111\u01B0\u1EDDng";
         if (!streetCoords[st]) streetCoords[st] = [];
@@ -641,7 +633,8 @@
             if (dist > threshold) {
               item.order.isGpsOutlier = true;
               item.order.gpsOutlierDist = Math.round(dist);
-              outliers.push(item.order);
+              item.order.outlierReason = `L\u1EC7ch ${Math.round(dist)}m so v\u1EDBi c\u1EE5m \u0111\u01B0\u1EDDng ${st}`;
+              if (!outliers.includes(item.order)) outliers.push(item.order);
             }
           });
         } else if (list.length === 1 && tripMedianLat != null) {
@@ -650,7 +643,8 @@
           if (distTrip > 3500) {
             item.order.isGpsOutlier = true;
             item.order.gpsOutlierDist = Math.round(distTrip);
-            outliers.push(item.order);
+            item.order.outlierReason = `L\u1EC7ch ${Math.round(distTrip)}m so v\u1EDBi to\xE0n b\u1ED9 chuy\u1EBFn`;
+            if (!outliers.includes(item.order)) outliers.push(item.order);
           }
         }
       }
@@ -669,8 +663,10 @@
     return outliers;
   }
   function healTripCoordinates(orders) {
-    if (!orders || orders.length === 0) return { healedCount: 0, outlierCount: 0 };
+    if (!orders || orders.length === 0) return { healedCount: 0, outlierCount: 0, alleySnappedCount: 0, fakeHubCount: 0 };
     let healedCount = 0;
+    let alleySnappedCount = 0;
+    let fakeHubCount = 0;
     orders.forEach((o) => {
       if (!o.parsedGeo) {
         o.parsedGeo = parseAndNormalizeAddress(o.address);
@@ -692,6 +688,8 @@
           o.lat = lm.lat;
           o.lng = lm.lng;
           o.isGpsOutlier = false;
+          o.isFakeHubCoord = false;
+          o.isDistrictMismatch = false;
           o.isGpsHealed = true;
           o.healedSource = "landmark_poi";
           healedCount++;
@@ -699,6 +697,7 @@
       }
     });
     const outliers = detectCoordinateOutliers(orders);
+    fakeHubCount = orders.filter((o) => o.isFakeHubCoord).length;
     const fpGroups = {};
     orders.forEach((o) => {
       const fp = o.locationFingerprint;
@@ -724,6 +723,8 @@
             member.lat = refLat;
             member.lng = refLng;
             member.isGpsOutlier = false;
+            member.isFakeHubCoord = false;
+            member.isDistrictMismatch = false;
             member.isGpsHealed = true;
             member.healedSource = "peer_snapping";
             healedCount++;
@@ -731,6 +732,41 @@
         });
       }
     }
+    const alleyCoordMap = {};
+    orders.forEach((o) => {
+      if (isValidCoord(o.lat, o.lng) && !o.isGpsOutlier && o.parsedGeo && o.parsedGeo.isAlley) {
+        const pGeo = o.parsedGeo;
+        if (pGeo.alleyFingerprints && pGeo.alleyFingerprints.length > 0) {
+          pGeo.alleyFingerprints.forEach((afp) => {
+            if (!alleyCoordMap[afp]) {
+              alleyCoordMap[afp] = { lat: Number(o.lat), lng: Number(o.lng), order: o };
+            }
+          });
+        }
+      }
+    });
+    orders.forEach((o) => {
+      if ((!isValidCoord(o.lat, o.lng) || o.isGpsOutlier) && o.parsedGeo && o.parsedGeo.isAlley) {
+        const afps = o.parsedGeo.alleyFingerprints || [];
+        for (let idx = afps.length - 1; idx >= 0; idx--) {
+          const afpKey = afps[idx];
+          if (alleyCoordMap[afpKey]) {
+            const match = alleyCoordMap[afpKey];
+            o.lat = match.lat;
+            o.lng = match.lng;
+            o.isGpsOutlier = false;
+            o.isFakeHubCoord = false;
+            o.isDistrictMismatch = false;
+            o.isGpsHealed = true;
+            o.healedSource = idx === afps.length - 1 ? "alley_exact" : idx === 0 ? "alley_trunk" : "alley_stepback";
+            o.healedAlleyLevel = o.parsedGeo.alleyLevels[idx];
+            healedCount++;
+            alleySnappedCount++;
+            break;
+          }
+        }
+      }
+    });
     const streetHouseData = {};
     orders.forEach((o) => {
       if (isValidCoord(o.lat, o.lng) && !o.isGpsOutlier && o.parsedGeo && o.parsedGeo.hasHouseNumber) {
@@ -769,6 +805,8 @@
               o.lat = prev.lat + frac * (next.lat - prev.lat);
               o.lng = prev.lng + frac * (next.lng - prev.lng);
               o.isGpsOutlier = false;
+              o.isFakeHubCoord = false;
+              o.isDistrictMismatch = false;
               o.isGpsHealed = true;
               o.healedSource = "interpolation";
               healedCount++;
@@ -783,6 +821,8 @@
           o.lat = o.streetMedianLat;
           o.lng = o.streetMedianLng;
           o.isGpsOutlier = false;
+          o.isFakeHubCoord = false;
+          o.isDistrictMismatch = false;
           o.isGpsHealed = true;
           o.healedSource = o.parsedGeo && o.parsedGeo.hasHouseNumber ? "street_median_fallback" : "street_median";
           healedCount++;
@@ -791,7 +831,9 @@
     });
     return {
       healedCount,
-      outlierCount: outliers.length
+      outlierCount: outliers.length,
+      alleySnappedCount,
+      fakeHubCount
     };
   }
 
@@ -1537,7 +1579,7 @@
     setupEventListeners();
   });
   function initApp() {
-    currentOrders = StorageService.loadSampleIfEmpty();
+    currentOrders = StorageService.getOrders();
     currentGroups = StorageService.getGroups();
     ensureGroupIntegrity();
     renderApp();
@@ -2153,6 +2195,10 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
                 }
               }
               const res = qrsync.applyPatch({ v: payload.v || 2, g: allGroups, p: allPatches }, currentOrders, currentGroups);
+              if (!res.valid) {
+                showToast("G\xF3i \u0111\u1ED3ng b\u1ED9 kh\xF4ng h\u1EE3p l\u1EC7; d\u1EEF li\u1EC7u hi\u1EC7n t\u1EA1i \u0111\u01B0\u1EE3c gi\u1EEF nguy\xEAn.", "error");
+                return;
+              }
               currentOrders = res.orders;
               currentGroups = res.groups;
               StorageService.saveOrders(currentOrders);
@@ -2170,6 +2216,10 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
                 }
               }
               const res = qrsync.applyFull({ v: payload.v || 2, g: allGroups, o: allOrders }, currentOrders, currentGroups, false);
+              if (!res.valid) {
+                showToast("G\xF3i \u0111\u1ED3ng b\u1ED9 kh\xF4ng h\u1EE3p l\u1EC7; d\u1EEF li\u1EC7u hi\u1EC7n t\u1EA1i \u0111\u01B0\u1EE3c gi\u1EEF nguy\xEAn.", "error");
+                return;
+              }
               currentOrders = res.orders;
               currentGroups = res.groups;
               ensureGroupIntegrity();
@@ -2184,6 +2234,10 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
           closeDesktopScanner();
           if (payload.t === "patch") {
             const res = qrsync.applyPatch(payload, currentOrders, currentGroups);
+            if (!res.valid) {
+              showToast("G\xF3i \u0111\u1ED3ng b\u1ED9 kh\xF4ng h\u1EE3p l\u1EC7; d\u1EEF li\u1EC7u hi\u1EC7n t\u1EA1i \u0111\u01B0\u1EE3c gi\u1EEF nguy\xEAn.", "error");
+              return;
+            }
             currentOrders = res.orders;
             currentGroups = res.groups;
             StorageService.saveOrders(currentOrders);
@@ -2193,6 +2247,10 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
             return;
           } else if (payload.t === "full") {
             const res = qrsync.applyFull(payload, currentOrders, currentGroups, false);
+            if (!res.valid) {
+              showToast("G\xF3i \u0111\u1ED3ng b\u1ED9 kh\xF4ng h\u1EE3p l\u1EC7; d\u1EEF li\u1EC7u hi\u1EC7n t\u1EA1i \u0111\u01B0\u1EE3c gi\u1EEF nguy\xEAn.", "error");
+              return;
+            }
             currentOrders = res.orders;
             currentGroups = res.groups;
             ensureGroupIntegrity();
@@ -2281,6 +2339,10 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         desktopP2PHostStatusText.innerHTML = '<span class="pulse-dot"></span> \u23F3 \u0110ang m\u1EDF ph\xF2ng ch\u1EDD Shipper...';
       }
       desktopP2PHost = p2pSync.createHost({
+        authorizeConnection: () => window.confirm("M\u1ED9t thi\u1EBFt b\u1ECB \u0111ang y\xEAu c\u1EA7u nh\u1EADn d\u1EEF li\u1EC7u chuy\u1EBFn. B\u1EA1n c\xF3 x\xE1c nh\u1EADn \u0111\xE2y l\xE0 thi\u1EBFt b\u1ECB shipper c\u1EA7n nh\u1EADn \u0111\u01A1n kh\xF4ng?"),
+        onUnauthorized: () => {
+          if (desktopP2PHostStatusText) desktopP2PHostStatusText.textContent = "\u0110\xE3 t\u1EEB ch\u1ED1i k\u1EBFt n\u1ED1i; m\xE3 v\u1EABn ch\u1EDD thi\u1EBFt b\u1ECB \u0111\u01B0\u1EE3c x\xE1c nh\u1EADn.";
+        },
         onReady: (roomInfo) => {
           if (desktopP2PHostPinValue) desktopP2PHostPinValue.textContent = roomInfo.pin;
           if (desktopP2PHostStatusText) {
@@ -2321,7 +2383,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         },
         onError: (err) => {
           if (desktopP2PHostStatusText) {
-            desktopP2PHostStatusText.innerHTML = `<span style="color:#ef4444; font-weight:700;">\u26A0\uFE0F L\u1ED7i P2P: ${err.message || err}</span>`;
+            desktopP2PHostStatusText.innerHTML = `<span style="color:#ef4444; font-weight:700;">\u26A0\uFE0F L\u1ED7i P2P: ${escapeHtml(err.message || err)}</span>`;
           }
         }
       });
@@ -2364,15 +2426,14 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
     }
     if (btnConnectPin && inputPin) {
       btnConnectPin.addEventListener("click", () => {
-        const pin = inputPin.value.trim();
-        if (!pin || pin.length < 6) {
-          showToast("Vui l\xF2ng nh\u1EADp \u0111\u1EE7 6 ch\u1EEF s\u1ED1 PIN t\u1EEB \u0111i\u1EC7n tho\u1EA1i!", "error");
+        const pin = inputPin.value.trim().toLowerCase();
+        const p2pSync = window.P2PSync || (typeof P2PSync !== "undefined" ? P2PSync : null);
+        if (!p2pSync || !p2pSync.isValidConnectionCode(pin)) {
+          showToast("Vui l\xF2ng nh\u1EADp m\xE3 k\u1EBFt n\u1ED1i h\u1EE3p l\u1EC7 t\u1EEB \u0111i\u1EC7n tho\u1EA1i!", "error");
           return;
         }
-        const p2pSync = window.P2PSync || (typeof P2PSync !== "undefined" ? P2PSync : null);
-        if (!p2pSync) return;
         if (clientStatus) {
-          clientStatus.innerHTML = `<span class="pulse-dot"></span> \u23F3 \u0110ang k\u1EBFt n\u1ED1i t\u1EDBi \u0111i\u1EC7n tho\u1EA1i qua m\xE3 PIN <strong>${pin}</strong>...`;
+          clientStatus.innerHTML = `<span class="pulse-dot"></span> \u23F3 \u0110ang k\u1EBFt n\u1ED1i t\u1EDBi \u0111i\u1EC7n tho\u1EA1i qua m\xE3 <strong>${escapeHtml(pin)}</strong>...`;
         }
         btnConnectPin.disabled = true;
         p2pSync.connectToHost(pin, {
@@ -2384,18 +2445,29 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
           },
           onData: (data) => {
             btnConnectPin.disabled = false;
-            if (!data || !data.payload) return;
+            if (!data || data.type !== "ghn_p2p_sync" || !data.payload) return;
             const p = data.payload;
             if (p.t === "patch") {
               const res = p2pSync.applyPatch(p, currentOrders, currentGroups);
+              if (!res.valid) {
+                showToast("G\xF3i \u0111\u1ED3ng b\u1ED9 kh\xF4ng h\u1EE3p l\u1EC7; d\u1EEF li\u1EC7u hi\u1EC7n t\u1EA1i \u0111\u01B0\u1EE3c gi\u1EEF nguy\xEAn.", "error");
+                return;
+              }
               currentOrders = res.orders;
               currentGroups = res.groups;
               showToast(`\u{1F389} \u0110\xE3 c\u1EADp nh\u1EADt tr\u1EA1ng th\xE1i/t\u1ECDa \u0111\u1ED9 cho ${res.matchedCount} \u0111\u01A1n!`, "success");
             } else if (p.t === "full") {
               const res = p2pSync.applyFull(p, currentOrders, currentGroups, false);
+              if (!res.valid) {
+                showToast("G\xF3i \u0111\u1ED3ng b\u1ED9 kh\xF4ng h\u1EE3p l\u1EC7; d\u1EEF li\u1EC7u hi\u1EC7n t\u1EA1i \u0111\u01B0\u1EE3c gi\u1EEF nguy\xEAn.", "error");
+                return;
+              }
               currentOrders = res.orders;
               currentGroups = res.groups;
               showToast(`\u{1F389} \u0110\xE3 n\u1EA1p th\xE0nh c\xF4ng ${res.importedCount} \u0111\u01A1n t\u1EEB \u0111i\u1EC7n tho\u1EA1i!`, "success");
+            } else {
+              showToast("G\xF3i \u0111\u1ED3ng b\u1ED9 kh\xF4ng h\u1EE3p l\u1EC7; d\u1EEF li\u1EC7u hi\u1EC7n t\u1EA1i \u0111\u01B0\u1EE3c gi\u1EEF nguy\xEAn.", "error");
+              return;
             }
             ensureGroupIntegrity();
             StorageService.saveOrders(currentOrders);
@@ -2408,7 +2480,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
           },
           onError: (err) => {
             btnConnectPin.disabled = false;
-            if (clientStatus) clientStatus.innerHTML = `<span style="color:#ef4444; font-weight:700;">\u274C L\u1ED7i: ${err.message || err}</span>`;
+            if (clientStatus) clientStatus.innerHTML = `<span style="color:#ef4444; font-weight:700;">\u274C L\u1ED7i: ${escapeHtml(err.message || err)}</span>`;
           }
         });
       });
@@ -2875,7 +2947,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
                 <div style="font-size: 11.5px; color: #475569; margin-bottom: 2px;">${escapeHtml(o.item.address)}</div>
                 <div style="font-size: 11.5px; display: flex; justify-content: space-between; align-items: center;">
                   <span>COD: <strong style="color: #f26522;">${formatCurrency(o.item.codAmount)}</strong></span>
-                  ${o.item.phone ? `<a href="tel:${o.item.phone}" style="color: #0284c7; text-decoration: none; font-weight: 700;">\u{1F4DE} G\u1ECDi</a>` : ""}
+                  ${o.item.phone ? `<a href="tel:${safeTel(o.item.phone)}" style="color: #0284c7; text-decoration: none; font-weight: 700;">\u{1F4DE} G\u1ECDi</a>` : ""}
                 </div>
               </div>
             `).join("")}
@@ -2905,7 +2977,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
           }
         } else if (o.item.status === "gtb") {
           const reason = o.item.gtbReason || (o.item.subStatus === "hen_giao_lai" ? "H\u1EB9n giao l\u1EA1i" : o.item.subStatus === "knm" ? "KNM" : o.item.subStatus === "tu_choi" ? "T\u1EEB ch\u1ED1i nh\u1EADn" : "");
-          statusText = reason ? `\u2715 GTB (${reason})` : "\u2715 Giao th\u1EA5t b\u1EA1i (GTB)";
+          statusText = reason ? `\u2715 GTB (${escapeHtml(reason)})` : "\u2715 Giao th\u1EA5t b\u1EA1i (GTB)";
           statusColor = "#dc2626";
         }
         popupContent = `
@@ -2922,8 +2994,8 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
             ${o.item.gtbThu ? `<br>GTB thu: <strong style="color: #dc2626;">${formatCurrency(o.item.gtbThu)}</strong>` : ""}
           </div>
           <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
-            ${o.item.phone ? `<a href="tel:${o.item.phone}" style="background: #e0f2fe; color: #0369a1; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">\u{1F4DE} G\u1ECDi ${o.item.phone}</a>` : ""}
-            <a href="${gmapsUrl}" target="_blank" style="background: #f0fdf4; color: #15803d; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">\u{1F9ED} D\u1EABn \u0111\u01B0\u1EDDng</a>
+            ${o.item.phone ? `<a href="tel:${safeTel(o.item.phone)}" style="background: #e0f2fe; color: #0369a1; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">\u{1F4DE} G\u1ECDi ${escapeHtml(o.item.phone)}</a>` : ""}
+            <a href="${gmapsUrl}" target="_blank" rel="noopener noreferrer" style="background: #f0fdf4; color: #15803d; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 11px;">\u{1F9ED} D\u1EABn \u0111\u01B0\u1EDDng</a>
           </div>
           <button type="button" class="btn-desktop-edit-loc" style="width: 100%; font-size: 11.5px; padding: 5px 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; cursor: pointer; font-weight: 700;" onclick="window.openDesktopUpdateLocModalById('${o.item.id}', ${o.stt})">
             \u{1F4CD} S\u1EEDa v\u1ECB tr\xED / Ch\u1ECDn tr\xEAn b\u1EA3n \u0111\u1ED3
@@ -3108,6 +3180,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
     const isMissingNum = order.hasHouseNumber === false;
     const isHealed = !!order.isGpsHealed;
     const isOutlier = !!order.isGpsOutlier;
+    const deliveryPhotoHref = safeDeliveryPhotoUrl(order.deliveryPhoto);
     const secPhone = order.secondaryPhone && order.secondaryPhone !== order.phone ? order.secondaryPhone : null;
     const mapsUrl = hasGps ? `https://www.google.com/maps/dir/?api=1&destination=${order.lat},${order.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address || "")}`;
     card.innerHTML = `
@@ -3149,7 +3222,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
           </svg>
         </span>
         <span class="status-badge ${statusClass}">${statusText}</span>
-        ${order.deliveryPhoto ? `<a href="${order.deliveryPhoto}" target="_blank" class="badge-geo-alert" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; text-decoration:none;" title="Xem \u1EA3nh ch\u1EE5p khi giao">\u{1F4F8} C\xF3 \u1EA3nh</a>` : ""}
+        ${deliveryPhotoHref ? `<a href="${escapeHtml(deliveryPhotoHref)}" target="_blank" rel="noopener noreferrer" class="badge-geo-alert" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; text-decoration:none;" title="Xem \u1EA3nh ch\u1EE5p khi giao">\u{1F4F8} C\xF3 \u1EA3nh</a>` : ""}
         ${isMissingNum ? `<span class="badge-geo-alert missing" title="\u0110\u1ECBa ch\u1EC9 thi\u1EBFu s\u1ED1 nh\xE0 c\u1EE5 th\u1EC3 (ch\u1EC9 c\xF3 t\xEAn \u0111\u01B0\u1EDDng/ph\u01B0\u1EDDng). H\xE3y g\u1ECDi kh\xE1ch khi t\u1EDBi g\u1EA7n!">\u26A0\uFE0F Thi\u1EBFu s\u1ED1</span>` : ""}
         ${isHealed ? `<span class="badge-geo-alert healed" title="T\u1ECDa \u0111\u1ED9 \u0111\xE3 \u0111\u01B0\u1EE3c h\u1EC7 th\u1ED1ng t\u1EF1 \u0111\u1ED9ng n\u1EAFn chu\u1EA9n">\u26A1 \u0110\xE3 n\u1EAFn GPS</span>` : ""}
         ${isOutlier ? `<span class="badge-geo-alert outlier" title="T\u1ECDa \u0111\u1ED9 b\u1ECB l\u1EC7ch > ${order.gpsOutlierDist || 1e3}m so v\u1EDBi tuy\u1EBFn \u0111\u01B0\u1EDDng">\u26A0\uFE0F L\u1EC7ch GPS</span>` : ""}
@@ -3162,16 +3235,16 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
       <div class="order-recipient">
         <span class="customer-name">${escapeHtml(order.customerName || "Kh\xE1ch h\xE0ng")}</span>
         ${order.phone ? `
-          <a href="tel:${order.phone}" class="customer-phone" title="G\u1ECDi \u0111i\u1EC7n cho kh\xE1ch">
+          <a href="tel:${safeTel(order.phone)}" class="customer-phone" title="G\u1ECDi \u0111i\u1EC7n cho kh\xE1ch">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
             </svg>
-            ${order.phone}
+            ${escapeHtml(order.phone)}
           </a>
         ` : ""}
         ${secPhone ? `
-          <a href="tel:${secPhone}" class="customer-phone sec-phone" title="S\u1ED1 \u0111i\u1EC7n tho\u1EA1i ph\u1EE5 b\xF3c t\xE1ch t\u1EEB \u0111\u1ECBa ch\u1EC9">
-            \u{1F4DE} Ph\u1EE5: ${secPhone}
+          <a href="tel:${safeTel(secPhone)}" class="customer-phone sec-phone" title="S\u1ED1 \u0111i\u1EC7n tho\u1EA1i ph\u1EE5 b\xF3c t\xE1ch t\u1EEB \u0111\u1ECBa ch\u1EC9">
+            \u{1F4DE} Ph\u1EE5: ${escapeHtml(secPhone)}
           </a>
         ` : ""}
         <span class="order-group-select-badge" title="B\u1EA5m \u0111\u1EC3 chuy\u1EC3n nh\xF3m">\u{1F4C1} ${escapeHtml(groupName || "Ch\u01B0a ph\xE2n nh\xF3m")}</span>
@@ -3185,11 +3258,11 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         <span>
           ${escapeHtml(order.address || "Kh\xF4ng c\xF3 \u0111\u1ECBa ch\u1EC9")}
           ${hasGps ? `
-            <button type="button" class="btn-desktop-jump-map" data-order-id="${order.id}" title="Xem v\u1ECB tr\xED tr\xEAn b\u1EA3n \u0111\u1ED3 l\u1ED9 tr\xECnh">
+            <button type="button" class="btn-desktop-jump-map" data-order-id="${escapeHtml(order.id)}" title="Xem v\u1ECB tr\xED tr\xEAn b\u1EA3n \u0111\u1ED3 l\u1ED9 tr\xECnh">
               \u{1F5FA}\uFE0F B\u1EA3n \u0111\u1ED3
             </button>
           ` : ""}
-          <button type="button" class="btn-desktop-edit-loc" data-order-id="${order.id}" title="Ch\u1EC9nh s\u1EEDa ho\u1EB7c ghim l\u1EA1i v\u1ECB tr\xED GPS ch\xEDnh x\xE1c">
+          <button type="button" class="btn-desktop-edit-loc" data-order-id="${escapeHtml(order.id)}" title="Ch\u1EC9nh s\u1EEDa ho\u1EB7c ghim l\u1EA1i v\u1ECB tr\xED GPS ch\xEDnh x\xE1c">
             \u{1F4CD} S\u1EEDa v\u1ECB tr\xED
           </button>
           ${order.address || hasGps ? `
@@ -3391,6 +3464,19 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
   function escapeHtml(text) {
     if (!text) return "";
     return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+  function safeTel(value) {
+    return String(value || "").replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
+  }
+  function safeDeliveryPhotoUrl(value) {
+    const source = String(value || "").trim();
+    if (/^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(source)) return source;
+    try {
+      const url = new URL(source, window.location.href);
+      return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+    } catch (_) {
+      return "";
+    }
   }
   function parseCoordsInput(str) {
     if (!str) return null;
@@ -4587,7 +4673,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 8px;">
           <span style="font-weight: 700; color: #b45309; font-size: 11px;">${formatCurrency(o.codAmount || 0)}</span>
           <div class="fleet-transfer-wrap" style="position: relative;">
-            <button type="button" class="fleet-btn-transfer" data-order-id="${o.id}" title="Chuy\u1EC3n \u0111\u01A1n n\xE0y sang Shipper kh\xE1c">
+            <button type="button" class="fleet-btn-transfer" data-order-id="${escapeHtml(o.id)}" title="Chuy\u1EC3n \u0111\u01A1n n\xE0y sang Shipper kh\xE1c">
               <span>\u{1F504} Chuy\u1EC3n tuy\u1EBFn</span>
             </button>
           </div>
@@ -4847,6 +4933,10 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         createdAt: Date.now()
       }];
       fleetP2PHost = p2pSync.createHost({
+        authorizeConnection: () => window.confirm(`Cho ph\xE9p thi\u1EBFt b\u1ECB nh\u1EADn chuy\u1EBFn c\u1EE7a ${r.shipperName}?`),
+        onUnauthorized: () => {
+          if (p2pStatus) p2pStatus.textContent = "\u0110\xE3 t\u1EEB ch\u1ED1i k\u1EBFt n\u1ED1i; ph\xF2ng v\u1EABn ch\u1EDD shipper.";
+        },
         onReady: (roomInfo) => {
           if (p2pPin) p2pPin.textContent = roomInfo.pin;
           if (p2pStatus) {
@@ -4879,7 +4969,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         },
         onError: (err) => {
           if (p2pStatus) {
-            p2pStatus.innerHTML = `\u26A0\uFE0F L\u1ED7i P2P: ${err.message || err}`;
+            p2pStatus.innerHTML = `\u26A0\uFE0F L\u1ED7i P2P: ${escapeHtml(err.message || err)}`;
             p2pStatus.style.color = "#dc2626";
             p2pStatus.style.background = "#fef2f2";
           }

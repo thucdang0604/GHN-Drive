@@ -9,7 +9,7 @@
   } else {
     root.P2PSync = factory();
   }
-})(typeof self !== 'undefined' ? self : this, function() {
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this), function() {
   'use strict';
 
   var PREFIX_P2P = 'GHNP2P:';
@@ -17,6 +17,53 @@
   var currentConn = null;
   var currentConnectTimeout = null;
   var currentConnectCancel = null;
+
+  function cleanText(value, maxLength) {
+    return typeof value === 'string' ? value.slice(0, maxLength || 2000) : '';
+  }
+
+  function cleanPhone(value) {
+    return cleanText(value, 40).replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '').slice(0, 20);
+  }
+
+  function cleanId(value, fallback) {
+    return typeof value === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(value) && !['__proto__', 'prototype', 'constructor'].includes(value.toLowerCase()) ? value : fallback;
+  }
+
+  function cleanAmount(value, fallback) {
+    var amount = Number(value);
+    return Number.isFinite(amount) && amount >= 0 && amount <= 1000000000 ? amount : (fallback || 0);
+  }
+
+  function cleanCoordinate(value, min, max) {
+    if (value == null || value === '') return null;
+    var coordinate = Number(value);
+    return Number.isFinite(coordinate) && coordinate >= min && coordinate <= max ? coordinate : null;
+  }
+
+  function generateLocalOrderId(index) {
+    return 'ghn_sync_' + Date.now() + '_' + index;
+  }
+
+  function cleanVerifiedGeocache(cache) {
+    if (!cache || typeof cache !== 'object' || Array.isArray(cache)) return {};
+    var safe = Object.create(null);
+    Object.keys(cache).slice(0, 2000).forEach(function(key) {
+      if (['__proto__', 'prototype', 'constructor'].includes(key.toLowerCase())) return;
+      var item = cache[key];
+      if (!item || typeof item !== 'object') return;
+      var lat = cleanCoordinate(item.lat, -90, 90);
+      var lng = cleanCoordinate(item.lng, -180, 180);
+      if (lat == null || lng == null) return;
+      safe[cleanText(key, 300)] = {
+        lat: lat,
+        lng: lng,
+        address: cleanText(item.address, 500),
+        updatedAt: cleanText(item.updatedAt, 40)
+      };
+    });
+    return safe;
+  }
 
   function getPeerConstructor() {
     if (typeof Peer !== 'undefined') return Peer;
@@ -26,8 +73,12 @@
   }
 
   function generatePin() {
-    // Sinh mã PIN 6 chữ số dễ nhớ (VD: 829104)
-    return String(Math.floor(100000 + Math.random() * 900000));
+    var cryptoApi = typeof globalThis !== 'undefined' ? globalThis.crypto : null;
+    if (!cryptoApi || !cryptoApi.getRandomValues) {
+      throw new Error('Thiết bị không hỗ trợ tạo mã kết nối an toàn.');
+    }
+    var bytes = cryptoApi.getRandomValues(new Uint8Array(16));
+    return Array.prototype.map.call(bytes, function(byte) { return byte.toString(16).padStart(2, '0'); }).join('');
   }
 
   function formatPeerId(pin) {
@@ -61,6 +112,10 @@
         return trimmed.substring(PREFIX_P2P.length).trim();
       }
       return trimmed;
+    },
+
+    isValidConnectionCode: function(value) {
+      return /^(?:ghn-sync-)?(?:\d{6}|[a-f0-9]{32})$/i.test(String(value || '').trim());
     },
 
     /**
@@ -134,7 +189,7 @@
         return [g.id, g.name || ''];
       });
 
-      var grpMap = {};
+      var grpMap = Object.create(null);
       cleanGroups.forEach(function(item, idx) {
         grpMap[item[0]] = idx;
       });
@@ -181,11 +236,12 @@
         return [g.id, g.name || ''];
       });
 
-      var grpMap = {};
+      var grpMap = Object.create(null);
       cleanGroups.forEach(function(item, idx) {
         grpMap[item[0]] = idx;
       });
 
+      // shortcut: delivery photos stay device-local; add chunking when photo transfer is required.
       var compactOrders = (orders || []).map(function(o) {
         var grpIdx = (o.groupId && grpMap[o.groupId] !== undefined) ? grpMap[o.groupId] : '';
         var lat = (o.lat != null && !isNaN(o.lat)) ? Number(Number(o.lat).toFixed(5)) : null;
@@ -200,7 +256,28 @@
           grpIdx,
           lat,
           lng,
-          o.tripCode || ''
+          o.tripCode || '',
+          {
+            id: cleanId(o.id, ''),
+            phaiThu: cleanAmount(o.phaiThu, o.codAmount),
+            gtbThu: cleanAmount(o.gtbThu),
+            secondaryPhone: cleanPhone(o.secondaryPhone),
+            notes: cleanText(o.notes),
+            extraNotes: cleanText(o.extraNotes),
+            subStatus: cleanText(o.subStatus, 40),
+            gtbReason: cleanText(o.gtbReason, 300),
+            createdAt: cleanText(o.createdAt, 40),
+            updatedAt: cleanText(o.updatedAt, 40),
+            deliveredAt: cleanText(o.deliveredAt, 40),
+            outlierReason: cleanText(o.outlierReason, 300),
+            gpsOutlierDist: cleanAmount(o.gpsOutlierDist),
+            healedSource: cleanText(o.healedSource, 40),
+            healedAlleyLevel: cleanText(o.healedAlleyLevel, 100),
+            isGpsOutlier: !!o.isGpsOutlier,
+            isFakeHubCoord: !!o.isFakeHubCoord,
+            isDistrictMismatch: !!o.isDistrictMismatch,
+            isGpsHealed: !!o.isGpsHealed
+          }
         ];
       });
 
@@ -209,7 +286,7 @@
         mode: 'full',
         timestamp: Date.now(),
         payload: {
-          v: 2,
+          v: 3,
           t: 'full',
           g: cleanGroups,
           o: compactOrders,
@@ -235,9 +312,16 @@
         return null;
       }
 
-      var pin = options.pin || generatePin();
+      var pin;
+      try {
+        pin = options.pin || generatePin();
+      } catch (err) {
+        if (options.onError) options.onError(err);
+        return null;
+      }
       var peerId = formatPeerId(pin);
       var qrPayload = PREFIX_P2P + peerId;
+      var roomUsed = false;
 
       var peerConfig = {
         // Giữ config mặc định của PeerJS 1.5.4 (STUN + TURN).
@@ -263,11 +347,21 @@
       });
 
       currentPeer.on('connection', function(conn) {
+        if (roomUsed || (currentConn && currentConn.open)) {
+          conn.close();
+          return;
+        }
         currentConn = conn;
         if (options.onConnecting) options.onConnecting(conn);
-        if (options.onClientConnected) options.onClientConnected(conn);
 
         conn.on('open', function() {
+          if (!options.authorizeConnection || options.authorizeConnection(conn) !== true) {
+            if (currentConn === conn) currentConn = null;
+            conn.close();
+            if (options.onUnauthorized) options.onUnauthorized(conn);
+            return;
+          }
+          if (options.onClientConnected) options.onClientConnected(conn);
           if (options.onConnected) options.onConnected(conn);
           if (options.onOpen) options.onOpen(conn);
         });
@@ -289,7 +383,13 @@
 
       var sendFunc = function(data) {
         if (currentConn && currentConn.open) {
-          currentConn.send(data);
+          try {
+            currentConn.send(data);
+            roomUsed = true;
+          } catch (err) {
+            if (options.onError) options.onError(err);
+            return false;
+          }
           if (options.onSent) options.onSent(data);
           if (options.onDataSent) options.onDataSent(data);
           return true;
@@ -314,12 +414,18 @@
 
     /**
      * Kết nối tới Máy Gửi từ Máy Nhận (Client)
-     * @param {string} targetPinOrPeerId - Mã PIN 6 số hoặc Peer ID đầy đủ
+     * @param {string} targetPinOrPeerId - Mã kết nối 32 ký tự hoặc mã 6 số từ phiên bản cũ
      * @param {Object} options - callbacks: onConnecting, onConnected, onData, onDataReceived, onError, onClose
      */
     connectToHost: function(targetPinOrPeerId, options) {
       this.disconnect();
       options = options || {};
+
+      var raw = String(targetPinOrPeerId || '').trim().toLowerCase();
+      if (!this.isValidConnectionCode(raw)) {
+        if (options.onError) options.onError(new Error('Mã kết nối không hợp lệ.'));
+        return null;
+      }
 
       var PeerClass = getPeerConstructor();
       if (!PeerClass) {
@@ -327,7 +433,6 @@
         return null;
       }
 
-      var raw = String(targetPinOrPeerId || '').trim();
       var peerId = raw.indexOf('ghn-sync-') === 0 ? raw : formatPeerId(raw);
 
       var clientPeerConfig = {
@@ -461,11 +566,17 @@
       var updatedOrders = [].concat(currentOrders || []);
       var updatedGroups = [].concat(currentGroups || []);
 
-      var groupIndexMap = {};
-      if (Array.isArray(patchPayload.g) && patchPayload.g.length > 0) {
-        patchPayload.g.forEach(function(item, idx) {
-          var gId = Array.isArray(item) ? item[0] : (item && item.id);
-          var gName = Array.isArray(item) ? item[1] : (item && item.name);
+      if (!patchPayload || !Array.isArray(patchPayload.p) || patchPayload.p.length > 10000 || (patchPayload.g && (!Array.isArray(patchPayload.g) || patchPayload.g.length > 500))) {
+        return { valid: false, orders: updatedOrders, groups: updatedGroups, matchedCount: 0 };
+      }
+
+      var groupIndexMap = Object.create(null);
+      var patchGroups = Array.isArray(patchPayload.g) ? patchPayload.g : [];
+      if (patchGroups.length > 0) {
+        patchGroups.forEach(function(item, idx) {
+          var rawId = Array.isArray(item) ? item[0] : (item && item.id);
+          var gId = cleanId(rawId, '');
+          var gName = cleanText(Array.isArray(item) ? item[1] : (item && item.name), 100);
           if (gId) {
             groupIndexMap[idx] = gId;
             groupIndexMap[gId] = gId;
@@ -482,6 +593,7 @@
       var matchedCount = 0;
       if (Array.isArray(patchPayload.p)) {
         patchPayload.p.forEach(function(item) {
+          if (!Array.isArray(item) || item.length < 4) return;
           var idKey = String(item[0]).trim();
           var rawGrp = item[1];
           var lat = item[2];
@@ -492,7 +604,7 @@
             if (groupIndexMap[rawGrp]) {
               resolvedGrpId = groupIndexMap[rawGrp];
             } else if (typeof rawGrp === 'string' && rawGrp.indexOf('group_') === 0) {
-              resolvedGrpId = rawGrp;
+              resolvedGrpId = cleanId(rawGrp, 'group_ungrouped');
             }
           }
 
@@ -506,9 +618,11 @@
               if (rawGrp !== undefined && rawGrp !== null) {
                 ord.groupId = resolvedGrpId;
               }
-              if (lat != null && lng != null) {
-                ord.lat = Number(lat);
-                ord.lng = Number(lng);
+              var patchLat = cleanCoordinate(lat, -90, 90);
+              var patchLng = cleanCoordinate(lng, -180, 180);
+              if (patchLat != null && patchLng != null) {
+                ord.lat = patchLat;
+                ord.lng = patchLng;
               }
               ord.updatedAt = new Date().toISOString();
               matchedCount++;
@@ -519,6 +633,7 @@
       }
 
       return {
+        valid: true,
         orders: updatedOrders,
         groups: updatedGroups,
         matchedCount: matchedCount
@@ -529,13 +644,19 @@
      * Áp dụng gói FULL (Toàn bộ đơn hàng) vào danh sách đơn
      */
     applyFull: function(fullPayload, currentOrders, currentGroups, isAppend) {
-      var groups = [].concat(currentGroups || []);
-      var groupIndexMap = {};
+      if (!fullPayload || !Array.isArray(fullPayload.o) || fullPayload.o.length > 3000 || (fullPayload.g && (!Array.isArray(fullPayload.g) || fullPayload.g.length > 500))) {
+        return { valid: false, orders: currentOrders || [], groups: currentGroups || [], groupRules: [], importedCount: 0 };
+      }
 
-      if (Array.isArray(fullPayload.g) && fullPayload.g.length > 0) {
-        fullPayload.g.forEach(function(item, idx) {
-          var gId = Array.isArray(item) ? item[0] : (item && item.id);
-          var gName = Array.isArray(item) ? item[1] : (item && item.name);
+      var groups = [].concat(currentGroups || []);
+      var groupIndexMap = Object.create(null);
+
+      var fullGroups = Array.isArray(fullPayload.g) ? fullPayload.g : [];
+      if (fullGroups.length > 0) {
+        fullGroups.forEach(function(item, idx) {
+          var rawId = Array.isArray(item) ? item[0] : (item && item.id);
+          var gId = cleanId(rawId, '');
+          var gName = cleanText(Array.isArray(item) ? item[1] : (item && item.name), 100);
           if (gId) {
             groupIndexMap[idx] = gId;
             groupIndexMap[gId] = gId;
@@ -547,74 +668,98 @@
       }
 
       var unpackedOrders = [];
-      if (Array.isArray(fullPayload.o)) {
-        unpackedOrders = fullPayload.o.map(function(item) {
-          if (Array.isArray(item)) {
-            var gVal = item[6];
-            var gId = (gVal !== '' && gVal != null && groupIndexMap[gVal]) ? groupIndexMap[gVal] : (typeof gVal === 'string' && gVal.indexOf('group_') === 0 ? gVal : 'group_ungrouped');
-            return {
-              id: 'ghn_' + (item[0] || Date.now()) + '_' + Math.random().toString(36).substr(2, 4),
-              trackingCode: item[0] || '',
-              customerName: item[1] || '',
-              phone: item[2] || '',
-              address: item[3] || '',
-              codAmount: Number(item[4]) || 0,
-              phaiThu: Number(item[4]) || 0,
-              gtbThu: 0,
-              status: item[5] || 'pending',
-              groupId: gId,
-              lat: (item[7] != null && item[7] !== '' && !isNaN(item[7])) ? Number(item[7]) : null,
-              lng: (item[8] != null && item[8] !== '' && !isNaN(item[8])) ? Number(item[8]) : null,
-              tripCode: item[9] || '',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            };
-          } else {
-            return {
-              id: item.id || ('ghn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
-              trackingCode: item.c || '',
-              customerName: item.n || '',
-              phone: item.p || '',
-              address: item.a || '',
-              codAmount: Number(item.m) || 0,
-              phaiThu: Number(item.m) || 0,
-              gtbThu: 0,
-              status: item.s || 'pending',
-              groupId: item.g || 'group_ungrouped',
-              lat: (item.x != null && !isNaN(item.x)) ? Number(item.x) : null,
-              lng: (item.y != null && !isNaN(item.y)) ? Number(item.y) : null,
-              tripCode: item.t || '',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            };
-          }
+      fullPayload.o.forEach(function(item, index) {
+        if (!item || (typeof item !== 'object')) return;
+        var isCompactArray = Array.isArray(item);
+        var extra = isCompactArray ? item[10] : item;
+        if (!extra || typeof extra !== 'object' || Array.isArray(extra)) extra = {};
+        var gVal = isCompactArray ? item[6] : item.g;
+        var rawGroupId = (gVal !== '' && gVal != null && groupIndexMap[gVal]) ? groupIndexMap[gVal] : (typeof gVal === 'string' ? gVal : 'group_ungrouped');
+        var groupId = cleanId(rawGroupId, 'group_ungrouped');
+        var codAmount = cleanAmount(isCompactArray ? item[4] : item.m);
+        var status = cleanText(isCompactArray ? item[5] : item.s, 20).toLowerCase();
+        var subStatus = cleanText(extra.subStatus || extra.ss, 40).toLowerCase();
+        if (['pending', 'gtc', 'gtb', 'cho_ck'].indexOf(status) === -1) status = 'pending';
+        if (['cho_ck', 'hen_giao_lai', 'knm', 'tu_choi'].indexOf(subStatus) === -1) subStatus = '';
+
+        var order = {
+          id: cleanId(extra.id || item.id, generateLocalOrderId(index)),
+          trackingCode: cleanText(isCompactArray ? item[0] : item.c, 100),
+          customerName: cleanText(isCompactArray ? item[1] : item.n, 200),
+          phone: cleanPhone(isCompactArray ? item[2] : item.p),
+          address: cleanText(isCompactArray ? item[3] : item.a, 1000),
+          codAmount: codAmount,
+          phaiThu: cleanAmount(extra.phaiThu != null ? extra.phaiThu : extra.pay, codAmount),
+          gtbThu: cleanAmount(extra.gtbThu != null ? extra.gtbThu : extra.gt),
+          secondaryPhone: cleanPhone(extra.secondaryPhone || extra.sp),
+          notes: cleanText(extra.notes, 1000),
+          extraNotes: cleanText(extra.extraNotes, 1000),
+          status: status,
+          subStatus: subStatus,
+          gtbReason: cleanText(extra.gtbReason || extra.reason, 300),
+          groupId: groupId,
+          lat: cleanCoordinate(isCompactArray ? item[7] : item.x, -90, 90),
+          lng: cleanCoordinate(isCompactArray ? item[8] : item.y, -180, 180),
+          tripCode: cleanText(isCompactArray ? item[9] : item.t, 100),
+          createdAt: cleanText(extra.createdAt || extra.created, 40) || new Date().toISOString(),
+          updatedAt: cleanText(extra.updatedAt || extra.updated, 40) || new Date().toISOString(),
+          deliveredAt: cleanText(extra.deliveredAt || extra.delivered, 40),
+          outlierReason: cleanText(extra.outlierReason, 300),
+          gpsOutlierDist: cleanAmount(extra.gpsOutlierDist),
+          healedSource: cleanText(extra.healedSource, 40),
+          healedAlleyLevel: cleanText(extra.healedAlleyLevel, 100),
+          isGpsOutlier: !!extra.isGpsOutlier,
+          isFakeHubCoord: !!extra.isFakeHubCoord,
+          isDistrictMismatch: !!extra.isDistrictMismatch,
+          isGpsHealed: !!extra.isGpsHealed
+        };
+        unpackedOrders.push(order);
+      });
+
+      var existingOrders = [].concat(currentOrders || []);
+      function mergeExisting(newOrder) {
+        var existing = existingOrders.find(function(order) {
+          return (newOrder.trackingCode && String(order.trackingCode || '').trim().toUpperCase() === newOrder.trackingCode.toUpperCase()) || order.id === newOrder.id;
         });
+        if (!existing) return newOrder;
+        var merged = Object.assign({}, existing, newOrder, {
+          id: existing.id || newOrder.id,
+          createdAt: existing.createdAt || newOrder.createdAt
+        });
+        if (Number(fullPayload.v) < 3) {
+          ['phaiThu', 'gtbThu', 'secondaryPhone', 'notes', 'extraNotes', 'subStatus', 'gtbReason', 'deliveredAt'].forEach(function(key) {
+            if (existing[key] !== undefined) merged[key] = existing[key];
+          });
+        }
+        return merged;
       }
 
       var finalOrders;
       if (isAppend) {
-        finalOrders = [].concat(currentOrders || []);
+        finalOrders = existingOrders;
         unpackedOrders.forEach(function(newOrd) {
           var existIdx = finalOrders.findIndex(function(o) {
             return (newOrd.trackingCode && String(o.trackingCode || '').trim().toUpperCase() === String(newOrd.trackingCode).trim().toUpperCase()) || o.id === newOrd.id;
           });
           if (existIdx !== -1) {
-            finalOrders[existIdx] = Object.assign({}, finalOrders[existIdx], newOrd);
+            finalOrders[existIdx] = mergeExisting(newOrd);
           } else {
             finalOrders.push(newOrd);
           }
         });
       } else {
-        finalOrders = unpackedOrders;
+        finalOrders = unpackedOrders.map(mergeExisting);
       }
 
       var extractedRules = (fullPayload && fullPayload.payload && fullPayload.payload.gr) || (fullPayload && fullPayload.groupRules) || [];
 
       return {
+        valid: true,
         orders: finalOrders,
         groups: groups,
-        groupRules: extractedRules,
-        importedCount: unpackedOrders.length
+        groupRules: Array.isArray(extractedRules) ? extractedRules.slice(0, 1000) : [],
+        importedCount: unpackedOrders.length,
+        rejectedCount: fullPayload.o.length - unpackedOrders.length
       };
     },
 
@@ -633,6 +778,8 @@
       }, null, 2);
     }
   };
+
+  P2PSync.sanitizeVerifiedGeocache = cleanVerifiedGeocache;
 
   if (typeof window !== 'undefined') {
     window.P2PSync = P2PSync;
