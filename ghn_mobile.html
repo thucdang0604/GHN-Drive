@@ -5346,10 +5346,15 @@
     .shipper-mode .card-order-chk,
     .shipper-mode .card-grp-chk,
     .shipper-mode .drawer-sort-wrap,
-    .shipper-mode .drawer-sort-btn,
     .shipper-mode .del-btn,
     .shipper-mode .btn-row-edit-loc {
       display: none !important;
+    }
+
+    .shipper-mode .m-card-actions .drawer-sort-btn {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
     }
 
     .shipper-mode #mapStatAccuracyChip,
@@ -13108,11 +13113,22 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               (gChoCk > 0 ? '<span class="g-pill-cho-ck">' + gChoCk + ' CK 🟡</span>' : '') +
               '<span class="g-pill-gtc">' + gGtc + ' GTC</span>' +
               '<span class="g-pill-gtb">' + gGtb + ' GTB</span>' +
+              '<span class="group-sort-wrap">' +
+                '<button type="button" class="btn-group-sort btn-sort-asc" data-group="' + group.id + '" title="Sắp xếp số nhà nhỏ đến lớn" aria-label="Sắp xếp số nhà nhỏ đến lớn">Số ↑</button>' +
+                '<button type="button" class="btn-group-sort btn-sort-desc" data-group="' + group.id + '" title="Sắp xếp số nhà lớn đến nhỏ" aria-label="Sắp xếp số nhà lớn đến nhỏ">Số ↓</button>' +
+              '</span>' +
             '</div>';
 
           header.addEventListener('click', function(e) {
-            if (e.target.closest('.card-grp-chk')) return;
+            if (e.target.closest('.card-grp-chk, .btn-group-sort')) return;
             toggleGroupCollapse(group.id);
+          });
+
+          header.querySelectorAll('.btn-group-sort').forEach(function(button) {
+            button.addEventListener('click', function(e) {
+              e.stopPropagation();
+              sortGroupByHouseNumber(group.id, button.classList.contains('btn-sort-asc') ? 'asc' : 'desc');
+            });
           });
 
           var grpChk = header.querySelector('.card-grp-chk');
@@ -13249,8 +13265,8 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                   '<button type="button" class="btn-touch-action btn-touch-chock ' + (isChoCk ? 'active' : '') + '">🟡 CHỜ CK</button>' +
                   '<button type="button" class="btn-touch-action btn-touch-gtc ' + (isGtc ? 'active' : '') + '">✓ GTC</button>' +
                   '<button type="button" class="btn-touch-action btn-touch-gtb ' + (isGtb ? 'active' : '') + '">✕ GTB</button>' +
-                  '<button type="button" class="drawer-sort-btn btn-card-up" ' + (idxInGroup === 0 ? 'disabled' : '') + ' title="Lên trên trong nhóm" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">▲</button>' +
-                  '<button type="button" class="drawer-sort-btn btn-card-down" ' + (idxInGroup === groupOrders.length - 1 ? 'disabled' : '') + ' title="Xuống dưới trong nhóm" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">▼</button>' +
+                  '<button type="button" class="drawer-sort-btn btn-card-up" ' + (idxInGroup === 0 ? 'disabled' : '') + ' title="Lên trên trong nhóm" aria-label="Lên trên trong nhóm" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">↑ Lên</button>' +
+                  '<button type="button" class="drawer-sort-btn btn-card-down" ' + (idxInGroup === groupOrders.length - 1 ? 'disabled' : '') + ' title="Xuống dưới trong nhóm" aria-label="Xuống dưới trong nhóm" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">↓ Xuống</button>' +
                   '<button class="del-btn" title="Xóa đơn">🗑</button>' +
                 '</div>';
 
