@@ -807,9 +807,9 @@ export function calculateGpsAccuracyReport(orders) {
       } else if (o.healedSource === 'landmark_poi' || (pGeo.landmarkCoords && Math.abs(o.lat - pGeo.landmarkCoords.lat) < 0.0001)) {
         landmarkCount++;
         level = 'landmark';
-        label = 'Landmark POI 100%';
-        confidence = 100;
-        improvement = 'Chuẩn xác tuyệt đối tòa nhà';
+        label = 'Landmark POI tham chiếu';
+        confidence = 85;
+        improvement = 'Tọa độ tham chiếu từ Landmark; cần kiểm tra lối vào thực tế';
       } else if (o.healedSource === 'co_location' || o.healedSource === 'peer_snapping') {
         exactPeerCount++;
         level = 'exact_peer';

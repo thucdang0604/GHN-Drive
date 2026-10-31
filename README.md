@@ -8,6 +8,7 @@
 - Sắp xếp thứ tự giao hàng linh hoạt theo số nhà chẵn/lẻ hoặc kéo thả.
 - Đổi trạng thái GTC (Giao thành công) / GTB (Giao thất bại) 1 chạm kèm quản lý tiền thu.
 - Tích hợp bản đồ trực quan với Leaflet, dẫn đường Google Maps 1 chạm và quét mã QR Code 128.
+- Đồng bộ P2P chế độ toàn bộ truyền kèm ảnh giao hàng (tối đa 2 MB mỗi ảnh, 20 MB mỗi lượt); chế độ cập nhật nhanh không truyền ảnh.
 
 ## 🌐 Trải Nghiệm Trực Tiếp Trên GitHub Pages
 Truy cập ngay trên điện thoại: **[https://thucdang0604.github.io/GHN-Drive/](https://thucdang0604.github.io/GHN-Drive/)** (hoặc `ghn_mobile.html`)

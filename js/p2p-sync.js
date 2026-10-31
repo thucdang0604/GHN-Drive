@@ -1,7 +1,7 @@
 /**
  * js/p2p-sync.js - Module Truyền Dữ Liệu P2P Siêu Tốc (WebRTC DataChannel)
  * Kết nối trực tiếp giữa 2 thiết bị (Mobile <-> Mobile hoặc Desktop <-> Mobile)
- * Quét 1 mã kết nối duy nhất trong 0.01s, sau đó bắn toàn bộ dữ liệu qua sóng trong 0.05s!
+ * Đồng bộ đơn và truyền ảnh giao hàng theo từng khối nhỏ.
  */
 (function(root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -17,6 +17,11 @@
   var currentConn = null;
   var currentConnectTimeout = null;
   var currentConnectCancel = null;
+  var photoTransferAssemblies = Object.create(null);
+  var PHOTO_CHUNK_SIZE = 32 * 1024;
+  var MAX_PHOTO_SIZE = 2 * 1024 * 1024;
+  var MAX_PHOTO_TRANSFER_SIZE = 20 * 1024 * 1024;
+  var photoTransferSequence = 0;
 
   function cleanText(value, maxLength) {
     return typeof value === 'string' ? value.slice(0, maxLength || 2000) : '';
@@ -63,6 +68,135 @@
       };
     });
     return safe;
+  }
+
+  function isSafePhotoDataUrl(value) {
+    return typeof value === 'string' && value.length <= MAX_PHOTO_SIZE && /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(value);
+  }
+
+  function applyPhotoChunk(data, orders) {
+    if (!data || data.type !== 'ghn_p2p_photo_chunk') return { valid: false, complete: false };
+    Object.keys(photoTransferAssemblies).forEach(function(key) {
+      if (Date.now() - photoTransferAssemblies[key].startedAt > 120000) delete photoTransferAssemblies[key];
+    });
+    var orderId = cleanId(data.orderId, '');
+    var transferId = cleanId(data.transferId, '');
+    var trackingCode = cleanText(data.trackingCode, 100);
+    var index = data.index;
+    var total = data.total;
+    if (!orderId || !transferId || !Number.isInteger(index) || !Number.isInteger(total) || total < 1 || total > Math.ceil(MAX_PHOTO_SIZE / PHOTO_CHUNK_SIZE) || index < 0 || index >= total || typeof data.data !== 'string' || data.data.length > PHOTO_CHUNK_SIZE) {
+      return { valid: false, complete: false };
+    }
+
+    var key = transferId + ':' + orderId + ':' + trackingCode;
+    var transfer = photoTransferAssemblies[key];
+    if (!transfer) {
+      if (Object.keys(photoTransferAssemblies).length >= 8) return { valid: false, complete: false };
+      transfer = photoTransferAssemblies[key] = { parts: new Array(total), total: total, size: 0, received: 0, startedAt: Date.now() };
+    }
+    if (transfer.total !== total) {
+      delete photoTransferAssemblies[key];
+      return { valid: false, complete: false };
+    }
+    if (transfer.parts[index] !== undefined) return { valid: true, complete: false };
+
+    transfer.parts[index] = data.data;
+    transfer.size += data.data.length;
+    transfer.received++;
+    if (transfer.size > MAX_PHOTO_SIZE) {
+      delete photoTransferAssemblies[key];
+      return { valid: false, complete: false };
+    }
+    if (transfer.received < transfer.total) return { valid: true, complete: false };
+
+    var photo = transfer.parts.join('');
+    delete photoTransferAssemblies[key];
+    if (!isSafePhotoDataUrl(photo)) return { valid: false, complete: false };
+    var order = (orders || []).find(function(item) {
+      return item.id === orderId || (trackingCode && String(item.trackingCode || '').toUpperCase() === trackingCode.toUpperCase());
+    });
+    return { valid: true, complete: true, matched: !!order, order: order || null, photo: photo };
+  }
+
+  function sanitizeBackupData(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data) || (!Array.isArray(data.orders) && !Array.isArray(data.groups))) {
+      return { valid: false, orders: [], groups: [] };
+    }
+    var rawOrders = Array.isArray(data.orders) ? data.orders : [];
+    var rawGroups = Array.isArray(data.groups) ? data.groups : [];
+    if (rawOrders.length > 3000 || rawGroups.length > 500) return { valid: false, orders: [], groups: [] };
+
+    var groupIds = Object.create(null);
+    var groupIdMap = Object.create(null);
+    var groups = [];
+    for (var i = 0; i < rawGroups.length; i++) {
+      var sourceGroup = rawGroups[i];
+      if (!sourceGroup || typeof sourceGroup !== 'object' || Array.isArray(sourceGroup)) return { valid: false, orders: [], groups: [] };
+      var oldGroupId = sourceGroup.id;
+      var groupId = cleanId(oldGroupId, 'backup_group_' + i);
+      if (groupIds[groupId]) groupId = 'backup_group_' + i;
+      while (groupIds[groupId]) groupId += '_';
+      groupIds[groupId] = true;
+      if (typeof oldGroupId === 'string' && groupIdMap[oldGroupId] === undefined) groupIdMap[oldGroupId] = groupId;
+      groups.push({ id: groupId, name: cleanText(sourceGroup.name, 100) || 'Nhóm mới', isCollapsed: !!sourceGroup.isCollapsed });
+    }
+
+    var orderIds = Object.create(null);
+    var orders = [];
+    for (var j = 0; j < rawOrders.length; j++) {
+      var sourceOrder = rawOrders[j];
+      if (!sourceOrder || typeof sourceOrder !== 'object' || Array.isArray(sourceOrder)) return { valid: false, orders: [], groups: [] };
+      var order = {};
+      Object.keys(sourceOrder).forEach(function(key) {
+        if (['__proto__', 'prototype', 'constructor'].includes(key.toLowerCase())) return;
+        Object.defineProperty(order, key, { value: sourceOrder[key], writable: true, enumerable: true, configurable: true });
+      });
+      var orderId = cleanId(sourceOrder.id, 'ghn_backup_' + Date.now() + '_' + j);
+      if (orderIds[orderId]) orderId = 'ghn_backup_' + Date.now() + '_' + j;
+      while (orderIds[orderId]) orderId += '_';
+      orderIds[orderId] = true;
+      order.id = orderId;
+      order.trackingCode = cleanText(sourceOrder.trackingCode, 100);
+      order.customerName = cleanText(sourceOrder.customerName, 200);
+      order.phone = cleanPhone(sourceOrder.phone);
+      order.secondaryPhone = cleanPhone(sourceOrder.secondaryPhone);
+      order.address = cleanText(sourceOrder.address, 1000);
+      order.codAmount = cleanAmount(sourceOrder.codAmount);
+      order.phaiThu = cleanAmount(sourceOrder.phaiThu, order.codAmount);
+      order.gtbThu = cleanAmount(sourceOrder.gtbThu);
+      order.status = ['pending', 'gtc', 'gtb', 'cho_ck'].indexOf(cleanText(sourceOrder.status, 20).toLowerCase()) !== -1 ? sourceOrder.status.toLowerCase() : 'pending';
+      order.subStatus = ['cho_ck', 'hen_giao_lai', 'knm', 'tu_choi'].indexOf(cleanText(sourceOrder.subStatus, 40).toLowerCase()) !== -1 ? sourceOrder.subStatus.toLowerCase() : '';
+      order.gtbReason = cleanText(sourceOrder.gtbReason, 300);
+      order.notes = cleanText(sourceOrder.notes, 1000);
+      order.extraNotes = cleanText(sourceOrder.extraNotes, 1000);
+      order.tripCode = cleanText(sourceOrder.tripCode, 100);
+      order.lat = cleanCoordinate(sourceOrder.lat, -90, 90);
+      order.lng = cleanCoordinate(sourceOrder.lng, -180, 180);
+      var oldOrderGroupId = typeof sourceOrder.groupId === 'string' ? sourceOrder.groupId : '';
+      order.groupId = groupIdMap[oldOrderGroupId] || (oldOrderGroupId === 'group_ungrouped' ? oldOrderGroupId : 'group_ungrouped');
+      ['createdAt', 'updatedAt', 'deliveredAt'].forEach(function(key) { order[key] = cleanText(sourceOrder[key], 40); });
+      ['outlierReason', 'healedSource', 'healedAlleyLevel'].forEach(function(key) { order[key] = cleanText(sourceOrder[key], 300); });
+      order.gpsOutlierDist = cleanAmount(sourceOrder.gpsOutlierDist);
+      ['isGpsOutlier', 'isFakeHubCoord', 'isDistrictMismatch', 'isGpsHealed', 'hasHouseNumber', 'hasStoredPhoto'].forEach(function(key) {
+        if (sourceOrder[key] !== undefined) order[key] = !!sourceOrder[key];
+      });
+      var deliveryPhoto = sourceOrder.deliveryPhoto;
+      if (typeof deliveryPhoto === 'string' && deliveryPhoto.length <= 8 * 1024 * 1024 && /^data:image\/(?:jpe?g|png|webp);base64,[a-z0-9+/=]+$/i.test(deliveryPhoto)) {
+        order.deliveryPhoto = deliveryPhoto;
+        order.hasStoredPhoto = true;
+      } else if (deliveryPhoto !== undefined) {
+        delete order.deliveryPhoto;
+      }
+      orders.push(order);
+    }
+
+    return {
+      valid: true,
+      orders: orders,
+      groups: groups,
+      verifiedGeocache: cleanVerifiedGeocache(data.verifiedGeocache),
+      importedCount: orders.length
+    };
   }
 
   function getPeerConstructor() {
@@ -117,6 +251,8 @@
     isValidConnectionCode: function(value) {
       return /^(?:ghn-sync-)?(?:\d{6}|[a-f0-9]{32})$/i.test(String(value || '').trim());
     },
+
+    applyPhotoChunk: applyPhotoChunk,
 
     /**
      * Hiển thị mã QR kết nối P2P (mã cực nhỏ thưa, quét ngay lập tức)
@@ -241,7 +377,21 @@
         grpMap[item[0]] = idx;
       });
 
-      // shortcut: delivery photos stay device-local; add chunking when photo transfer is required.
+      var photos = [];
+      var photoTransferSkipped = 0;
+      var totalPhotoSize = 0;
+      (orders || []).forEach(function(o) {
+        if (!o.deliveryPhoto && !o.hasStoredPhoto) return;
+        var orderId = cleanId(o.id, '');
+        if (!orderId || !isSafePhotoDataUrl(o.deliveryPhoto) || totalPhotoSize + o.deliveryPhoto.length > MAX_PHOTO_TRANSFER_SIZE || photos.length >= 100) {
+          photoTransferSkipped++;
+          return;
+        }
+        totalPhotoSize += o.deliveryPhoto.length;
+        photos.push({ orderId: orderId, trackingCode: cleanText(o.trackingCode, 100), photo: o.deliveryPhoto });
+      });
+      var photoTransferId = photos.length ? 'photo_' + Date.now().toString(36) + '_' + (++photoTransferSequence).toString(36) : '';
+
       var compactOrders = (orders || []).map(function(o) {
         var grpIdx = (o.groupId && grpMap[o.groupId] !== undefined) ? grpMap[o.groupId] : '';
         var lat = (o.lat != null && !isNaN(o.lat)) ? Number(Number(o.lat).toFixed(5)) : null;
@@ -292,6 +442,10 @@
           o: compactOrders,
           gr: groupRules || []
         },
+        photoCount: photos.length,
+        photoTransferSkipped: photoTransferSkipped,
+        photoTransferId: photoTransferId,
+        photos: photos,
         groupRules: groupRules || [],
         verifiedGeocache: verifiedGeocache || {}
       };
@@ -322,6 +476,7 @@
       var peerId = formatPeerId(pin);
       var qrPayload = PREFIX_P2P + peerId;
       var roomUsed = false;
+      var sending = false;
 
       var peerConfig = {
         // Giữ config mặc định của PeerJS 1.5.4 (STUN + TURN).
@@ -382,19 +537,69 @@
       });
 
       var sendFunc = function(data) {
-        if (currentConn && currentConn.open) {
-          try {
-            currentConn.send(data);
-            roomUsed = true;
-          } catch (err) {
-            if (options.onError) options.onError(err);
-            return false;
-          }
-          if (options.onSent) options.onSent(data);
-          if (options.onDataSent) options.onDataSent(data);
-          return true;
+        var conn = currentConn;
+        if (!conn || !conn.open || roomUsed || sending) return false;
+
+        var photos = data && Array.isArray(data.photos) ? data.photos : [];
+        var packet = Object.assign({}, data);
+        delete packet.photos;
+        sending = true;
+        try {
+          conn.send(packet);
+          roomUsed = true;
+        } catch (err) {
+          sending = false;
+          if (options.onError) options.onError(err);
+          return false;
         }
-        return false;
+
+        var photoIndex = 0;
+        var photoOffset = 0;
+        var sendNextPhotoChunk = function() {
+          if (!conn.open) {
+            sending = false;
+            if (options.onError) options.onError(new Error('Kết nối đã đóng trước khi gửi xong ảnh giao hàng.'));
+            return;
+          }
+          if (conn.dataChannel && conn.dataChannel.bufferedAmount > 256 * 1024) {
+            setTimeout(sendNextPhotoChunk, 25);
+            return;
+          }
+          if (photoIndex >= photos.length) {
+            sending = false;
+            if (options.onSent) options.onSent(data);
+            if (options.onDataSent) options.onDataSent(data);
+            return;
+          }
+
+          var photo = photos[photoIndex];
+          var total = Math.ceil(photo.photo.length / PHOTO_CHUNK_SIZE);
+          var end = Math.min(photoOffset + PHOTO_CHUNK_SIZE, photo.photo.length);
+          try {
+            conn.send({
+              type: 'ghn_p2p_photo_chunk',
+              transferId: data.photoTransferId,
+              orderId: photo.orderId,
+              trackingCode: photo.trackingCode,
+              index: Math.floor(photoOffset / PHOTO_CHUNK_SIZE),
+              total: total,
+              data: photo.photo.slice(photoOffset, end)
+            });
+          } catch (err) {
+            sending = false;
+            if (options.onError) options.onError(err);
+            return;
+          }
+          photoOffset = end;
+          if (photoOffset >= photo.photo.length) {
+            photoIndex++;
+            photoOffset = 0;
+          }
+          setTimeout(sendNextPhotoChunk, 0);
+        };
+
+        sendNextPhotoChunk();
+        return true;
       };
 
       return {
@@ -540,6 +745,7 @@
      * Ngắt mọi kết nối P2P hiện có
      */
     disconnect: function() {
+      photoTransferAssemblies = Object.create(null);
       if (currentConnectCancel) {
         var cancelConnect = currentConnectCancel;
         currentConnectCancel = null;
@@ -780,6 +986,7 @@
   };
 
   P2PSync.sanitizeVerifiedGeocache = cleanVerifiedGeocache;
+  P2PSync.sanitizeBackupData = sanitizeBackupData;
 
   if (typeof window !== 'undefined') {
     window.P2PSync = P2PSync;

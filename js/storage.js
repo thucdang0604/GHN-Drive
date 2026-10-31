@@ -6,6 +6,46 @@
 const STORAGE_KEY = 'ghn_orders_data_v1';
 const GROUPS_STORAGE_KEY = 'ghn_order_groups_v1';
 const GROUP_RULES_STORAGE_KEY = 'ghn_group_rules_v1';
+const DELIVERY_PHOTO_DB = 'ghn_delivery_photos_v1';
+let deliveryPhotoDbPromise;
+let deliveryPhotoCleanupTimer;
+const deliveryPhotoCache = new Map();
+
+function openDeliveryPhotoDb() {
+  if (!globalThis.indexedDB) return Promise.resolve(null);
+  if (deliveryPhotoDbPromise) return deliveryPhotoDbPromise;
+  deliveryPhotoDbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(DELIVERY_PHOTO_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('photos', { keyPath: 'id' });
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  return deliveryPhotoDbPromise;
+}
+
+function isSafeDeliveryPhoto(value) {
+  return typeof value === 'string' && value.length <= 8 * 1024 * 1024 && /^data:image\/(?:jpe?g|png|webp);base64,[a-z0-9+/=]+$/i.test(value);
+}
+
+function scheduleDeliveryPhotoCleanup(orders) {
+  clearTimeout(deliveryPhotoCleanupTimer);
+  const activeIds = new Set((orders || []).map(order => order.id).filter(Boolean));
+  deliveryPhotoCleanupTimer = setTimeout(() => {
+    openDeliveryPhotoDb().then(db => {
+      if (!db) return;
+      const transaction = db.transaction('photos', 'readwrite');
+      const store = transaction.objectStore('photos');
+      store.getAllKeys().onsuccess = event => {
+        event.target.result.forEach(id => {
+          if (!activeIds.has(id)) {
+            store.delete(id);
+            deliveryPhotoCache.delete(id);
+          }
+        });
+      };
+    }).catch(error => console.warn('Không dọn được ảnh giao hàng cũ:', error));
+  }, 500);
+}
 
 export const StorageService = {
   /**
@@ -29,11 +69,71 @@ export const StorageService = {
   saveOrders(orders) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+      scheduleDeliveryPhotoCleanup(orders);
       return true;
     } catch (e) {
       console.error('Lỗi khi ghi vào LocalStorage:', e);
       return false;
     }
+  },
+
+  saveDeliveryPhoto(orderId, photo) {
+    if (!orderId || !isSafeDeliveryPhoto(photo)) return Promise.resolve(false);
+    return openDeliveryPhotoDb().then(db => {
+      if (!db) return false;
+      return new Promise(resolve => {
+        const transaction = db.transaction('photos', 'readwrite');
+        transaction.objectStore('photos').put({ id: orderId, photo: photo, updatedAt: new Date().toISOString() });
+        transaction.oncomplete = () => {
+          deliveryPhotoCache.set(orderId, photo);
+          resolve(true);
+        };
+        transaction.onerror = () => resolve(false);
+        transaction.onabort = () => resolve(false);
+      });
+    }).catch(error => {
+      console.error('Không lưu được ảnh giao hàng:', error);
+      return false;
+    });
+  },
+
+  loadDeliveryPhotos(orders) {
+    return openDeliveryPhotoDb().then(db => {
+      if (!db) return 0;
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction('photos', 'readwrite');
+        const store = transaction.objectStore('photos');
+        const request = store.getAll();
+        const photosToLoad = [];
+        let loaded = 0;
+        request.onsuccess = () => {
+          const stored = new Map(request.result.map(entry => [entry.id, entry.photo]));
+          (orders || []).forEach(order => {
+            const inlinePhoto = isSafeDeliveryPhoto(order.deliveryPhoto) ? order.deliveryPhoto : '';
+            const photo = inlinePhoto || stored.get(order.id);
+            if (photo && isSafeDeliveryPhoto(photo)) {
+              if (inlinePhoto) store.put({ id: order.id, photo: inlinePhoto, updatedAt: order.deliveredAt || new Date().toISOString() });
+              photosToLoad.push({ order: order, photo: photo, hasInlinePhoto: !!inlinePhoto });
+              loaded++;
+            }
+          });
+        };
+        transaction.oncomplete = () => {
+          photosToLoad.forEach(item => {
+            deliveryPhotoCache.set(item.order.id, item.photo);
+            item.order.hasStoredPhoto = true;
+            if (item.hasInlinePhoto) delete item.order.deliveryPhoto;
+          });
+          resolve(loaded);
+        };
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+    });
+  },
+
+  getCachedDeliveryPhoto(orderId) {
+    return deliveryPhotoCache.get(orderId) || '';
   },
 
   /**

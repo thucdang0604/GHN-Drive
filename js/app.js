@@ -97,8 +97,20 @@ document.addEventListener('DOMContentLoaded', () => {
 function initApp() {
   currentOrders = StorageService.getOrders();
   currentGroups = StorageService.getGroups();
+  const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+  const safeData = p2pSync && p2pSync.sanitizeBackupData({ orders: currentOrders, groups: currentGroups });
+  if (safeData && safeData.valid) {
+    currentOrders = safeData.orders;
+    currentGroups = safeData.groups;
+  }
   ensureGroupIntegrity();
-  renderApp();
+  StorageService.loadDeliveryPhotos(currentOrders).then(() => {
+    StorageService.saveOrders(currentOrders);
+    renderApp();
+  }).catch((error) => {
+    console.error('Không thể nạp ảnh giao hàng đã lưu:', error);
+    renderApp();
+  });
 }
 
 function ensureGroupIntegrity() {
@@ -1029,18 +1041,20 @@ function setupDesktopQrSync() {
         const groupsToSend = currentGroups.filter(g => groupIds.has(g.id));
 
         let payload;
+        const ordersWithPhotos = ordersToSend.map(order => ({ ...order, deliveryPhoto: StorageService.getCachedDeliveryPhoto(order.id) }));
         if (currentDesktopSyncMode === 'patch') {
           payload = p2pSync.buildPatchPayload(ordersToSend, groupsToSend, null);
         } else {
-          payload = p2pSync.buildFullPayload(ordersToSend, groupsToSend, null);
+          payload = p2pSync.buildFullPayload(ordersWithPhotos, groupsToSend, null);
         }
         desktopP2PHost.send(payload);
       },
-      onSent: () => {
+      onSent: (data) => {
+        const photoSummary = data.mode === 'full' ? ` và ${data.photoCount || 0} ảnh` : '';
         if (desktopP2PHostStatusText) {
-          desktopP2PHostStatusText.innerHTML = '<span style="color:#10b981; font-weight:700;">✅ ĐÃ GỬI XONG DỮ LIỆU CHUYẾN CHO SHIPPER! (0.05s)</span>';
+          desktopP2PHostStatusText.innerHTML = `<span style="color:#10b981; font-weight:700;">✅ ĐÃ GỬI XONG DỮ LIỆU CHUYẾN${photoSummary.toUpperCase()} CHO SHIPPER!</span>`;
         }
-        showToast('⚡ Bắn dữ liệu chuyến sang Điện thoại thành công!', 'success');
+        showToast(data.photoTransferSkipped ? `Đã gửi đơn và ảnh; ${data.photoTransferSkipped} ảnh không thể gửi.` : 'Đã gửi dữ liệu sang Điện thoại thành công!', data.photoTransferSkipped ? 'error' : 'success');
       },
       onError: (err) => {
         if (desktopP2PHostStatusText) {
@@ -1105,6 +1119,22 @@ function setupDesktopQrSync() {
         clientStatus.innerHTML = `<span class="pulse-dot"></span> ⏳ Đang kết nối tới điện thoại qua mã <strong>${escapeHtml(pin)}</strong>...`;
       }
       btnConnectPin.disabled = true;
+      let expectedPhotoCount = 0;
+      let receivedPhotoCount = 0;
+      let syncApplied = false;
+      let syncFinished = false;
+      let activePhotoTransferId = '';
+      let photoTransferTimeout = null;
+      const finishClientSync = (incomplete = false) => {
+        if (syncFinished || !syncApplied || (!incomplete && receivedPhotoCount < expectedPhotoCount)) return;
+        syncFinished = true;
+        if (photoTransferTimeout) clearTimeout(photoTransferTimeout);
+        if (incomplete && receivedPhotoCount < expectedPhotoCount) {
+          showToast(`Đã nhận đơn và ${receivedPhotoCount}/${expectedPhotoCount} ảnh; kết nối đã dừng.`, 'error');
+        }
+        if (clientStatus) clientStatus.innerHTML = `<span style="color:#10b981; font-weight:700;">✅ ĐÃ NHẬN DỮ LIỆU${receivedPhotoCount ? ` VÀ ${receivedPhotoCount} ẢNH` : ''}!</span>`;
+        setTimeout(() => { modal.style.display = 'none'; p2pSync.disconnect(); }, 1500);
+      };
 
       p2pSync.connectToHost(pin, {
         onConnecting: () => {
@@ -1115,6 +1145,32 @@ function setupDesktopQrSync() {
         },
         onData: (data) => {
           btnConnectPin.disabled = false;
+          if (data && data.type === 'ghn_p2p_photo_chunk') {
+            if (!activePhotoTransferId || data.transferId !== activePhotoTransferId) return;
+            const result = p2pSync.applyPhotoChunk(data, currentOrders);
+            if (!result.valid) return;
+            if (result.complete) {
+              const persistPhoto = result.order
+                ? StorageService.saveDeliveryPhoto(result.order.id, result.photo).then(saved => {
+                    if (saved) {
+                      result.order.hasStoredPhoto = true;
+                      StorageService.saveOrders(currentOrders);
+                      renderApp();
+                    } else {
+                      result.order.deliveryPhoto = result.photo;
+                      StorageService.saveOrders(currentOrders);
+                      renderApp();
+                      showToast('Không lưu được ảnh vào thiết bị này.', 'error');
+                    }
+                  })
+                : Promise.resolve();
+              persistPhoto.finally(() => {
+                receivedPhotoCount++;
+                finishClientSync();
+              });
+            }
+            return;
+          }
           if (!data || data.type !== 'ghn_p2p_sync' || !data.payload) return;
           const p = data.payload;
           if (p.t === 'patch') {
@@ -1137,12 +1193,24 @@ function setupDesktopQrSync() {
           StorageService.saveOrders(currentOrders);
           StorageService.saveGroups(currentGroups);
           renderApp();
-          if (clientStatus) clientStatus.innerHTML = `<span style="color:#10b981; font-weight:700;">✅ ĐÃ NHẬN DỮ LIỆU TỪ ĐIỆN THOẠI THÀNH CÔNG!</span>`;
-          setTimeout(() => { modal.style.display = 'none'; }, 1500);
+          syncApplied = true;
+          expectedPhotoCount = Math.max(0, Math.min(100, Number(data.photoCount) || 0));
+          activePhotoTransferId = typeof data.photoTransferId === 'string' ? data.photoTransferId : '';
+          if (data.photoTransferSkipped > 0) showToast(`${data.photoTransferSkipped} ảnh không gửi được vì quá lớn hoặc không còn trên máy gửi.`, 'error');
+          if (expectedPhotoCount > receivedPhotoCount) {
+            if (clientStatus) clientStatus.textContent = `Đã nhận đơn. Đang nhận ảnh ${receivedPhotoCount}/${expectedPhotoCount}...`;
+            photoTransferTimeout = setTimeout(() => finishClientSync(true), 90000);
+          } else {
+            finishClientSync();
+          }
         },
         onError: (err) => {
+          if (photoTransferTimeout) clearTimeout(photoTransferTimeout);
           btnConnectPin.disabled = false;
           if (clientStatus) clientStatus.innerHTML = `<span style="color:#ef4444; font-weight:700;">❌ Lỗi: ${escapeHtml(err.message || err)}</span>`;
+        },
+        onClose: () => {
+          if (syncApplied && receivedPhotoCount < expectedPhotoCount) finishClientSync(true);
         }
       });
     });
@@ -1190,7 +1258,8 @@ function setupDesktopQrSync() {
     btnDownloadJson.addEventListener('click', () => {
       const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
       if (!p2pSync) return;
-      const jsonStr = p2pSync.exportToFileData(currentOrders, currentGroups, null);
+      const ordersWithPhotos = currentOrders.map(order => ({ ...order, deliveryPhoto: StorageService.getCachedDeliveryPhoto(order.id) || order.deliveryPhoto }));
+      const jsonStr = p2pSync.exportToFileData(ordersWithPhotos, currentGroups, null);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const now = new Date();
       const dateStr = now.getFullYear() + ('0' + (now.getMonth() + 1)).slice(-2) + ('0' + now.getDate()).slice(-2) + '_' + ('0' + now.getHours()).slice(-2) + ('0' + now.getMinutes()).slice(-2);
@@ -1212,15 +1281,20 @@ function setupDesktopQrSync() {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (evt) => {
+      reader.onload = async (evt) => {
         try {
           const data = JSON.parse(evt.target.result);
-          if (!data || (!data.orders && !data.groups)) {
+          const p2pSync = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+          const imported = p2pSync && p2pSync.sanitizeBackupData(data);
+          if (!imported || !imported.valid) {
             showToast('File không đúng định dạng sao lưu GHN!', 'error');
             return;
           }
-          if (Array.isArray(data.orders)) currentOrders = data.orders;
-          if (Array.isArray(data.groups)) currentGroups = data.groups;
+          if (Array.isArray(data.orders)) {
+            await StorageService.loadDeliveryPhotos(imported.orders);
+            currentOrders = imported.orders;
+          }
+          if (Array.isArray(data.groups)) currentGroups = imported.groups;
           ensureGroupIntegrity();
           StorageService.saveOrders(currentOrders);
           StorageService.saveGroups(currentGroups);
@@ -1946,7 +2020,7 @@ function createOrderCard(order, routeNumber, activeOrders, groupName) {
   const isMissingNum = order.hasHouseNumber === false;
   const isHealed = !!order.isGpsHealed;
   const isOutlier = !!order.isGpsOutlier;
-  const deliveryPhotoHref = safeDeliveryPhotoUrl(order.deliveryPhoto);
+  const deliveryPhotoHref = safeDeliveryPhotoUrl(order.deliveryPhoto || StorageService.getCachedDeliveryPhoto(order.id));
   const secPhone = order.secondaryPhone && order.secondaryPhone !== order.phone ? order.secondaryPhone : null;
   const mapsUrl = hasGps 
     ? `https://www.google.com/maps/dir/?api=1&destination=${order.lat},${order.lng}`
@@ -4062,7 +4136,7 @@ function setupDesktopFleetDispatch() {
       },
       onSent: () => {
         if (p2pStatus) {
-          p2pStatus.innerHTML = `✅ ĐÃ BẮN XONG ${shipperOrders.length} ĐƠN CHO ${escapeHtml(r.shipperName)}! (0.05s)`;
+          p2pStatus.innerHTML = `✅ ĐÃ BẮN XONG ${shipperOrders.length} ĐƠN CHO ${escapeHtml(r.shipperName)}!`;
           p2pStatus.style.color = '#16a34a';
           p2pStatus.style.background = '#f0fdf4';
         }

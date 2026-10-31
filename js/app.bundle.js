@@ -3,6 +3,43 @@
   var STORAGE_KEY = "ghn_orders_data_v1";
   var GROUPS_STORAGE_KEY = "ghn_order_groups_v1";
   var GROUP_RULES_STORAGE_KEY = "ghn_group_rules_v1";
+  var DELIVERY_PHOTO_DB = "ghn_delivery_photos_v1";
+  var deliveryPhotoDbPromise;
+  var deliveryPhotoCleanupTimer;
+  var deliveryPhotoCache = /* @__PURE__ */ new Map();
+  function openDeliveryPhotoDb() {
+    if (!globalThis.indexedDB) return Promise.resolve(null);
+    if (deliveryPhotoDbPromise) return deliveryPhotoDbPromise;
+    deliveryPhotoDbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(DELIVERY_PHOTO_DB, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("photos", { keyPath: "id" });
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return deliveryPhotoDbPromise;
+  }
+  function isSafeDeliveryPhoto(value) {
+    return typeof value === "string" && value.length <= 8 * 1024 * 1024 && /^data:image\/(?:jpe?g|png|webp);base64,[a-z0-9+/=]+$/i.test(value);
+  }
+  function scheduleDeliveryPhotoCleanup(orders) {
+    clearTimeout(deliveryPhotoCleanupTimer);
+    const activeIds = new Set((orders || []).map((order) => order.id).filter(Boolean));
+    deliveryPhotoCleanupTimer = setTimeout(() => {
+      openDeliveryPhotoDb().then((db) => {
+        if (!db) return;
+        const transaction = db.transaction("photos", "readwrite");
+        const store = transaction.objectStore("photos");
+        store.getAllKeys().onsuccess = (event) => {
+          event.target.result.forEach((id) => {
+            if (!activeIds.has(id)) {
+              store.delete(id);
+              deliveryPhotoCache.delete(id);
+            }
+          });
+        };
+      }).catch((error) => console.warn("Kh\xF4ng d\u1ECDn \u0111\u01B0\u1EE3c \u1EA3nh giao h\xE0ng c\u0169:", error));
+    }, 500);
+  }
   var StorageService = {
     /**
      * Lấy toàn bộ danh sách đơn hàng đã lưu
@@ -24,11 +61,68 @@
     saveOrders(orders) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+        scheduleDeliveryPhotoCleanup(orders);
         return true;
       } catch (e) {
         console.error("L\u1ED7i khi ghi v\xE0o LocalStorage:", e);
         return false;
       }
+    },
+    saveDeliveryPhoto(orderId, photo) {
+      if (!orderId || !isSafeDeliveryPhoto(photo)) return Promise.resolve(false);
+      return openDeliveryPhotoDb().then((db) => {
+        if (!db) return false;
+        return new Promise((resolve) => {
+          const transaction = db.transaction("photos", "readwrite");
+          transaction.objectStore("photos").put({ id: orderId, photo, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
+          transaction.oncomplete = () => {
+            deliveryPhotoCache.set(orderId, photo);
+            resolve(true);
+          };
+          transaction.onerror = () => resolve(false);
+          transaction.onabort = () => resolve(false);
+        });
+      }).catch((error) => {
+        console.error("Kh\xF4ng l\u01B0u \u0111\u01B0\u1EE3c \u1EA3nh giao h\xE0ng:", error);
+        return false;
+      });
+    },
+    loadDeliveryPhotos(orders) {
+      return openDeliveryPhotoDb().then((db) => {
+        if (!db) return 0;
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction("photos", "readwrite");
+          const store = transaction.objectStore("photos");
+          const request = store.getAll();
+          const photosToLoad = [];
+          let loaded = 0;
+          request.onsuccess = () => {
+            const stored = new Map(request.result.map((entry) => [entry.id, entry.photo]));
+            (orders || []).forEach((order) => {
+              const inlinePhoto = isSafeDeliveryPhoto(order.deliveryPhoto) ? order.deliveryPhoto : "";
+              const photo = inlinePhoto || stored.get(order.id);
+              if (photo && isSafeDeliveryPhoto(photo)) {
+                if (inlinePhoto) store.put({ id: order.id, photo: inlinePhoto, updatedAt: order.deliveredAt || (/* @__PURE__ */ new Date()).toISOString() });
+                photosToLoad.push({ order, photo, hasInlinePhoto: !!inlinePhoto });
+                loaded++;
+              }
+            });
+          };
+          transaction.oncomplete = () => {
+            photosToLoad.forEach((item) => {
+              deliveryPhotoCache.set(item.order.id, item.photo);
+              item.order.hasStoredPhoto = true;
+              if (item.hasInlinePhoto) delete item.order.deliveryPhoto;
+            });
+            resolve(loaded);
+          };
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(transaction.error);
+        });
+      });
+    },
+    getCachedDeliveryPhoto(orderId) {
+      return deliveryPhotoCache.get(orderId) || "";
     },
     /**
      * Thêm một hoặc nhiều đơn hàng vào danh sách
@@ -1581,8 +1675,20 @@
   function initApp() {
     currentOrders = StorageService.getOrders();
     currentGroups = StorageService.getGroups();
+    const p2pSync = window.P2PSync || (typeof P2PSync !== "undefined" ? P2PSync : null);
+    const safeData = p2pSync && p2pSync.sanitizeBackupData({ orders: currentOrders, groups: currentGroups });
+    if (safeData && safeData.valid) {
+      currentOrders = safeData.orders;
+      currentGroups = safeData.groups;
+    }
     ensureGroupIntegrity();
-    renderApp();
+    StorageService.loadDeliveryPhotos(currentOrders).then(() => {
+      StorageService.saveOrders(currentOrders);
+      renderApp();
+    }).catch((error) => {
+      console.error("Kh\xF4ng th\u1EC3 n\u1EA1p \u1EA3nh giao h\xE0ng \u0111\xE3 l\u01B0u:", error);
+      renderApp();
+    });
   }
   function ensureGroupIntegrity() {
     if (!currentGroups || currentGroups.length === 0) {
@@ -2368,18 +2474,20 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
           const groupIds = new Set(ordersToSend.map((o) => o.groupId).filter(Boolean));
           const groupsToSend = currentGroups.filter((g) => groupIds.has(g.id));
           let payload;
+          const ordersWithPhotos = ordersToSend.map((order) => ({ ...order, deliveryPhoto: StorageService.getCachedDeliveryPhoto(order.id) }));
           if (currentDesktopSyncMode === "patch") {
             payload = p2pSync.buildPatchPayload(ordersToSend, groupsToSend, null);
           } else {
-            payload = p2pSync.buildFullPayload(ordersToSend, groupsToSend, null);
+            payload = p2pSync.buildFullPayload(ordersWithPhotos, groupsToSend, null);
           }
           desktopP2PHost.send(payload);
         },
-        onSent: () => {
+        onSent: (data) => {
+          const photoSummary = data.mode === "full" ? ` v\xE0 ${data.photoCount || 0} \u1EA3nh` : "";
           if (desktopP2PHostStatusText) {
-            desktopP2PHostStatusText.innerHTML = '<span style="color:#10b981; font-weight:700;">\u2705 \u0110\xC3 G\u1EECI XONG D\u1EEE LI\u1EC6U CHUY\u1EBEN CHO SHIPPER! (0.05s)</span>';
+            desktopP2PHostStatusText.innerHTML = `<span style="color:#10b981; font-weight:700;">\u2705 \u0110\xC3 G\u1EECI XONG D\u1EEE LI\u1EC6U CHUY\u1EBEN${photoSummary.toUpperCase()} CHO SHIPPER!</span>`;
           }
-          showToast("\u26A1 B\u1EAFn d\u1EEF li\u1EC7u chuy\u1EBFn sang \u0110i\u1EC7n tho\u1EA1i th\xE0nh c\xF4ng!", "success");
+          showToast(data.photoTransferSkipped ? `\u0110\xE3 g\u1EEDi \u0111\u01A1n v\xE0 \u1EA3nh; ${data.photoTransferSkipped} \u1EA3nh kh\xF4ng th\u1EC3 g\u1EEDi.` : "\u0110\xE3 g\u1EEDi d\u1EEF li\u1EC7u sang \u0110i\u1EC7n tho\u1EA1i th\xE0nh c\xF4ng!", data.photoTransferSkipped ? "error" : "success");
         },
         onError: (err) => {
           if (desktopP2PHostStatusText) {
@@ -2436,6 +2544,25 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
           clientStatus.innerHTML = `<span class="pulse-dot"></span> \u23F3 \u0110ang k\u1EBFt n\u1ED1i t\u1EDBi \u0111i\u1EC7n tho\u1EA1i qua m\xE3 <strong>${escapeHtml(pin)}</strong>...`;
         }
         btnConnectPin.disabled = true;
+        let expectedPhotoCount = 0;
+        let receivedPhotoCount = 0;
+        let syncApplied = false;
+        let syncFinished = false;
+        let activePhotoTransferId = "";
+        let photoTransferTimeout = null;
+        const finishClientSync = (incomplete = false) => {
+          if (syncFinished || !syncApplied || !incomplete && receivedPhotoCount < expectedPhotoCount) return;
+          syncFinished = true;
+          if (photoTransferTimeout) clearTimeout(photoTransferTimeout);
+          if (incomplete && receivedPhotoCount < expectedPhotoCount) {
+            showToast(`\u0110\xE3 nh\u1EADn \u0111\u01A1n v\xE0 ${receivedPhotoCount}/${expectedPhotoCount} \u1EA3nh; k\u1EBFt n\u1ED1i \u0111\xE3 d\u1EEBng.`, "error");
+          }
+          if (clientStatus) clientStatus.innerHTML = `<span style="color:#10b981; font-weight:700;">\u2705 \u0110\xC3 NH\u1EACN D\u1EEE LI\u1EC6U${receivedPhotoCount ? ` V\xC0 ${receivedPhotoCount} \u1EA2NH` : ""}!</span>`;
+          setTimeout(() => {
+            modal.style.display = "none";
+            p2pSync.disconnect();
+          }, 1500);
+        };
         p2pSync.connectToHost(pin, {
           onConnecting: () => {
             if (clientStatus) clientStatus.innerHTML = `<span class="pulse-dot"></span> \u23F3 \u0110ang b\u1EAFt tay k\u1EBFt n\u1ED1i P2P...`;
@@ -2445,6 +2572,30 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
           },
           onData: (data) => {
             btnConnectPin.disabled = false;
+            if (data && data.type === "ghn_p2p_photo_chunk") {
+              if (!activePhotoTransferId || data.transferId !== activePhotoTransferId) return;
+              const result = p2pSync.applyPhotoChunk(data, currentOrders);
+              if (!result.valid) return;
+              if (result.complete) {
+                const persistPhoto = result.order ? StorageService.saveDeliveryPhoto(result.order.id, result.photo).then((saved) => {
+                  if (saved) {
+                    result.order.hasStoredPhoto = true;
+                    StorageService.saveOrders(currentOrders);
+                    renderApp();
+                  } else {
+                    result.order.deliveryPhoto = result.photo;
+                    StorageService.saveOrders(currentOrders);
+                    renderApp();
+                    showToast("Kh\xF4ng l\u01B0u \u0111\u01B0\u1EE3c \u1EA3nh v\xE0o thi\u1EBFt b\u1ECB n\xE0y.", "error");
+                  }
+                }) : Promise.resolve();
+                persistPhoto.finally(() => {
+                  receivedPhotoCount++;
+                  finishClientSync();
+                });
+              }
+              return;
+            }
             if (!data || data.type !== "ghn_p2p_sync" || !data.payload) return;
             const p = data.payload;
             if (p.t === "patch") {
@@ -2473,14 +2624,24 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
             StorageService.saveOrders(currentOrders);
             StorageService.saveGroups(currentGroups);
             renderApp();
-            if (clientStatus) clientStatus.innerHTML = `<span style="color:#10b981; font-weight:700;">\u2705 \u0110\xC3 NH\u1EACN D\u1EEE LI\u1EC6U T\u1EEA \u0110I\u1EC6N THO\u1EA0I TH\xC0NH C\xD4NG!</span>`;
-            setTimeout(() => {
-              modal.style.display = "none";
-            }, 1500);
+            syncApplied = true;
+            expectedPhotoCount = Math.max(0, Math.min(100, Number(data.photoCount) || 0));
+            activePhotoTransferId = typeof data.photoTransferId === "string" ? data.photoTransferId : "";
+            if (data.photoTransferSkipped > 0) showToast(`${data.photoTransferSkipped} \u1EA3nh kh\xF4ng g\u1EEDi \u0111\u01B0\u1EE3c v\xEC qu\xE1 l\u1EDBn ho\u1EB7c kh\xF4ng c\xF2n tr\xEAn m\xE1y g\u1EEDi.`, "error");
+            if (expectedPhotoCount > receivedPhotoCount) {
+              if (clientStatus) clientStatus.textContent = `\u0110\xE3 nh\u1EADn \u0111\u01A1n. \u0110ang nh\u1EADn \u1EA3nh ${receivedPhotoCount}/${expectedPhotoCount}...`;
+              photoTransferTimeout = setTimeout(() => finishClientSync(true), 9e4);
+            } else {
+              finishClientSync();
+            }
           },
           onError: (err) => {
+            if (photoTransferTimeout) clearTimeout(photoTransferTimeout);
             btnConnectPin.disabled = false;
             if (clientStatus) clientStatus.innerHTML = `<span style="color:#ef4444; font-weight:700;">\u274C L\u1ED7i: ${escapeHtml(err.message || err)}</span>`;
+          },
+          onClose: () => {
+            if (syncApplied && receivedPhotoCount < expectedPhotoCount) finishClientSync(true);
           }
         });
       });
@@ -2523,7 +2684,8 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
       btnDownloadJson.addEventListener("click", () => {
         const p2pSync = window.P2PSync || (typeof P2PSync !== "undefined" ? P2PSync : null);
         if (!p2pSync) return;
-        const jsonStr = p2pSync.exportToFileData(currentOrders, currentGroups, null);
+        const ordersWithPhotos = currentOrders.map((order) => ({ ...order, deliveryPhoto: StorageService.getCachedDeliveryPhoto(order.id) || order.deliveryPhoto }));
+        const jsonStr = p2pSync.exportToFileData(ordersWithPhotos, currentGroups, null);
         const blob = new Blob([jsonStr], { type: "application/json" });
         const now = /* @__PURE__ */ new Date();
         const dateStr = now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2) + "_" + ("0" + now.getHours()).slice(-2) + ("0" + now.getMinutes()).slice(-2);
@@ -2543,15 +2705,20 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         const file = e.target.files && e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
           try {
             const data = JSON.parse(evt.target.result);
-            if (!data || !data.orders && !data.groups) {
+            const p2pSync = window.P2PSync || (typeof P2PSync !== "undefined" ? P2PSync : null);
+            const imported = p2pSync && p2pSync.sanitizeBackupData(data);
+            if (!imported || !imported.valid) {
               showToast("File kh\xF4ng \u0111\xFAng \u0111\u1ECBnh d\u1EA1ng sao l\u01B0u GHN!", "error");
               return;
             }
-            if (Array.isArray(data.orders)) currentOrders = data.orders;
-            if (Array.isArray(data.groups)) currentGroups = data.groups;
+            if (Array.isArray(data.orders)) {
+              await StorageService.loadDeliveryPhotos(imported.orders);
+              currentOrders = imported.orders;
+            }
+            if (Array.isArray(data.groups)) currentGroups = imported.groups;
             ensureGroupIntegrity();
             StorageService.saveOrders(currentOrders);
             StorageService.saveGroups(currentGroups);
@@ -3180,7 +3347,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
     const isMissingNum = order.hasHouseNumber === false;
     const isHealed = !!order.isGpsHealed;
     const isOutlier = !!order.isGpsOutlier;
-    const deliveryPhotoHref = safeDeliveryPhotoUrl(order.deliveryPhoto);
+    const deliveryPhotoHref = safeDeliveryPhotoUrl(order.deliveryPhoto || StorageService.getCachedDeliveryPhoto(order.id));
     const secPhone = order.secondaryPhone && order.secondaryPhone !== order.phone ? order.secondaryPhone : null;
     const mapsUrl = hasGps ? `https://www.google.com/maps/dir/?api=1&destination=${order.lat},${order.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address || "")}`;
     card.innerHTML = `
@@ -4961,7 +5128,7 @@ Nh\u1EADp s\u1ED1 th\u1EE9 t\u1EF1:`);
         },
         onSent: () => {
           if (p2pStatus) {
-            p2pStatus.innerHTML = `\u2705 \u0110\xC3 B\u1EAEN XONG ${shipperOrders.length} \u0110\u01A0N CHO ${escapeHtml(r.shipperName)}! (0.05s)`;
+            p2pStatus.innerHTML = `\u2705 \u0110\xC3 B\u1EAEN XONG ${shipperOrders.length} \u0110\u01A0N CHO ${escapeHtml(r.shipperName)}!`;
             p2pStatus.style.color = "#16a34a";
             p2pStatus.style.background = "#f0fdf4";
           }

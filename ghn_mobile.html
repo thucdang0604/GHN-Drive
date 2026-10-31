@@ -6685,7 +6685,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             </div>
 
             <button type="button" id="btnLaunchP2PScanner" class="btn-launch-scanner" style="width: 100%; max-width: 320px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13.5px; font-weight: 700; padding: 12px; background: #f1f5f9; color: #334155; border: 1.5px dashed #cbd5e1;">
-              📷 Quét Mã Kết Nối Máy A (0.01s)
+              📷 Quét Mã Kết Nối Máy A
             </button>
 
             <div id="p2pClientStatusMsg" style="font-size: 12.5px; color: #64748b; font-weight: 600; text-align: center; min-height: 24px;"></div>
@@ -6941,8 +6941,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
       }
 
       function saveAllToIndexedDB() {
-        openDB().then(function(db) {
-          if (!db) return;
+        return openDB().then(function(db) {
+          if (!db) return false;
+          return new Promise(function(resolve) {
           try {
             var tx = db.transaction([IDB_STORE_ORDERS, IDB_STORE_PHOTOS, IDB_STORE_META], 'readwrite');
             var ordStore = tx.objectStore(IDB_STORE_ORDERS);
@@ -6970,10 +6971,17 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 photoStore.put({ id: o.id, photo: o.deliveryPhoto, updatedAt: o.deliveredAt || new Date().toISOString() });
               }
             });
-            tx.onerror = function() { console.warn('Lỗi giao dịch ghi IndexedDB:', tx.error); };
+            tx.oncomplete = function() { resolve(true); };
+            tx.onerror = function() { console.warn('Lỗi giao dịch ghi IndexedDB:', tx.error); resolve(false); };
+            tx.onabort = function() { console.warn('Giao dịch ghi IndexedDB bị hủy:', tx.error); resolve(false); };
           } catch(err) {
             console.warn('Lỗi ghi IndexedDB:', err);
+            resolve(false);
           }
+          });
+        }).catch(function(err) {
+          console.warn('Không thể lưu vào IndexedDB:', err);
+          return false;
         });
       }
 
@@ -7062,6 +7070,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         } catch(e) {
           orders = [];
         }
+        sanitizeStoredOrders();
 
         // Tự động khôi phục ảnh và đơn từ IndexedDB nếu LocalStorage bị giới hạn hoặc mất do đóng tab
         loadFromIndexedDB().then(function(res) {
@@ -7072,9 +7081,10 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             orders = res.orders;
             hasChanges = true;
           }
+          sanitizeStoredOrders();
           // Nạp lại ảnh nếu LocalStorage lược bỏ để tiết kiệm bộ nhớ
           if (res.photos && res.photos.length > 0) {
-            var photoMap = {};
+            var photoMap = Object.create(null);
             res.photos.forEach(function(p) { photoMap[p.id] = p.photo; });
             orders.forEach(function(o) {
               if (!o.deliveryPhoto && photoMap[o.id]) {
@@ -7100,6 +7110,15 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             if (ordItem.secondaryPhone === undefined && pG.secondaryPhone) ordItem.secondaryPhone = pG.secondaryPhone;
           }
         }
+      }
+
+      function sanitizeStoredOrders() {
+        var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+        if (!p2p) return;
+        var safeData = p2p.sanitizeBackupData({ orders: orders, groups: groups });
+        if (!safeData.valid) return;
+        orders = safeData.orders;
+        groups = safeData.groups;
       }
 
       function saveData() {
@@ -7130,7 +7149,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         }
 
         // 2. Luôn đồng bộ vào IndexedDB (dung lượng hàng trăm MB, an toàn tuyệt đối)
-        saveAllToIndexedDB();
+        return saveAllToIndexedDB();
       }
 
       function saveVerifiedGeocache() {
@@ -10631,9 +10650,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             } else if (o.healedSource === 'landmark_poi' || (pGeo.landmarkCoords && Math.abs(o.lat - pGeo.landmarkCoords.lat) < 0.0001)) {
               landmarkCount++;
               level = 'landmark';
-              label = 'Landmark POI 100%';
-              confidence = 100;
-              improvement = '✓ Chuẩn xác tuyệt đối tòa nhà';
+              label = 'Landmark POI tham chiếu';
+              confidence = 85;
+              improvement = 'Tọa độ tham chiếu từ Landmark; cần kiểm tra lối vào thực tế';
             } else if (o.healedSource === 'co_location' || o.healedSource === 'peer_snapping') {
               exactPeerCount++;
               level = 'exact_peer';
@@ -13387,7 +13406,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         if (titleEl) {
           if (currentScannerMode === 'p2p') {
-            titleEl.textContent = 'Quét Mã Kết Nối P2P (0.01s)';
+            titleEl.textContent = 'Quét Mã Kết Nối P2P';
           } else if (currentScannerMode === 'sync') {
             titleEl.textContent = 'Quét Mã Đồng Bộ (Thiết Bị A)';
           } else {
@@ -13577,13 +13596,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             }
             p2pHostInstance.send(payload);
           },
-          onSent: function() {
+          onSent: function(data) {
+            var photoSummary = data.mode === 'full' ? ' và ' + (data.photoCount || 0) + ' ảnh' : '';
             if (statusTextEl) {
-              statusTextEl.innerHTML = '<span style="color:#10b981; font-weight:700;">✅ ĐÃ GỬI XONG TOÀN BỘ DỮ LIỆU SANG THIẾT BỊ B! (0.05s)</span>';
+              statusTextEl.innerHTML = '<span style="color:#10b981; font-weight:700;">✅ ĐÃ GỬI XONG DỮ LIỆU' + photoSummary + ' SANG THIẾT B!</span>';
             }
             playBeep();
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-            showToast('⚡ Bắn dữ liệu P2P thành công!');
+            showToast(data.photoTransferSkipped ? 'Đã gửi đơn và ảnh; ' + data.photoTransferSkipped + ' ảnh không thể gửi.' : 'Đã gửi đơn và ảnh P2P thành công!');
           },
           onError: function(err) {
             if (statusTextEl) {
@@ -13618,6 +13638,23 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           try { p2pClientInstance.destroy(); } catch(e) {}
         }
 
+        var expectedPhotoCount = 0;
+        var receivedPhotoCount = 0;
+        var syncApplied = false;
+        var syncFinished = false;
+        var activePhotoTransferId = '';
+        var photoTransferTimeout = null;
+        function finishClientSync(incomplete) {
+          if (syncFinished || !syncApplied || (!incomplete && receivedPhotoCount < expectedPhotoCount)) return;
+          syncFinished = true;
+          if (photoTransferTimeout) clearTimeout(photoTransferTimeout);
+          if (incomplete && receivedPhotoCount < expectedPhotoCount) {
+            showToast('Đã nhận đơn và ' + receivedPhotoCount + '/' + expectedPhotoCount + ' ảnh; kết nối đã dừng.');
+          }
+          if (statusMsg) statusMsg.innerHTML = '<span style="color:#10b981; font-weight:800;">🎉 ĐÃ NHẬN DỮ LIỆU' + (receivedPhotoCount ? ' VÀ ' + receivedPhotoCount + ' ẢNH' : '') + '!</span>';
+          setTimeout(function() { hideQrSyncModal(); }, 1000);
+        }
+
         p2pClientInstance = p2p.connectToHost(pinOrId, {
           onConnecting: function() {
             if (statusMsg) {
@@ -13630,6 +13667,28 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
             }
           },
           onData: function(data) {
+            if (data && data.type === 'ghn_p2p_photo_chunk') {
+              if (!activePhotoTransferId || data.transferId !== activePhotoTransferId) return;
+              var photoResult = p2p.applyPhotoChunk(data, orders);
+              if (!photoResult.valid) return;
+              if (photoResult.complete) {
+                if (photoResult.order) {
+                  photoResult.order.deliveryPhoto = photoResult.photo;
+                  photoResult.order.hasStoredPhoto = true;
+                  saveData().then(function(saved) {
+                    if (!saved) showToast('Ảnh đã nhận nhưng IndexedDB không xác nhận được; hãy sao lưu trước khi đóng trình duyệt.');
+                    render();
+                    receivedPhotoCount++;
+                    finishClientSync(false);
+                  });
+                } else {
+                  showToast('Ảnh đã nhận nhưng không tìm thấy đơn tương ứng.');
+                  receivedPhotoCount++;
+                  finishClientSync(false);
+                }
+              }
+              return;
+            }
             if (!data || data.type !== 'ghn_p2p_sync' || !data.payload || data.payload.t !== data.mode) {
               console.warn('Dữ liệu không đúng định dạng P2P:', data);
               return;
@@ -13651,20 +13710,27 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               saveVerifiedGeocache();
             }
 
-            if (statusMsg) {
-              statusMsg.innerHTML = '<span style="color:#10b981; font-weight:800;">🎉 ĐÃ NHẬN THÀNH CÔNG TOÀN BỘ DỮ LIỆU TỪ MÁY A!</span>';
+            syncApplied = true;
+            expectedPhotoCount = Math.max(0, Math.min(100, Number(data.photoCount) || 0));
+            activePhotoTransferId = typeof data.photoTransferId === 'string' ? data.photoTransferId : '';
+            if (data.photoTransferSkipped > 0) showToast(data.photoTransferSkipped + ' ảnh không gửi được vì quá lớn hoặc không còn trên máy gửi.');
+            if (expectedPhotoCount > receivedPhotoCount) {
+              if (statusMsg) statusMsg.textContent = 'Đã nhận đơn. Đang nhận ảnh ' + receivedPhotoCount + '/' + expectedPhotoCount + '...';
+              photoTransferTimeout = setTimeout(function() { finishClientSync(true); }, 90000);
+            } else {
+              finishClientSync(false);
             }
-
-            setTimeout(function() {
-              hideQrSyncModal();
-            }, 800);
           },
           onError: function(err) {
+            if (photoTransferTimeout) clearTimeout(photoTransferTimeout);
             console.error('Lỗi P2P Client:', err);
             if (statusMsg) {
               statusMsg.innerHTML = '<span style="color:#ef4444; font-weight:700;">❌ ' + escapeHtml(err.message || 'Lỗi kết nối tới Máy A') + '</span>';
             }
             showToast('Lỗi kết nối P2P: ' + (err.message || err));
+          },
+          onClose: function() {
+            if (syncApplied && receivedPhotoCount < expectedPhotoCount) finishClientSync(true);
           }
         });
       }
@@ -13710,15 +13776,16 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
         reader.onload = function(e) {
           try {
             var data = JSON.parse(e.target.result);
-            if (!data || (!data.orders && !data.groups)) {
+            var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+            var imported = p2p && p2p.sanitizeBackupData(data);
+            if (!imported || !imported.valid) {
               alert('File không đúng định dạng sao lưu GHN!');
               return;
             }
-            if (Array.isArray(data.orders)) orders = data.orders;
-            if (Array.isArray(data.groups)) groups = data.groups;
-            var p2p = window.P2PSync || (typeof P2PSync !== 'undefined' ? P2PSync : null);
+            if (Array.isArray(data.orders)) orders = imported.orders;
+            if (Array.isArray(data.groups)) groups = imported.groups;
             if (data.verifiedGeocache && p2p) {
-              verifiedGeocache = Object.assign(Object.create(null), verifiedGeocache || {}, p2p.sanitizeVerifiedGeocache(data.verifiedGeocache));
+              verifiedGeocache = Object.assign(Object.create(null), verifiedGeocache || {}, imported.verifiedGeocache);
               saveVerifiedGeocache();
             }
             ensureGroupIntegrity();
