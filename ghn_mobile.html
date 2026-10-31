@@ -5436,122 +5436,90 @@
 
     .shipper-mode .m-card-collapsed-line {
       display: none;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 3px;
       width: 100%;
       min-width: 0;
     }
 
-    .shipper-mode .m-card-collapsed-main,
-    .shipper-mode .m-card-collapsed-address-row {
-      display: flex;
+    .shipper-mode .m-card-collapsed-line .tbl-row-main {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) 72px 84px;
+      grid-template-areas: "stt info cod actions";
       align-items: center;
-      flex-wrap: wrap;
-      gap: 4px;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .shipper-mode .m-card-collapsed-actions {
-      display: flex;
-      align-items: center;
-      flex: 0 0 auto;
       gap: 3px;
-      margin-left: auto;
+      min-height: 56px;
+      padding: 2px 0;
+      border: 0;
+      border-radius: 0;
     }
 
-    .shipper-mode .m-card-collapsed-actions .btn-act-camera,
-    .shipper-mode .m-card-collapsed-actions .btn-touch-action {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      min-width: 32px;
-      height: 32px;
-      min-height: 32px;
-      flex: 0 0 32px;
-      padding: 0;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-      touch-action: manipulation;
+    .shipper-mode .m-card-collapsed-line .tbl-col-stt {
+      grid-area: stt;
+      flex: none;
+      width: 36px;
+      align-self: stretch;
+      gap: 3px;
     }
 
-    .shipper-mode .m-card-collapsed-stt,
-    .shipper-mode .m-card-collapsed-phone,
-    .shipper-mode .m-card-collapsed-money {
-      flex: 0 0 auto;
-      font-size: 10.5px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .shipper-mode .m-card-collapsed-stt,
-    .shipper-mode .m-card-collapsed-phone {
-      color: #475569;
-    }
-
-    .shipper-mode .m-card-collapsed-code {
-      flex: 0 1 auto;
-      width: max-content;
-      min-width: 0;
-      max-width: 35%;
-      overflow-wrap: anywhere;
-      white-space: normal;
-      padding: 2px 4px;
-      font-size: 9.5px;
-      line-height: 1.2;
-    }
-
-    .shipper-mode .m-card-collapsed-address {
-      flex: 1 1 auto;
-      min-width: 20px;
-      overflow-wrap: anywhere;
-      white-space: normal;
-      color: #334155;
+    .shipper-mode .m-card-collapsed-line .tbl-stt-badge {
+      width: 34px;
+      height: 24px;
       font-size: 11px;
-      line-height: 1.3;
     }
 
-    .shipper-mode .m-card-collapsed-money {
-      color: #a16207;
+    .shipper-mode .m-card-collapsed-line .tbl-col-info {
+      grid-area: info;
+      flex: none;
+      min-width: 0;
     }
 
-    .shipper-mode .m-card-collapsed-status {
-      flex: 0 0 auto;
-      padding: 2px 4px;
-      border-radius: 4px;
-      background: #f1f5f9;
-      color: #475569;
-      font-size: 10px;
-      font-weight: 700;
+    .shipper-mode .m-card-collapsed-line .tbl-addr-line {
+      display: block;
+      overflow: hidden;
+      font-size: 12.5px;
+      line-height: 1.25;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .shipper-mode .m-card-collapsed-status.status-cho-ck {
-      background: #fef3c7;
-      color: #92400e;
+    .shipper-mode .m-card-collapsed-line .tbl-sub-line {
+      flex-wrap: nowrap;
+      gap: 4px;
+      overflow: hidden;
     }
 
-    .shipper-mode .m-card-collapsed-status.status-gtc {
-      background: #dcfce7;
-      color: #047857;
+    .shipper-mode .m-card-collapsed-line .tbl-cust-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .shipper-mode .m-card-collapsed-status.status-gtb {
-      background: #fee2e2;
-      color: #b91c1c;
+    .shipper-mode .m-card-collapsed-line .tbl-col-cod {
+      grid-area: cod;
+      flex: none;
+      width: 100%;
     }
 
-    .shipper-mode .m-card-collapsed-separator {
-      flex: 0 0 auto;
-      color: #94a3b8;
-      font-size: 10px;
+    .shipper-mode .m-card-collapsed-line .tbl-col-act {
+      grid-area: actions;
+      flex: none;
+      width: 100%;
+      gap: 2px;
+      justify-content: flex-end;
+    }
+
+    .shipper-mode .m-card-collapsed-line .tbl-btn-cam,
+    .shipper-mode .m-card-collapsed-line .tbl-btn-gtc,
+    .shipper-mode .m-card-collapsed-line .tbl-btn-gtb {
+      flex: 0 0 26px;
+      width: 26px;
+      height: 30px;
     }
 
     .shipper-mode .m-card.is-collapsed {
-      padding: 6px 7px;
+      padding: 4px 7px;
     }
 
     .shipper-mode .m-card.is-collapsed .m-card-collapsed-line {
@@ -13178,10 +13146,9 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
               var isChoCk = (item.status === 'gtc' && item.subStatus === 'cho_ck') || item.status === 'cho_ck';
               var isGtc = (item.status === 'gtc' && !isChoCk);
               var isGtb = (item.status === 'gtb');
-              var phoneLast4 = String(item.phone || '').replace(/\D/g, '').slice(-4) || '—';
-
               var statusClass = isChoCk ? 'status-cho-ck' : (isGtc ? 'status-gtc' : (isGtb ? 'status-gtb' : 'status-pending'));
-              var compactStatus = isChoCk ? '🟡 Chờ CK' : (isGtc ? '✓ GTC' : (isGtb ? '✕ GTB' : 'Chờ'));
+              var compactStatusClass = isChoCk ? 'pill-cho-ck' : (isGtc ? 'pill-gtc' : (isGtb ? 'pill-gtb' : 'pill-pending'));
+              var compactStatus = isChoCk ? 'Chờ CK 🟡' : (isGtc ? '✓ GTC' : (isGtb ? '✕ GTB' : 'Chờ'));
               var isCardExpanded = cardExpandedState[item.id] === true;
               card.className = 'm-card ' + statusClass + (isChecked ? ' row-selected' : '') + (isCardExpanded ? ' is-expanded' : ' is-collapsed');
               card.setAttribute('data-order-id', item.id);
@@ -13219,22 +13186,28 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
               card.innerHTML = 
                 '<div class="m-card-collapsed-line">' +
-                  '<div class="m-card-collapsed-main">' +
-                    '<span class="m-card-collapsed-stt">#' + stt + '</span>' +
-                    '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
-                    '<span class="tracking-tag m-card-collapsed-code" title="' + escapeHtml(item.trackingCode || 'Chưa có mã') + '">' + (escapeHtml(item.trackingCode) || 'Chưa có mã') + '</span>' +
-                    '<span class="m-card-collapsed-separator" aria-hidden="true">–</span>' +
-                    '<span class="m-card-collapsed-money">' + formatMoney(item.codAmount) + '</span>' +
-                    '<div class="m-card-collapsed-actions">' +
-                      '<button type="button" class="btn-act-camera ' + ((item.deliveryPhoto || item.hasStoredPhoto) ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
-                      '<button type="button" class="btn-touch-action btn-touch-gtc ' + (isGtc ? 'active' : '') + '" title="Giao Thành Công">✓</button>' +
-                      '<button type="button" class="btn-touch-action btn-touch-gtb ' + (isGtb ? 'active' : '') + '" title="Giao Thất Bại">✕</button>' +
+                  '<div class="tbl-row-main">' +
+                    '<div class="tbl-col-stt"><div class="tbl-stt-badge-wrap">' +
+                      '<span class="tbl-stt-badge">#' + stt + '</span>' +
+                      ((item.deliveryPhoto || item.hasStoredPhoto) ? '<span class="tbl-ico-photo" title="Đã có ảnh xác nhận">📸</span>' : '') +
+                    '</div></div>' +
+                    '<div class="tbl-col-info">' +
+                      '<div class="tbl-addr-line" title="' + escapeHtml(item.address || '') + '">' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</div>' +
+                      '<div class="tbl-sub-line">' +
+                        '<span class="tbl-cust-name" title="' + escapeHtml(item.customerName || '') + '">👤 ' + (escapeHtml(item.customerName) || 'Khách lẻ') + '</span>' +
+                        (item.phone ? '<a href="tel:' + safeTel(item.phone) + '" class="tbl-phone-link" title="Gọi số chính" onclick="event.stopPropagation();">☎ ' + escapeHtml(item.phone) + '</a>' : '') +
+                        '<span class="tbl-status-pill ' + compactStatusClass + '">' + compactStatus + '</span>' +
+                      '</div>' +
                     '</div>' +
-                  '</div>' +
-                  '<div class="m-card-collapsed-address-row">' +
-                    '<span class="m-card-collapsed-phone" title="4 số cuối SĐT">☎ ' + escapeHtml(phoneLast4) + '</span>' +
-                    '<span class="m-card-collapsed-status ' + statusClass + '">' + compactStatus + '</span>' +
-                    '<span class="m-card-collapsed-address" title="' + escapeHtml(item.address || 'Chưa có địa chỉ') + '">📍 ' + (escapeHtml(item.address) || 'Chưa có địa chỉ') + '</span>' +
+                    '<div class="tbl-col-cod">' +
+                      '<span class="tbl-cod-val">' + formatMoney(item.codAmount) + '</span>' +
+                      (item.gtbThu ? '<span class="tbl-gtb-thu" title="Thu GTB">Thu: ' + formatMoney(item.gtbThu) + '</span>' : '') +
+                    '</div>' +
+                    '<div class="tbl-col-act">' +
+                      '<button type="button" class="tbl-btn-cam ' + ((item.deliveryPhoto || item.hasStoredPhoto) ? 'has-photo' : '') + '" title="Chụp ảnh xác nhận giao hàng">📸</button>' +
+                      '<button type="button" class="tbl-btn-gtc ' + (isGtc ? 'active' : (isChoCk ? 'active-ck' : '')) + '" title="Giao thành công / Chờ CK">✓</button>' +
+                      '<button type="button" class="tbl-btn-gtb ' + (isGtb ? 'active' : '') + '" title="Báo giao thất bại">✕</button>' +
+                    '</div>' +
                   '</div>' +
                 '</div>' +
                 '<div class="m-card-header">' +
@@ -13313,7 +13286,7 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 });
               }
 
-              card.querySelectorAll('.btn-act-camera').forEach(function(btnCamCard) {
+              card.querySelectorAll('.tbl-btn-cam, .btn-act-camera').forEach(function(btnCamCard) {
                 btnCamCard.addEventListener('click', function(e) {
                   e.stopPropagation();
                   triggerCameraForOrder(item.id);
@@ -13336,14 +13309,14 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
                 });
               }
 
-              card.querySelectorAll('.btn-touch-gtc').forEach(function(btnGtcCard) {
+              card.querySelectorAll('.tbl-btn-gtc, .btn-touch-gtc').forEach(function(btnGtcCard) {
                 btnGtcCard.addEventListener('click', function(e) {
                   e.stopPropagation();
                   openGtcModal(item, stt);
                 });
               });
 
-              card.querySelectorAll('.btn-touch-gtb').forEach(function(btnGtbCard) {
+              card.querySelectorAll('.tbl-btn-gtb, .btn-touch-gtb').forEach(function(btnGtbCard) {
                 btnGtbCard.addEventListener('click', function(e) {
                   e.stopPropagation();
                   openGtbModal(item, stt);
