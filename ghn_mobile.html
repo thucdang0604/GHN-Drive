@@ -5320,8 +5320,34 @@
     }
 
     .shipper-mode .header-actions {
+      flex: 1 1 auto;
+      min-width: 0;
       display: flex;
+      align-items: center;
+      gap: 4px;
       justify-content: flex-end;
+    }
+
+    .shipper-mode .mobile-header {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .shipper-mode .header-title {
+      flex: 0 0 auto;
+    }
+
+    .shipper-mode .header-actions .btn-header {
+      flex: 0 1 auto;
+      min-width: 0;
+      justify-content: center;
+      gap: 2px;
+      padding: 6px 4px;
+      font-size: clamp(8px, 2.6vw, 10px);
+      line-height: 1.1;
+      white-space: nowrap;
     }
 
     .shipper-mode .header-actions .btn-header:not(.sync):not(.clean):not(.trip),
@@ -5557,7 +5583,6 @@
   <header class="mobile-header">
       <div class="header-title">
         <span class="header-badge">GHN</span>
-        <h1>Đơn Giao Hàng <span class="header-version-badge" id="appVersionBadge">v2.7.1</span></h1>
       </div>
       <div class="header-actions">
         <button id="btnOpenPasteSheetHeader" class="btn-header paste" title="Dán nhanh danh sách đơn hàng">
