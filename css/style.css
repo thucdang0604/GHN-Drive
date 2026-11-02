@@ -1543,7 +1543,7 @@ body {
 }
 
 .ghn-map-pin-inner span.ghn-pin-housenum {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: -0.3px;
   line-height: 1;
   max-width: 26px;
@@ -1559,7 +1559,7 @@ body {
   transform: translateX(-50%);
   background: rgba(15, 23, 42, 0.9);
   color: #ffffff;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 4px;
@@ -1814,7 +1814,7 @@ body {
 .upd-suggest-badge {
   background: #eff6ff;
   color: #1d4ed8;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   padding: 1px 6px;
   border-radius: var(--radius-full);
@@ -1864,7 +1864,7 @@ body {
 }
 
 .upd-suggest-score {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   color: #15803d;
   background: #dcfce7;
@@ -2201,7 +2201,7 @@ body {
 }
 
 .ai-stat-box .lbl {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #64748b;
   font-weight: 600;
 }
@@ -2408,7 +2408,7 @@ body {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 4px;
