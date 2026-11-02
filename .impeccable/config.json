@@ -1,0 +1,32 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "createdAt": "2026-11-02T11:07:30.788Z",
+        "reason": "Agent: the existing GHN typeface is shared across desktop and mobile; switching it would change the established visual identity for a subjective detector preference."
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "desktop.html"
+        ],
+        "createdAt": "2026-11-02T11:07:31.153Z",
+        "reason": "Agent: the flagged bordered children are mutually exclusive radio choices in the data-cleanup dialog; their separate hit areas and visual boundaries clarify consequential choices."
+      },
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          "desktop.html"
+        ],
+        "createdAt": "2026-11-02T11:07:31.521Z",
+        "reason": "Agent: violet is consistently reserved for the AI feature controls and results, so it serves as a semantic accent distinct from GHN delivery-status colors."
+      }
+    ]
+  }
+}
