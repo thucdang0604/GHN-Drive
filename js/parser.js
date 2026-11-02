@@ -679,9 +679,13 @@ export function fetchOrdersByTrip(tripCode) {
 
   const query = "select * where C = '" + cleanCode + "'";
   const gvizUrl = 'https://docs.google.com/spreadsheets/d/' + GOOGLE_SHEET_ID + '/gviz/tq?tqx=out:json&tq=' + encodeURIComponent(query);
+  let sheetHttpStatus = 0;
 
   return fetch(gvizUrl)
-    .then(res => res.text())
+    .then(res => {
+      sheetHttpStatus = res.status;
+      return res.text();
+    })
     .then(text => {
       const m = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
       if (!m) throw new Error('Dữ liệu trả về không đúng định dạng');
@@ -713,10 +717,18 @@ export function fetchOrdersByTrip(tripCode) {
           reject(new Error('Không thể kết nối đến Google Sheet'));
         };
         document.body.appendChild(script);
+      }).catch(jsonpError => {
+        if (sheetHttpStatus === 401 || sheetHttpStatus === 403) {
+          throw new Error('Google Sheet từ chối quyền truy cập. Hãy đăng nhập tài khoản Google được cấp quyền xem Sheet; nếu đã đăng nhập, kiểm tra quyền truy cập và cookie của docs.google.com.');
+        }
+        throw jsonpError;
       });
     })
     .then(data => {
       if (!data || !data.table || !data.table.rows) {
+        if (sheetHttpStatus === 401 || sheetHttpStatus === 403) {
+          throw new Error('Google Sheet từ chối quyền truy cập. Hãy đăng nhập tài khoản Google được cấp quyền xem Sheet; nếu đã đăng nhập, kiểm tra quyền truy cập và cookie của docs.google.com.');
+        }
         throw new Error('Không tìm thấy chuyến hàng');
       }
       const rows = data.table.rows;

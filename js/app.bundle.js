@@ -1534,7 +1534,11 @@
     }
     const query = "select * where C = '" + cleanCode + "'";
     const gvizUrl = "https://docs.google.com/spreadsheets/d/" + GOOGLE_SHEET_ID + "/gviz/tq?tqx=out:json&tq=" + encodeURIComponent(query);
-    return fetch(gvizUrl).then((res) => res.text()).then((text) => {
+    let sheetHttpStatus = 0;
+    return fetch(gvizUrl).then((res) => {
+      sheetHttpStatus = res.status;
+      return res.text();
+    }).then((text) => {
       const m = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
       if (!m) throw new Error("D\u1EEF li\u1EC7u tr\u1EA3 v\u1EC1 kh\xF4ng \u0111\xFAng \u0111\u1ECBnh d\u1EA1ng");
       return JSON.parse(m[1]);
@@ -1561,9 +1565,17 @@
           reject(new Error("Kh\xF4ng th\u1EC3 k\u1EBFt n\u1ED1i \u0111\u1EBFn Google Sheet"));
         };
         document.body.appendChild(script);
+      }).catch((jsonpError) => {
+        if (sheetHttpStatus === 401 || sheetHttpStatus === 403) {
+          throw new Error("Google Sheet t\u1EEB ch\u1ED1i quy\u1EC1n truy c\u1EADp. H\xE3y \u0111\u0103ng nh\u1EADp t\xE0i kho\u1EA3n Google \u0111\u01B0\u1EE3c c\u1EA5p quy\u1EC1n xem Sheet; n\u1EBFu \u0111\xE3 \u0111\u0103ng nh\u1EADp, ki\u1EC3m tra quy\u1EC1n truy c\u1EADp v\xE0 cookie c\u1EE7a docs.google.com.");
+        }
+        throw jsonpError;
       });
     }).then((data) => {
       if (!data || !data.table || !data.table.rows) {
+        if (sheetHttpStatus === 401 || sheetHttpStatus === 403) {
+          throw new Error("Google Sheet t\u1EEB ch\u1ED1i quy\u1EC1n truy c\u1EADp. H\xE3y \u0111\u0103ng nh\u1EADp t\xE0i kho\u1EA3n Google \u0111\u01B0\u1EE3c c\u1EA5p quy\u1EC1n xem Sheet; n\u1EBFu \u0111\xE3 \u0111\u0103ng nh\u1EADp, ki\u1EC3m tra quy\u1EC1n truy c\u1EADp v\xE0 cookie c\u1EE7a docs.google.com.");
+        }
         throw new Error("Kh\xF4ng t\xECm th\u1EA5y chuy\u1EBFn h\xE0ng");
       }
       const rows = data.table.rows;

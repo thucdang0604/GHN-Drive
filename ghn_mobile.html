@@ -7993,9 +7993,13 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
 
         var query = "select * where C = '" + cleanCode + "'";
         var gvizUrl = 'https://docs.google.com/spreadsheets/d/' + GOOGLE_SHEET_ID + '/gviz/tq?tqx=out:json&tq=' + encodeURIComponent(query);
+        var sheetHttpStatus = 0;
 
         return fetch(gvizUrl)
-          .then(function(res) { return res.text(); })
+          .then(function(res) {
+            sheetHttpStatus = res.status;
+            return res.text();
+          })
           .then(function(text) {
             var m = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
             if (!m) throw new Error('Dữ liệu trả về không đúng định dạng');
@@ -8003,10 +8007,18 @@ Centec Tower, 72 74 Đường Nguyễn Thị Minh Khai...
           })
           .catch(function() {
             // Dự phòng bằng JSONP khi mở qua file:///
-            return fetchSheetJSONP(GOOGLE_SHEET_ID, query);
+            return fetchSheetJSONP(GOOGLE_SHEET_ID, query).catch(function(jsonpError) {
+              if (sheetHttpStatus === 401 || sheetHttpStatus === 403) {
+                throw new Error('Google Sheet từ chối quyền truy cập. Hãy đăng nhập tài khoản Google được cấp quyền xem Sheet; nếu đã đăng nhập, kiểm tra quyền truy cập và cookie của docs.google.com.');
+              }
+              throw jsonpError;
+            });
           })
           .then(function(data) {
             if (!data || !data.table || !data.table.rows) {
+              if (sheetHttpStatus === 401 || sheetHttpStatus === 403) {
+                throw new Error('Google Sheet từ chối quyền truy cập. Hãy đăng nhập tài khoản Google được cấp quyền xem Sheet; nếu đã đăng nhập, kiểm tra quyền truy cập và cookie của docs.google.com.');
+              }
               throw new Error('Không tìm thấy chuyến hàng');
             }
             var rows = data.table.rows;
